@@ -13,11 +13,47 @@ export default function RegisterModal({ open, onClose, onSuccess }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const validateName = (v) => {
+    if (!v || !v.trim()) return 'Required';
+    if (!/^[A-Za-z\s'-]{2,}$/.test(v.trim())) return 'Invalid name';
+    return '';
+  };
+
+  const validateUsername = (v) => {
+    if (!v || !v.trim()) return 'Required';
+    const s = v.trim();
+    if (s.length < 4) return 'Must be at least 4 characters';
+    if (!/^[a-z0-9._-]+$/.test(s)) return 'Use lowercase letters, numbers, . _ or -';
+    return '';
+  };
+
+  const validatePassword = (v) => {
+    if (!v) return 'Required';
+    if (v.length < 8) return 'Must be at least 8 characters';
+    if (!/[0-9]/.test(v)) return 'Include at least one number';
+    if (!/[A-Z]/.test(v)) return 'Include at least one uppercase letter';
+    return '';
+  };
+
+  const runAllValidations = () => {
+    const errs = {
+      firstName: validateName(firstName),
+      lastName: validateName(lastName),
+      username: validateUsername(username),
+      password: validatePassword(password)
+    };
+    setFieldErrors(errs);
+    // return true if no errors
+    return !Object.values(errs).some(Boolean);
+  };
+
   const handleRegister = async (e) => {
     e?.preventDefault();
     setError('');
-    if (!firstName.trim() || !lastName.trim() || !username.trim() || !password) {
-      setError('Please fill required fields');
+    if (!runAllValidations()) {
+      setError('Please fix the errors highlighted below');
       return;
     }
 
@@ -56,19 +92,23 @@ export default function RegisterModal({ open, onClose, onSuccess }) {
             <input
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
+              onBlur={() => setFieldErrors(prev => ({ ...prev, firstName: validateName(firstName) }))}
               placeholder="First name"
               required
               className="input-field"
               disabled={isLoading}
             />
+            {fieldErrors.firstName && <div className="field-error">{fieldErrors.firstName}</div>}
             <input
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
+              onBlur={() => setFieldErrors(prev => ({ ...prev, lastName: validateName(lastName) }))}
               placeholder="Last name"
               required
               className="input-field"
               disabled={isLoading}
             />
+            {fieldErrors.lastName && <div className="field-error">{fieldErrors.lastName}</div>}
           </div>
 
           <input
@@ -82,24 +122,28 @@ export default function RegisterModal({ open, onClose, onSuccess }) {
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            onBlur={() => setFieldErrors(prev => ({ ...prev, username: validateUsername(username) }))}
             placeholder="Username"
             required
             className="input-field"
             disabled={isLoading}
           />
+          {fieldErrors.username && <div className="field-error">{fieldErrors.username}</div>}
 
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onBlur={() => setFieldErrors(prev => ({ ...prev, password: validatePassword(password) }))}
             placeholder="Password"
             required
             className="input-field"
             disabled={isLoading}
           />
+          {fieldErrors.password && <div className="field-error">{fieldErrors.password}</div>}
 
           <div className="modal-actions">
-            <button type="submit" className="submit-btn" disabled={isLoading}>
+            <button type="submit" className="submit-btn" disabled={isLoading || !runAllValidations()}>
               {isLoading ? 'Registering…' : 'Register'}
             </button>
             <button type="button" className="cancel-btn" onClick={onClose} disabled={isLoading}>

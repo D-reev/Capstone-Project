@@ -5,6 +5,8 @@ import { auth } from "../config/firebase.js";
 import { createUserProfile, getUserRole } from '../utils/auth';
 import '../css/Login.css';
 import GoogleIcon from '@mui/icons-material/Google';
+import RegisterModal from '../components/modals/RegisterModal';
+import SuccessModal from '../components/modals/SuccessModal';
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -12,6 +14,9 @@ function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const [successOpen, setSuccessOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const navigate = useNavigate();
  
   const googleProvider = new GoogleAuthProvider();
@@ -82,8 +87,10 @@ function Login() {
     }
   };
 
-  const handleRegisterClick = () => {
-    navigate('/register'); // Adjust this route as needed
+  const handleRegisterClick = (e) => {
+    if (e?.preventDefault) e.preventDefault();
+    if (e?.stopPropagation) e.stopPropagation();
+    setRegisterOpen(true);
   };
 
   return (
@@ -132,15 +139,6 @@ function Login() {
 
           {/* Remember Me and Forgot Password */}
           <div className="login-options">
-            <label className="remember-me">
-              <input 
-                type="checkbox" 
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                disabled={isLoading}
-              />
-              Remember
-            </label>
             <a href="#" className="forgot-password">
               Forgot Password?
             </a>
@@ -161,7 +159,7 @@ function Login() {
             Don't have an account?{' '}
             <button 
               type="button"
-              onClick={handleRegisterClick}
+              onClick={(e) => handleRegisterClick(e)}
               className="register-link"
               style={{ background: 'none', border: 'none', cursor: 'pointer' }}
             >
@@ -197,6 +195,24 @@ function Login() {
         {/* CHANGE IMAGE: Add Freepik logo if needed */}
         designed by D-reev
       </div>
+
+      <RegisterModal
+        open={registerOpen}
+        onClose={() => setRegisterOpen(false)}
+        onSuccess={(createdUser) => {
+          setRegisterOpen(false);
+          setSuccessMessage('Registration successful. Please complete your profile in the Profile section and connect a verified Gmail account to enable notifications and password recovery.');
+          setSuccessOpen(true);
+        }}
+      />
+
+      <SuccessModal
+        open={successOpen}
+        onClose={() => setSuccessOpen(false)}
+        title="Registration Successful"
+        message={successMessage}
+        // keep styling consistent by relying on modal's CSS (Modal.css)
+      />
     </div>
   );
 }

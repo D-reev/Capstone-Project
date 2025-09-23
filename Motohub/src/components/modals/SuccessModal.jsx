@@ -2,7 +2,9 @@ import React from 'react';
 import { X } from 'lucide-react';
 import './Modal.css';
 
-export default function SuccessModal({ message = 'Success', onClose }) {
+export default function SuccessModal({ open = false, message = 'Success', onClose = () => {} }) {
+  if (!open) return null;
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content success-modal" onClick={(e) => e.stopPropagation()}>
