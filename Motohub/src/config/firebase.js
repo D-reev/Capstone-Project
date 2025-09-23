@@ -1,14 +1,14 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCkQ1fVo84cGnnm2tHq9H35BS2kRZ2RTB0",
-  authDomain: "motohub-d9e1a.firebaseapp.com",
-  projectId: "motohub-d9e1a",
-  storageBucket: "motohub-d9e1a.firebasestorage.app",
-  messagingSenderId: "3124805516",
-  appId: "1:3124805516:web:8755b82a6c176661bbe0a9"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // Initialize Firebase
@@ -17,3 +17,4 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 export { app, auth, db };
+export const googleProvider = new GoogleAuthProvider();

@@ -1,0 +1,234 @@
+@import './AdminDashboard.css';
+
+/* Requests Table Styles */
+.requests-table-container {
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  margin-top: 2rem;
+}
+
+.requests-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.requests-table th {
+  background: var(--light-black);
+  color: white;
+  padding: 1rem;
+  text-align: left;
+  font-weight: 500;
+}
+
+.requests-table td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+/* Status and Priority Badges */
+.status-badge,
+.priority-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.status-badge.pending {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.status-badge.approved {
+  background: #C6F6D5;
+  color: #2F855A;
+}
+
+.status-badge.rejected {
+  background: #FED7D7;
+  color: #C53030;
+}
+
+.status-badge.completed {
+  background: #E9D5FF;
+  color: #6B46C1;
+}
+
+.priority-badge.high {
+  background: #FED7D7;
+  color: #C53030;
+}
+
+.priority-badge.normal {
+  background: #C6F6D5;
+  color: #2F855A;
+}
+
+/* Parts List */
+.parts-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.parts-list li {
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+.parts-list li:last-child {
+  margin-bottom: 0;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.action-buttons button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  min-width: 44px;
+  padding: .5rem .75rem;
+  font-weight: 600;
+  font-size: .95rem;
+  border-radius: 8px;
+  border: none;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+  cursor: pointer;
+  color: #fff;
+  outline: none;
+}
+
+.approve-btn {
+  background: linear-gradient(180deg,#10b981,#059669);
+  box-shadow: 0 8px 20px rgba(16,185,129,0.12);
+}
+
+.approve-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(16,185,129,0.14);
+}
+
+.approve-btn:active {
+  transform: translateY(0);
+}
+
+/* Reject */
+.reject-btn {
+  background: linear-gradient(180deg,#ef4444,#dc2626);
+  box-shadow: 0 8px 20px rgba(239,68,68,0.12);
+}
+
+.reject-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(239,68,68,0.14);
+}
+
+.reject-btn:active {
+  transform: translateY(0);
+}
+
+/* Complete */
+.complete-btn {
+  background: linear-gradient(180deg,#f59e0b,#d97706);
+  box-shadow: 0 8px 20px rgba(245,158,11,0.10);
+}
+
+.complete-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(245,158,11,0.12);
+}
+
+.complete-btn:active {
+  transform: translateY(0);
+}
+
+/* Disabled state */
+.action-buttons button[disabled],
+.action-buttons button[aria-disabled="true"] {
+  opacity: .55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Focus for keyboard users */
+.action-buttons button:focus {
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.18);
+}
+
+/* Slightly larger icons inside buttons */
+.action-buttons svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Modal overrides */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+}
+
+.modal-content.request-modal {
+  width: 720px;
+  max-width: 95%;
+  background: #fff;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+}
+
+.modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:.5rem; }
+.modal-body { max-height:60vh; overflow:auto; padding: .5rem 0; }
+.modal-footer { display:flex; gap:.5rem; justify-content:flex-end; margin-top:1rem; }
+
+.approve-btn { background:#0ea5a4; color:#fff; padding:.35rem .5rem; border-radius:6px; border:none; display:inline-flex; gap:.4rem; align-items:center; }
+.reject-btn { background:#ef4444; color:#fff; padding:.35rem .5rem; border-radius:6px; border:none; display:inline-flex; gap:.4rem; align-items:center; }
+.complete-btn { background:#f59e0b; color:#fff; padding:.35rem .5rem; border-radius:6px; border:none; display:inline-flex; gap:.4rem; align-items:center; }
+
+/* Tabs */
+.tabs { display:flex; gap:0.5rem; margin-left:auto; align-items:center; }
+.tab {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+.tab.active {
+  background: var(--primary-500);
+  color: white;
+  border-color: rgba(0,0,0,0.06);
+}
+
+/* Table hover */
+.requests-table tbody tr.hoverable:hover {
+  background-color: #fbfbfe;
+  transform: translateY(-0.5px);
+  transition: background-color 120ms ease, transform 120ms ease;
+  cursor: pointer;
+}
+
+/* Slight highlight for approved tab rows */
+.requests-table tbody tr.approved {
+  opacity: 0.98;
+}
+
+/* keep existing modal styles if Modal.css is used */

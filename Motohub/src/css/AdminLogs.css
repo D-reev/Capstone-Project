@@ -1,0 +1,69 @@
+@import './AdminDashboard.css';
+
+.logs-container {
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+}
+
+.logs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.log-item {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+}
+
+.log-icon {
+  color: var(--text-secondary);
+}
+
+.log-content {
+  flex: 1;
+}
+
+.log-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.log-type {
+  font-weight: 500;
+  color: var(--yellow-primary);
+}
+
+.log-date {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.log-description {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.log-details {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--secondary-bg);
+  border-radius: 0.375rem;
+}
+
+.log-details h4 {
+  margin: 0 0 0.5rem 0;
+  color: var(--text-secondary);
+}
+
+.log-details pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 0.875rem;
+}
