@@ -1,5 +1,6 @@
 import React from 'react';
 import { Menu, Bell, User } from 'lucide-react';
+import '../css/TopBar.css';
 
 export default function TopBar({
   title = 'Motohub',

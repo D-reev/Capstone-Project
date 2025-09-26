@@ -124,7 +124,7 @@ export default function MotohubDashboard() {
   );
 
   return (
-    <div className="dashboard-container">
+    <div className={`dashboard-container admin-page ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
       <AdminSidebar 
         sidebarOpen={sidebarOpen} 
         user={user} 

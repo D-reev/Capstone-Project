@@ -19,6 +19,23 @@ body {
   background-color: var(--primary-bg);
 }
 
+.dashboard-container.sidebar-collapsed .sidebar {
+  transform: translateX(-256px); /* fully hide sidebar offscreen */
+  transition: transform 0.28s ease;
+  pointer-events: none; /* avoid accidental interactions */
+}
+
+.dashboard-container.sidebar-collapsed .main-content {
+  margin-left: 0; /* consume left space when sidebar is hidden */
+  width: 100%;
+  transition: margin-left 0.28s ease, width 0.28s ease;
+}
+
+.dashboard-container.sidebar-collapsed .brand-name {
+  font-size: 1rem;
+  transition: font-size 0.28s ease;
+}
+
 /* Sidebar Styles */
 .sidebar {
   background-color: var(--light-black);
@@ -598,4 +615,63 @@ body {
 button:focus {
   outline: 2px solid var(--yellow-primary);
   outline-offset: 2px;
+}
+
+/* Full width overrides for dashboard content to use available space */
+.dashboard-fullwidth-override .main-content,
+.dashboard-container .main-content {
+  width: 100%; /* ensure main content can expand */
+  max-width: none; /* unset any inherited max-width */
+}
+
+.dashboard-fullwidth-override .content-area,
+.dashboard-container .content-area {
+  margin: 0; /* remove automatic centering margins */
+  padding-left: 1.75rem; /* slight left padding to align with sidebar toggle */
+  padding-right: 1.75rem;
+  max-width: none; /* allow full bleed */
+}
+
+/* Make stats grid items wider so cards span more space on large screens */
+.dashboard-container .stats-grid {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.75rem;
+}
+
+/* When sidebar is collapsed, let content take the freed space smoothly */
+.dashboard-container.sidebar-collapsed .main-content {
+  margin-left: 0; /* occupy the left space when sidebar is hidden */
+  width: 100%;
+  transition: margin-left 0.28s ease, width 0.28s ease;
+}
+
+/* Small tweak: ensure child grids don't get artificially constrained */
+.dashboard-container .user-info-block,
+.dashboard-container .widget-box,
+.dashboard-container .stat-card,
+.dashboard-container .large-stat-card {
+  max-width: none;
+}
+
+/* Page entry animation (same style as Inventory/UserManagement) */
+@keyframes pageSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.admin-page .content-area {
+  animation: pageSlideIn 360ms cubic-bezier(.22,.9,.36,1) both;
+}
+
+/* Respect user's reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .admin-page .content-area {
+    animation: none;
+  }
 }
