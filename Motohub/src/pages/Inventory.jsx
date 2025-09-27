@@ -37,6 +37,9 @@ export default function Inventory() {
   const [lowStockAlert, setLowStockAlert] = useState([]);
   const { user } = useAuth();
   const db = getFirestore();
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10; // show 10 rows per page
 
   useEffect(() => {
     fetchParts();
@@ -108,11 +111,19 @@ export default function Inventory() {
     part.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const totalPages = Math.max(1, Math.ceil(filteredParts.length / pageSize));
+  // clamp currentPage if needed
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(1);
+  }, [filteredParts.length, totalPages]);
+
+  const paginatedParts = filteredParts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   return (
-    <div className="dashboard-container">
+    <div className="dashboard-container inventory-page">
       <AdminSidebar sidebarOpen={sidebarOpen} user={user} />
 
-      <div className="main-content">
+      <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
         {/* Keep TopBar (already added) */}
         <TopBar
           title="Inventory"
@@ -121,37 +132,30 @@ export default function Inventory() {
           onProfileClick={() => setProfileOpen(true)}
         />
 
-        <div className="content-area">
-          {/* existing inventory content */}
-          <div className="inventory-header">
-            <h1>Inventory Management</h1>
-            <div className="inventory-actions">
-              <div className="search-container">
-                <Search size={20} />
-                <input
-                  type="text"
-                  placeholder="Search parts..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+  {/* Reuse UserManagement layout/classes */}
+  <div className={`user-management-container ${!selectedPart ? 'single-column' : ''}`}>
+          <div className="user-table-section">
+            <div className="user-table-header">
+              <h1 className="user-table-title">Inventory</h1>
+              <div className="user-table-actions">
+                <div className="user-table-search">
+                  <Search size={18} />
+                  <input
+                    type="text"
+                    placeholder="Search parts..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <button className="user-table-add-btn" onClick={() => setIsAddModalOpen(true)}>
+                  <Plus size={16} />
+                  Add Part
+                </button>
               </div>
-              <button className="add-part-btn" onClick={() => setIsAddModalOpen(true)}>
-                <Plus size={20} />
-                Add New Part
-              </button>
             </div>
-          </div>
-          
-          {lowStockAlert.length > 0 && (
-            <div className="low-stock-alert">
-              <AlertCircle size={20} />
-              <span>{lowStockAlert.length} items are running low on stock</span>
-            </div>
-          )}
 
-          <div className="inventory-grid">
-            <div className="parts-list">
-              <table className="parts-table">
+            <div className="user-table-container">
+              <table className="user-table">
                 <thead>
                   <tr>
                     <th>Part Name</th>
@@ -163,41 +167,42 @@ export default function Inventory() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredParts.map(part => (
+                  {paginatedParts.map(part => (
                     <tr 
                       key={part.id}
                       className={selectedPart?.id === part.id ? 'selected' : ''}
-                      onClick={() => setSelectedPart(part)}
+                      onClick={(e) => {
+                        // Prevent selecting when clicking on action buttons inside the row
+                        if (e.target.closest('.user-table-action-btn')) return;
+                        // Toggle selection: click same part closes the panel
+                        setSelectedPart(prev => (prev && prev.id === part.id) ? null : part);
+                      }}
                     >
-                      <td>{part.name}</td>
-                      <td>{part.category}</td>
-                      <td className={part.quantity <= part.minStock ? 'low-stock' : ''}>
-                        {part.quantity}
+                      <td>
+                        <div className="user-table-user">
+                          <div className="user-table-avatar">
+                            {part.image ? (
+                              <img src={part.image} alt={part.name} />
+                            ) : (
+                              part.name.slice(0,2).toUpperCase()
+                            )}
+                          </div>
+                          <span className="user-table-name">{part.name}</span>
+                        </div>
                       </td>
+                      <td>{part.category}</td>
+                      <td className={part.quantity <= part.minStock ? 'low-stock' : ''}>{part.quantity}</td>
                       <td>₱{part.price}</td>
                       <td>
-                        <span className={`status-badge ${part.status.toLowerCase()}`}>
-                          {part.status}
-                        </span>
+                        <span className={`role-badge ${part.status?.toLowerCase()}`}>{part.status}</span>
                       </td>
-                      <td>
-                        <div className="action-buttons">
-                          <button onClick={(e) => {
-                            e.stopPropagation();
-                            // open edit modal for this part
-                            setSelectedPart(part);
-                            setEditPart(part);
-                            setIsEditModalOpen(true);
-                          }}>
-                            <Edit size={16} />
-                          </button>
-                          <button onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeletePart(part.id);
-                          }}>
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
+                      <td className="user-table-actions-col">
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedPart(part); setEditPart(part); setIsEditModalOpen(true); }} className="user-table-action-btn edit" title="Edit part">
+                          <Edit size={16} />
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); handleDeletePart(part.id); }} className="user-table-action-btn delete" title="Delete part">
+                          <Trash2 size={16} />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -205,45 +210,80 @@ export default function Inventory() {
               </table>
             </div>
 
-            {selectedPart && (
-              <div className="part-details">
-                <h2>Part Details</h2>
-                <div className="part-info">
-                  <img src={selectedPart.image} alt={selectedPart.name} />
-                  <div className="details-grid">
-                    <div className="detail-item">
-                      <label>Name</label>
-                      <span>{selectedPart.name}</span>
+            {totalPages > 1 && (
+              <div className="user-table-pagination">
+                {Array.from({ length: totalPages }).map((_, i) => (
+                  <button
+                    key={i}
+                    className={`user-table-pagination-btn ${currentPage === i + 1 ? 'active' : ''}`}
+                    onClick={() => setCurrentPage(i + 1)}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Right panel - reuse user-profile-panel styles for part details */}
+          {selectedPart && (
+            <div className={`user-profile-panel ${selectedPart ? 'active' : ''}`}>
+              <div className="user-profile-header">
+                <div className="user-profile-avatar">
+                  {selectedPart.image ? (
+                    <img src={selectedPart.image} alt={selectedPart.name} />
+                  ) : (
+                    selectedPart.name.slice(0,2).toUpperCase()
+                  )}
+                </div>
+                <h3 className="user-profile-name">{selectedPart.name}</h3>
+                <p className="user-profile-email">{selectedPart.category}</p>
+              </div>
+
+              <div className="user-profile-content">
+                <div className="user-profile-info">
+                  <div className="user-profile-info-row">
+                    <span className="icon">📦</span>
+                    <span>Stock: {selectedPart.quantity}</span>
+                  </div>
+                  <div className="user-profile-info-row">
+                    <span className="icon">₱</span>
+                    <span>Price: ₱{selectedPart.price}</span>
+                  </div>
+                  <div className="user-profile-info-row">
+                    <span className="icon">⚙️</span>
+                    <span>Min Stock: {selectedPart.minStock}</span>
+                  </div>
+                </div>
+
+                <div className="user-profile-quick-stats">
+                  <div className="user-profile-stat">
+                    <span>{selectedPart.quantity}</span>
+                    <span className="user-profile-stat-label">In Stock</span>
+                  </div>
+                  <div className="user-profile-stat">
+                    <span>{selectedPart.minStock}</span>
+                    <span className="user-profile-stat-label">Min Stock</span>
+                  </div>
+
+                  <div className="user-profile-booking-stats">
+                    <div className="stat">
+                      <span>---</span>
+                      <span className="stat-label">Reserved</span>
                     </div>
-                    <div className="detail-item">
-                      <label>Category</label>
-                      <span>{selectedPart.category}</span>
+                    <div className="stat">
+                      <span>---</span>
+                      <span className="stat-label">Available</span>
                     </div>
-                    <div className="detail-item">
-                      <label>Stock</label>
-                      <span>{selectedPart.quantity}</span>
-                    </div>
-                    <div className="detail-item">
-                      <label>Price</label>
-                      <span>₱{selectedPart.price}</span>
-                    </div>
-                    <div className="detail-item">
-                      <label>Minimum Stock</label>
-                      <span>{selectedPart.minStock}</span>
-                    </div>
-                    <div className="detail-item">
-                      <label>Status</label>
-                      <span>{selectedPart.status}</span>
-                    </div>
-                    <div className="detail-item full-width">
-                      <label>Description</label>
-                      <p>{selectedPart.description}</p>
+                    <div className="stat">
+                      <span>---</span>
+                      <span className="stat-label">Backordered</span>
                     </div>
                   </div>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
