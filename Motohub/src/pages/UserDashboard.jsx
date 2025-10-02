@@ -30,6 +30,7 @@ import '../css/UserDashboard.css';
 export default function MotohubCustomerDashboard() {
   const [customerVehicles, setCustomerVehicles] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [vehicles, setVehicles] = useState([]);
   const [isAddingCar, setIsAddingCar] = useState(false);
@@ -374,17 +375,26 @@ export default function MotohubCustomerDashboard() {
 
   return (
     <div className="customer-dashboard-container">
+      {/* Sidebar: desktop and mobile */}
       <UserSidebar 
-        sidebarOpen={sidebarOpen} 
+        sidebarOpen={sidebarOpen}
         user={user}
+        className={`customer-sidebar${sidebarOpen ? '' : ' collapsed'}${sidebarMobileOpen ? ' open' : ''}`}
+        onCloseMobile={() => setSidebarMobileOpen(false)}
       />
-      
-      {/* Rest of your existing dashboard content */}
+
+      {/* Main content */}
       <div className="customer-main-content">
         <div className="customer-top-bar">
           <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-            <button 
-              onClick={() => setSidebarOpen(!sidebarOpen)}
+            <button
+              onClick={() => {
+                if (window.innerWidth <= 768) {
+                  setSidebarMobileOpen(!sidebarMobileOpen);
+                } else {
+                  setSidebarOpen(!sidebarOpen);
+                }
+              }}
               style={{
                 background: 'none',
                 border: 'none',
