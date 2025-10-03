@@ -1,3 +1,4 @@
+import logo from '../assets/images/logo.jpeg';
 import React, { useState, useEffect } from 'react';
 import { 
   Car, 
@@ -374,7 +375,7 @@ export default function MotohubCustomerDashboard() {
   );
 
   return (
-    <div className="customer-dashboard-container">
+  <div className="customer-dashboard-container">
       {/* Sidebar: desktop and mobile */}
       <UserSidebar 
         sidebarOpen={sidebarOpen}
@@ -385,7 +386,7 @@ export default function MotohubCustomerDashboard() {
 
       {/* Main content */}
       <div className="customer-main-content">
-        <div className="customer-top-bar">
+        <div className="customer-top-bar" style={{position: 'relative'}}>
           <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
             <button
               onClick={() => {
@@ -416,23 +417,22 @@ export default function MotohubCustomerDashboard() {
               Motohub
             </h1>
           </div>
-          <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-            <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer'}}>
-              <Bell size={20} />
-              <span style={{
-                fontSize: '0.75rem',
-                padding: '0.125rem 0.375rem',
-                borderRadius: '9999px',
-                backgroundColor: '#f6e05e',
-                color: '#2d3748',
-                fontWeight: '600'
-              }}>
-                2
-              </span>
-            </div>
-            <div style={{cursor: 'pointer'}}>
-              <User size={24} />
-            </div>
+          <div style={{
+            position: 'absolute',
+            right: 0,
+            top: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            height: '100%',
+            paddingRight: '0.5rem'
+          }}>
+            <div style={{
+              width: '147px',
+              height: '47px',
+              background: `url(${logo}) center/contain no-repeat`,
+              display: 'block'
+            }} />
           </div>
         </div>
 
