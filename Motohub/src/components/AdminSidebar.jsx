@@ -47,7 +47,6 @@ export default function AdminSidebar({ sidebarOpen, user }) {
 
   // Fix the path matching logic
   const isPathActive = (path) => {
-    // Exact match for dashboard to avoid matching subpaths
     if (path === '/admindashboard') {
       return location.pathname === path;
     }
