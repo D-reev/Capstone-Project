@@ -32,7 +32,7 @@ function NavItem({ icon: Icon, label, active = false, badge, color = "red", side
   );
 }
 
-export default function UserSidebar({ sidebarOpen, user }) {
+export default function UserSidebar({ sidebarOpen, user, className = '', onCloseMobile }) {
   const { logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -50,8 +50,15 @@ export default function UserSidebar({ sidebarOpen, user }) {
     return location.pathname.startsWith(path);
   };
 
+  // Responsive: allow passing className for mobile open/close
   return (
-    <div className={`sidebar ${sidebarOpen ? '' : 'collapsed'}`}>
+    <div className={`customer-sidebar${sidebarOpen ? '' : ' collapsed'} ${className}`.trim()}>
+      {/* Mobile close button */}
+      <div className="sidebar-mobile-close" style={{ display: window.innerWidth <= 768 ? 'block' : 'none', textAlign: 'right', padding: '0.5rem 1rem 0 0' }}>
+        {window.innerWidth <= 768 && (
+          <button onClick={onCloseMobile} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer' }}>&times;</button>
+        )}
+      </div>
       <div className="sidebar-header">
         <div className="user-profile">
           <div className="user-avatar">

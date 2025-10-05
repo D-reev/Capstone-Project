@@ -1,3 +1,4 @@
+import logo from '../assets/images/logo.jpeg';
 import React, { useState, useEffect } from 'react';
 import { 
   Car, 
@@ -30,6 +31,7 @@ import '../css/UserDashboard.css';
 export default function MotohubCustomerDashboard() {
   const [customerVehicles, setCustomerVehicles] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [vehicles, setVehicles] = useState([]);
   const [isAddingCar, setIsAddingCar] = useState(false);
@@ -373,18 +375,27 @@ export default function MotohubCustomerDashboard() {
   );
 
   return (
-    <div className="customer-dashboard-container">
+  <div className="customer-dashboard-container">
+      {/* Sidebar: desktop and mobile */}
       <UserSidebar 
-        sidebarOpen={sidebarOpen} 
+        sidebarOpen={sidebarOpen}
         user={user}
+        className={`customer-sidebar${sidebarOpen ? '' : ' collapsed'}${sidebarMobileOpen ? ' open' : ''}`}
+        onCloseMobile={() => setSidebarMobileOpen(false)}
       />
-      
-      {/* Rest of your existing dashboard content */}
+
+      {/* Main content */}
       <div className="customer-main-content">
-        <div className="customer-top-bar">
+        <div className="customer-top-bar" style={{position: 'relative'}}>
           <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-            <button 
-              onClick={() => setSidebarOpen(!sidebarOpen)}
+            <button
+              onClick={() => {
+                if (window.innerWidth <= 768) {
+                  setSidebarMobileOpen(!sidebarMobileOpen);
+                } else {
+                  setSidebarOpen(!sidebarOpen);
+                }
+              }}
               style={{
                 background: 'none',
                 border: 'none',
@@ -406,23 +417,22 @@ export default function MotohubCustomerDashboard() {
               Motohub
             </h1>
           </div>
-          <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-            <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer'}}>
-              <Bell size={20} />
-              <span style={{
-                fontSize: '0.75rem',
-                padding: '0.125rem 0.375rem',
-                borderRadius: '9999px',
-                backgroundColor: '#f6e05e',
-                color: '#2d3748',
-                fontWeight: '600'
-              }}>
-                2
-              </span>
-            </div>
-            <div style={{cursor: 'pointer'}}>
-              <User size={24} />
-            </div>
+          <div style={{
+            position: 'absolute',
+            right: 0,
+            top: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            height: '100%',
+            paddingRight: '0.5rem'
+          }}>
+            <div style={{
+              width: '147px',
+              height: '47px',
+              background: `url(${logo}) center/contain no-repeat`,
+              display: 'block'
+            }} />
           </div>
         </div>
 
