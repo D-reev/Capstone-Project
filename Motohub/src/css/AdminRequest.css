@@ -231,4 +231,16 @@
   opacity: 0.98;
 }
 
+
+/* CSS code for the tabs */
+.requests-tabs {
+  margin-bottom: 1rem;
+}
+.requests-tab {
+  transition: background 0.2s, color 0.2s;
+}
+.requests-tab.active {
+  background: #2563eb !important;
+  color: #fff !important;
+}
 /* keep existing modal styles if Modal.css is used */

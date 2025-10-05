@@ -248,13 +248,16 @@ export default function AdminRequests() {
   if (error) return <div className="error">{error}</div>;
 
   // filter by tab
-  const displayedRequests = requests.filter(r => activeTab === 'pending' ? (r.status || 'pending') === 'pending' : (r.status || '') === 'approved');
+  const displayedRequests = requests.filter(r => 
+    activeTab === 'pending'
+      ? (r.status || 'pending') === 'pending'
+      : (r.status || '') === 'approved'
+  );
 
   return (
     <div className="dashboard-container">
       <AdminSidebar sidebarOpen={sidebarOpen} user={user} />
       <div className="main-content">
-        {/* Keep TopBar (already added) */}
         <TopBar
           title="Motohub"
           onToggle={() => setSidebarOpen(!sidebarOpen)}
@@ -263,6 +266,40 @@ export default function AdminRequests() {
         />
 
         <div className="content-area">
+          {/* Tabs for Pending/Approved */}
+          <div className="requests-tabs" style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            <button
+              className={`requests-tab${activeTab === 'pending' ? ' active' : ''}`}
+              onClick={() => setActiveTab('pending')}
+              style={{
+                padding: '8px 20px',
+                borderRadius: 8,
+                border: 'none',
+                background: activeTab === 'pending' ? '#2563eb' : '#e5e7eb',
+                color: activeTab === 'pending' ? '#fff' : '#1e293b',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Pending
+            </button>
+            <button
+              className={`requests-tab${activeTab === 'approved' ? ' active' : ''}`}
+              onClick={() => setActiveTab('approved')}
+              style={{
+                padding: '8px 20px',
+                borderRadius: 8,
+                border: 'none',
+                background: activeTab === 'approved' ? '#2563eb' : '#e5e7eb',
+                color: activeTab === 'approved' ? '#fff' : '#1e293b',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Approved
+            </button>
+          </div>
+
           <div className="requests-table-container">
             <table className="requests-table">
               <thead>
