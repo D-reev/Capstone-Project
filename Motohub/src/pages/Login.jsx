@@ -190,9 +190,7 @@ function Login() {
         </div>
       </div>
 
-      {/* Footer Attribution */}
       <div className="footer-attribution">
-        {/* CHANGE IMAGE: Add Freepik logo if needed */}
         designed by D-reev
       </div>
 

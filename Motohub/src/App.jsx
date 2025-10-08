@@ -21,67 +21,61 @@ function App() {
           <Route path="/login" element={<Login />} />
           
           {/* Admin Routes */}
-          <Route path="/admindashboard/*" element={
+          <Route path="/admindashboard" element={
             <PrivateRoute allowedRoles={['admin']}>
               <AdminDashboard />
             </PrivateRoute>
           } />
-          
+          <Route path="/admindashboard/profile" element={
+            <PrivateRoute allowedRoles={['admin']}>
+              <ProfileSection />
+            </PrivateRoute>
+          } />
+          <Route path="/admindashboard/users" element={
+            <PrivateRoute allowedRoles={['admin']}>
+              <UserManagement />
+            </PrivateRoute>
+          } />
+          <Route path="/admindashboard/inventory" element={
+            <PrivateRoute allowedRoles={['admin']}>
+              <Inventory />
+            </PrivateRoute>
+          } />
+          <Route path="/admindashboard/adminrequest" element={
+            <PrivateRoute allowedRoles={['admin']}>
+              <AdminRequest />
+            </PrivateRoute>
+          } />
+
           {/* Mechanic Routes */}
-          <Route path="/mechanicdashboard/*" element={
-            <PrivateRoute allowedRoles={['admin', 'mechanic']}>
+          <Route path="/mechanicdashboard" element={
+            <PrivateRoute allowedRoles={['mechanic']}>
               <MechanicDashboard />
             </PrivateRoute>
           } />
-          
+          <Route path="/mechanicdashboard/profile" element={
+            <PrivateRoute allowedRoles={['mechanic']}>
+              <ProfileSection />
+            </PrivateRoute>
+          } />
+
           {/* User Routes */}
-          <Route path="/userdashboard/*" element={
+          <Route path="/userdashboard" element={
             <PrivateRoute allowedRoles={['user']}>
               <UserDashboard />
             </PrivateRoute>
           } />
-
-          <Route path="/userdashboard/profilesection" element={
+          <Route path="/profile" element={
             <PrivateRoute allowedRoles={['user']}>
               <ProfileSection />
             </PrivateRoute>
           } />
-          
-          <Route
-            path="/servicehistory/*"
-            element={
-              <PrivateRoute>
-                <ServiceHistory />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/admindashboard/users"
-            element={
-              <PrivateRoute allowedRoles={['admin']}>
-                <UserManagement />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/admindashboard/inventory"
-            element={
-              <PrivateRoute allowedRoles={['admin']}>
-                <Inventory />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/admindashboard/adminrequest"
-            element={
-              <PrivateRoute allowedRoles={['admin']}>
-                <AdminRequest />
-              </PrivateRoute>
-            }
-          />
+          <Route path="/servicehistory" element={
+            <PrivateRoute allowedRoles={['user']}>
+              <ServiceHistory />
+            </PrivateRoute>
+          } />
         </Routes>
-        
-        
       </AuthProvider>
     </Router>
   );

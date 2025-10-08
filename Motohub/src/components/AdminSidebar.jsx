@@ -9,7 +9,7 @@ import {
   User,
   Wrench,
   Package,
-  ClipboardList  // Add this import
+  ClipboardList  
 } from 'lucide-react';
 
 function NavItem({ icon: Icon, label, active = false, badge, color = "red", sidebarOpen, onClick }) {
@@ -44,13 +44,11 @@ export default function AdminSidebar({ sidebarOpen, user }) {
       console.error('Error logging out:', error);
     }
   };
-
-  // Fix the path matching logic
+  
   const isPathActive = (path) => {
     if (path === '/admindashboard') {
       return location.pathname === path;
     }
-    // For other routes, use startsWith to match subpaths
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
 
@@ -104,7 +102,17 @@ export default function AdminSidebar({ sidebarOpen, user }) {
 
   return (
     <div className={`sidebar ${sidebarOpen ? '' : 'collapsed'}`}>
-      <div className="sidebar-header">
+      <div 
+        className={`sidebar-header ${isPathActive('/admindashboard/profile') ? 'active' : ''}`}
+        onClick={() => navigate('/admindashboard/profile')}
+        style={{ 
+          cursor: 'pointer',
+          background: isPathActive('/admindashboard/profile') ? 'rgba(255,255,255,0.1)' : 'transparent',
+          transition: 'background-color 0.2s'
+        }}
+        role="button"
+        title="View Profile"
+      >
         <div className="user-profile">
           <div className="user-avatar">
             {user?.photoURL ? (

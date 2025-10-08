@@ -48,7 +48,17 @@ export default function MechanicSidebar({ sidebarOpen, user }) {
 
   return (
     <div className={`sidebar ${sidebarOpen ? '' : 'collapsed'}`}>
-      <div className="sidebar-header">
+      <div 
+        className={`sidebar-header ${isPathActive('/mechanicdashboard/profile') ? 'active' : ''}`}
+        onClick={() => navigate('/mechanicdashboard/profile')}
+        style={{ 
+          cursor: 'pointer',
+          background: isPathActive('/mechanicdashboard/profile') ? 'rgba(255,255,255,0.1)' : 'transparent',
+          transition: 'background-color 0.2s'
+        }}
+        role="button"
+        title="View Profile"
+      >
         <div className="user-profile">
           <div className="user-avatar">
             {user?.photoURL ? (
