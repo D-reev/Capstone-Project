@@ -132,7 +132,6 @@ export default function ProfileSection() {
               {saving ? 'Saving…' : 'Save Profile'}
             </button>
             <button type="button" className="cancel-btn" onClick={() => {
-              // reset to last saved
               (async () => {
                 setLoading(true);
                 const p = await getUserProfile(user.uid);

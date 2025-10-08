@@ -67,7 +67,7 @@ export default function AdminLogs() {
                           <pre>{JSON.stringify(log.details, null, 2)}</pre>
                         </div>
                       )}
-                      {/* Removed approve/decline actions - approvals are handled in AdminRequests */}
+
                     </div>
                   </div>
                 ))}

@@ -50,16 +50,19 @@ export default function UserSidebar({ sidebarOpen, user, className = '', onClose
     return location.pathname.startsWith(path);
   };
 
-  // Responsive: allow passing className for mobile open/close
   return (
     <div className={`customer-sidebar${sidebarOpen ? '' : ' collapsed'} ${className}`.trim()}>
-      {/* Mobile close button */}
-      <div className="sidebar-mobile-close" style={{ display: window.innerWidth <= 768 ? 'block' : 'none', textAlign: 'right', padding: '0.5rem 1rem 0 0' }}>
-        {window.innerWidth <= 768 && (
-          <button onClick={onCloseMobile} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer' }}>&times;</button>
-        )}
-      </div>
-      <div className="sidebar-header">
+      <div 
+        className={`sidebar-header ${isPathActive('/profile') ? 'active' : ''}`}
+        onClick={() => navigate('/profile')}
+        style={{ 
+          cursor: 'pointer',
+          background: isPathActive('/profile') ? 'rgba(255,255,255,0.1)' : 'transparent',
+          transition: 'background-color 0.2s'
+        }}
+        role="button"
+        title="View Profile"
+      >
         <div className="user-profile">
           <div className="user-avatar">
             {user?.photoURL ? (
@@ -102,7 +105,7 @@ export default function UserSidebar({ sidebarOpen, user, className = '', onClose
           <NavItem
             icon={User}
             label="Profile"
-            active={isPathActive('/profile') || isPathActive('/profilesection')}
+            active={isPathActive('/profile')}
             sidebarOpen={sidebarOpen}
             onClick={() => navigate('/profile')}
           />
