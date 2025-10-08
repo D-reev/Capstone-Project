@@ -104,7 +104,10 @@ export default function AdminSidebar({ sidebarOpen, user }) {
   };
 
   return (
-    <div className={`sidebar ${sidebarOpen ? '' : 'collapsed'}`}>
+    <div
+      className={`sidebar ${sidebarOpen ? '' : 'collapsed'}`}
+      style={{ background: 'var(--header-bg)' }} // Force sync with UserManagement sidebar
+    >
       <div className="sidebar-header">
         <div className="user-profile">
           <div className="user-avatar">

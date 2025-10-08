@@ -30,8 +30,8 @@ import CarPartsRequestModal from '../components/modals/CarPartsRequestModal';
 import ServiceReportModal from '../components/modals/ServiceReportModal';
 import { createPartsRequest } from '../utils/auth';
 import SuccessModal from '../components/modals/SuccessModal';
-import TopBar from '../components/TopBar';
 import ProfileModal from '../components/modals/ProfileModal';
+import logo from '../assets/images/logo.jpeg';
 import '../css/MechanicDashboard.css'
 
 export default function MechanicDashboard() {
@@ -45,12 +45,13 @@ export default function MechanicDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerCars, setCustomerCars] = useState([]);
   const [selectedCar, setSelectedCar] = useState(null);
-  const [view, setView] = useState('customers'); // 'customers' or 'services'
+  const [view, setView] = useState('customers');
   const [expandedCustomerId, setExpandedCustomerId] = useState(null);
   const [successModalOpen, setSuccessModalOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -85,7 +86,6 @@ export default function MechanicDashboard() {
   const fetchServices = async () => {
     try {
       const servicesRef = collection(db, 'services');
-      // Simplified query without orderBy
       const q = query(
         servicesRef,
         where('status', 'in', ['pending', 'in-progress'])
@@ -96,7 +96,6 @@ export default function MechanicDashboard() {
         id: doc.id,
         ...doc.data()
       }))
-      // Sort the data client-side instead
       .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
       
       setServices(servicesList);
@@ -125,7 +124,6 @@ export default function MechanicDashboard() {
   const fetchCustomers = async () => {
     try {
       const usersRef = collection(db, 'users');
-      // Remove orderBy to avoid index requirement
       const q = query(
         usersRef, 
         where('role', '==', 'user')
@@ -159,7 +157,6 @@ export default function MechanicDashboard() {
         })
       );
 
-      // Sort the customers client-side instead
       const sortedCustomers = customersList.sort((a, b) => {
         if (!a.displayName) return 1;
         if (!b.displayName) return -1;
@@ -201,7 +198,6 @@ export default function MechanicDashboard() {
 
   const handleServiceReport = async (serviceData) => {
     try {
-      // Create service history record
       const serviceHistoryRef = collection(db, 'serviceHistory');
       const historyDoc = await addDoc(serviceHistoryRef, {
         ...serviceData,
@@ -211,7 +207,6 @@ export default function MechanicDashboard() {
         status: 'completed'
       });
 
-      // Update service status
       const serviceRef = doc(db, 'services', selectedService.id);
       await updateDoc(serviceRef, {
         status: 'completed',
@@ -227,7 +222,6 @@ export default function MechanicDashboard() {
     }
   };
 
-  // Update the handlePartsRequest function
   const handlePartsRequest = async (requestData) => {
     try {
       if (!selectedService || !selectedCustomer || !user) {
@@ -245,7 +239,6 @@ export default function MechanicDashboard() {
       setIsRequestingParts(false);
       setSelectedService(null);
 
-      // show modal instead of alert
       setSuccessMessage('Parts request submitted successfully');
       setSuccessModalOpen(true);
     } catch (error) {
@@ -256,13 +249,11 @@ export default function MechanicDashboard() {
 
   const handleCustomerSelect = async (customer) => {
     if (expandedCustomerId === customer.id) {
-      // If clicking the same customer, collapse it
       setExpandedCustomerId(null);
       setSelectedCustomer(null);
       setCustomerCars([]);
       setSelectedCar(null);
     } else {
-      // If clicking a different customer, expand it
       setExpandedCustomerId(customer.id);
       setSelectedCustomer(customer);
       await fetchCustomerCars(customer.id);
@@ -278,16 +269,71 @@ export default function MechanicDashboard() {
   }
 
   return (
-    <div className="dashboard-container">
+    <div className={`dashboard-container${!sidebarOpen ? ' sidebar-collapsed' : ''}`}> {/* responsive class */}
       {/* MechanicSidebar */}
-      <MechanicSidebar sidebarOpen={sidebarOpen} user={user} />
+      <MechanicSidebar 
+        sidebarOpen={sidebarOpen} 
+        user={user}
+        className={`mechanic-sidebar${sidebarOpen ? '' : ' collapsed'}${sidebarMobileOpen ? ' open' : ''}`}
+        onCloseMobile={() => setSidebarMobileOpen(false)}
+      />
+
       <div className="main-content">
-        <TopBar
-          title="Mechanic"
-          onToggle={() => setSidebarOpen(!sidebarOpen)}
-          notificationsCount={0}
-          onProfileClick={() => setProfileOpen(true)}
-        />
+        {/* Top Bar */}
+        <div className="customer-top-bar">
+          <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+            <button
+              onClick={() => {
+                if (window.innerWidth <= 768) {
+                  setSidebarMobileOpen(!sidebarMobileOpen);
+                } else {
+                  setSidebarOpen(!sidebarOpen);
+                }
+              }}
+              style={{
+                background: 'rgba(251, 191, 36, 0.15)',
+                border: 'none',
+                color: '#fbbf24',
+                cursor: 'pointer',
+                padding: '0.5rem',
+                borderRadius: '0.5rem',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = 'rgba(251, 191, 36, 0.25)';
+                e.currentTarget.style.transform = 'scale(1.05)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = 'rgba(251, 191, 36, 0.15)';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              <Menu size={20} />
+            </button>
+            <h1>Motohub</h1>
+          </div>
+          <div style={{
+            position: 'absolute',
+            right: 0,
+            top: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            height: '100%',
+            paddingRight: '2rem'
+          }}>
+            <div style={{
+              width: '147px',
+              height: '47px',
+              background: `url(${logo}) center/contain no-repeat`,
+              display: 'block'
+            }} />
+          </div>
+        </div>
+
         <div className="content-area">
           <div className="view-toggle">
             <button 
@@ -392,19 +438,17 @@ export default function MechanicDashboard() {
                             </div>
                           </div>
                         ))
-
-                        ) : (
-                          <div className="no-cars">
-                            <p>No vehicles found for this customer.</p>
-                          </div>
-                        )}
+                      ) : (
+                        <div className="no-cars">
+                          <p>No vehicles found for this customer.</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
               </div>
             </div>
           ) : (
-            // Existing services view
             <div className="services-section">
               <div className="section-header">
                 <h2>Current Services</h2>
@@ -433,8 +477,8 @@ export default function MechanicDashboard() {
       {/* Modals */}
       {isReportingService && selectedService && selectedCustomer && (
         <ServiceReportModal
-          car={selectedService}              // ✅ the selected car object
-          customer={selectedCustomer}        // ✅ the selected customer object
+          car={selectedService}
+          customer={selectedCustomer}
           onSubmit={handleServiceReport}
           onClose={() => {
             setIsReportingService(false);
@@ -443,11 +487,10 @@ export default function MechanicDashboard() {
         />
       )}
 
-
       {isRequestingParts && selectedService && selectedCustomer && (
         <CarPartsRequestModal
-          car={selectedService}                // ✅ pass the car object
-          customer={selectedCustomer}          // ✅ pass the selected customer
+          car={selectedService}
+          customer={selectedCustomer}
           onSubmit={handlePartsRequest}
           onClose={() => {
             setIsRequestingParts(false);
@@ -471,7 +514,7 @@ export default function MechanicDashboard() {
   );
 }
 
-// Separate ServiceCard component for better organization
+// Separate ServiceCard component
 const ServiceCard = ({ service, isSelected, onSelect, onReport, onRequestParts }) => (
   <div 
     className={`service-card ${isSelected ? 'selected' : ''}`}

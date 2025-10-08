@@ -48,9 +48,9 @@ export default function ServiceReportModal({ car, customer, onSubmit, onClose })
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Service Report</h2>
-          <button className="close-button" onClick={onClose}>
+        <div className="modal-header" style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem'}}>
+          <h2 style={{margin: 0, display: 'flex', alignItems: 'center', height: '40px'}}>Service Report</h2>
+          <button className="close-button" style={{height: '40px', width: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center'}} onClick={onClose}>
             <X size={20} />
           </button>
         </div>

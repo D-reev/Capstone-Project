@@ -59,9 +59,9 @@ export default function AddPartModal({ open = false, onClose = () => {}, onAdd =
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Add New Part</h2>
-          <button className="close-button" onClick={onClose}>
+        <div className="modal-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+          <h2 style={{ margin: 0, fontWeight: 700, fontSize: '1.5rem', lineHeight: 1 }}>Add New Part</h2>
+          <button className="close-button" onClick={onClose} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, background: 'none', border: 'none', cursor: 'pointer' }}>
             <X size={20} />
           </button>
         </div>
