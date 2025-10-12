@@ -51,7 +51,10 @@ export default function UserSidebar({ sidebarOpen, user, className = '', onClose
   };
 
   return (
-    <div className={`customer-sidebar${sidebarOpen ? '' : ' collapsed'} ${className}`.trim()}>
+    <div
+      className={`customer-sidebar${sidebarOpen ? '' : ' collapsed'} ${className}`.trim()}
+      style={{ background: 'var(--header-bg)', minHeight: '100vh', boxShadow: '0 2px 8px rgba(35,43,62,0.06)', zIndex: 2, color: '#fff' }}
+    >
       <div 
         className={`sidebar-header ${isPathActive('/profile') ? 'active' : ''}`}
         onClick={() => navigate('/profile')}
@@ -86,7 +89,7 @@ export default function UserSidebar({ sidebarOpen, user, className = '', onClose
       <nav className="sidebar-nav">
         <div className="nav-section">
           {sidebarOpen && <div className="nav-section-title">My Services</div>}
-          
+          {/* ...existing code... */}
           <NavItem 
             icon={Car} 
             label="My Vehicles" 

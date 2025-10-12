@@ -47,7 +47,7 @@ export default function MechanicSidebar({ sidebarOpen, user }) {
   };
 
   return (
-    <div className={`sidebar ${sidebarOpen ? '' : 'collapsed'}`}>
+    <div className={`sidebar ${sidebarOpen ? '' : 'collapsed'}`} style={{ background: 'var(--header-bg)' }}>
       <div 
         className={`sidebar-header ${isPathActive('/mechanicdashboard/profile') ? 'active' : ''}`}
         onClick={() => navigate('/mechanicdashboard/profile')}

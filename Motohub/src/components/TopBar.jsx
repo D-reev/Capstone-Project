@@ -11,7 +11,7 @@ export default function TopBar({
   children = null
 }) {
     return (
-      <div className="customer-top-bar" style={{position: 'relative'}}>
+  <div className="customer-top-bar" style={{position: 'relative', background: 'var(--header-bg)'}}>
         <div className="top-bar-left">
           <button
             className="sidebar-toggle"

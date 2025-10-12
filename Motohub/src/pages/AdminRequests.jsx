@@ -255,9 +255,9 @@ export default function AdminRequests() {
   );
 
   return (
-    <div className="dashboard-container">
+    <div className={`dashboard-container${sidebarOpen ? '' : ' sidebar-collapsed'}`}>
       <AdminSidebar sidebarOpen={sidebarOpen} user={user} />
-      <div className="main-content">
+      <div className={`main-content${sidebarOpen ? '' : ' expanded'}`}>
         <TopBar
           title="Motohub"
           onToggle={() => setSidebarOpen(!sidebarOpen)}

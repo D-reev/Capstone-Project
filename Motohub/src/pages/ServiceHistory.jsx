@@ -95,6 +95,7 @@ function ServiceHistory() {
         sidebarOpen={sidebarOpen}
         user={user}
         className={`customer-sidebar${sidebarOpen ? '' : ' collapsed'}${sidebarMobileOpen ? ' open' : ''}`}
+        style={{ background: 'var(--header-bg)' }}
         onCloseMobile={() => setSidebarMobileOpen(false)}
       />
 

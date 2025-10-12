@@ -1,3 +1,14 @@
+.customer-top-bar {
+  background: var(--header-bg, #232b3e) !important;
+  color: #fff !important;
+}
+:root {
+  --header-bg: #232b3e;
+}
+.customer-sidebar {
+  background: var(--header-bg, #232b3e) !important;
+  color: #fff !important;
+}
 .service-history-container {
   display: flex;
   width: 100%;

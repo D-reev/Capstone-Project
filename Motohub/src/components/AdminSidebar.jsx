@@ -32,6 +32,7 @@ function NavItem({ icon: Icon, label, active = false, badge, color = "red", side
 }
 
 export default function AdminSidebar({ sidebarOpen, user }) {
+  const sidebarBg = { background: 'var(--header-bg)' };
   const { logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -101,7 +102,7 @@ export default function AdminSidebar({ sidebarOpen, user }) {
   };
 
   return (
-    <div className={`sidebar ${sidebarOpen ? '' : 'collapsed'}`}>
+    <div className={`sidebar ${sidebarOpen ? '' : 'collapsed'}`} style={sidebarBg}>
       <div 
         className={`sidebar-header ${isPathActive('/admindashboard/profile') ? 'active' : ''}`}
         onClick={() => navigate('/admindashboard/profile')}

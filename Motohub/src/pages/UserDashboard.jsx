@@ -92,105 +92,103 @@ export default function MotohubCustomerDashboard() {
 
   // Add Car Modal
   const AddCarModal = () => (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <h2>Add New Vehicle</h2>
-        <form onSubmit={handleAddCar}>
-          <div className="form-group">
-            <label>Make</label>  {/* Changed from 'Name' to 'Make' */}
-            <input
-              type="text"
-              value={newCarData.make}
-              onChange={(e) => setNewCarData(prev => ({
-                ...prev,
-                make: e.target.value
-              }))}
-              required
-            />
+    <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.45)' }}>
+      <div className="modal-content advanced-modal" style={{ borderRadius: 18, boxShadow: '0 8px 32px rgba(35,43,62,0.16)', padding: 0, maxWidth: 540, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column', background: '#fff' }} onClick={e => e.stopPropagation()}>
+        <div style={{ background: 'var(--header-bg)', padding: '1.5rem 2rem 1rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h2 style={{ margin: 0, fontWeight: 700, fontSize: '1.5rem', color: 'var(--signature-yellow, #FFC300)', letterSpacing: '0.04em' }}>Add New Vehicle</h2>
+          <button className="close-button" onClick={() => setIsAddingCar(false)} style={{ background: 'rgba(0,0,0,0.04)', borderRadius: 8, border: 'none', padding: 6, cursor: 'pointer' }}>
+            <span style={{ fontSize: 20, color: 'var(--signature-yellow, #FFC300)', fontWeight: 700 }}>&times;</span>
+          </button>
+        </div>
+
+        <form onSubmit={handleAddCar} className="add-car-form" style={{ padding: '2rem', background: '#fff', overflowY: 'auto', flex: 1 }}>
+          <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem 2rem', marginBottom: 0 }}>
+            <div className="form-group" style={{ gridColumn: '1/3' }}>
+              <label style={{ fontWeight: 600, marginBottom: 6, display: 'block', color: '#232b3e' }}>Make</label>
+              <input
+                type="text"
+                value={newCarData.make}
+                onChange={e => setNewCarData(prev => ({ ...prev, make: e.target.value }))}
+                required
+                style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: '1rem', background: '#f9fafb', marginTop: 2 }}
+              />
+            </div>
+            <div className="form-group" style={{ gridColumn: '1/3' }}>
+              <label style={{ fontWeight: 600, marginBottom: 6, display: 'block', color: '#232b3e' }}>Model</label>
+              <input
+                type="text"
+                value={newCarData.model}
+                onChange={e => setNewCarData(prev => ({ ...prev, model: e.target.value }))}
+                required
+                style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: '1rem', background: '#f9fafb', marginTop: 2 }}
+              />
+            </div>
+            <div className="form-group">
+              <label style={{ fontWeight: 600, marginBottom: 6, display: 'block', color: '#232b3e' }}>Year</label>
+              <input
+                type="number"
+                value={newCarData.year}
+                onChange={e => setNewCarData(prev => ({ ...prev, year: e.target.value }))}
+                required
+                style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: '1rem', background: '#f9fafb', marginTop: 2 }}
+              />
+            </div>
+            <div className="form-group">
+              <label style={{ fontWeight: 600, marginBottom: 6, display: 'block', color: '#232b3e' }}>Plate Number</label>
+              <input
+                type="text"
+                value={newCarData.plateNumber}
+                onChange={e => setNewCarData(prev => ({ ...prev, plateNumber: e.target.value }))}
+                required
+                style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: '1rem', background: '#f9fafb', marginTop: 2 }}
+              />
+            </div>
+            <div className="form-group">
+              <label style={{ fontWeight: 600, marginBottom: 6, display: 'block', color: '#232b3e' }}>Engine</label>
+              <input
+                type="text"
+                value={newCarData.engine}
+                onChange={e => setNewCarData(prev => ({ ...prev, engine: e.target.value }))}
+                required
+                style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: '1rem', background: '#f9fafb', marginTop: 2 }}
+              />
+            </div>
+            <div className="form-group">
+              <label style={{ fontWeight: 600, marginBottom: 6, display: 'block', color: '#232b3e' }}>Transmission</label>
+              <select
+                value={newCarData.transmission}
+                onChange={e => setNewCarData(prev => ({ ...prev, transmission: e.target.value }))}
+                required
+                style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: '1rem', background: '#fff', marginTop: 2 }}
+              >
+                <option value="">Select Transmission</option>
+                <option value="Manual">Manual</option>
+                <option value="Automatic">Automatic</option>
+                <option value="CVT">CVT</option>
+              </select>
+            </div>
+            <div className="form-group" style={{ gridColumn: '1/3' }}>
+              <label style={{ fontWeight: 600, marginBottom: 6, display: 'block', color: '#232b3e' }}>Current Mileage</label>
+              <input
+                type="number"
+                value={newCarData.mileage}
+                onChange={e => setNewCarData(prev => ({ ...prev, mileage: e.target.value }))}
+                required
+                style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: '1rem', background: '#f9fafb', marginTop: 2 }}
+              />
+            </div>
           </div>
-          <div className="form-group">
-            <label>Model</label>
-            <input
-              value={newCarData.model}
-              onChange={(e) => setNewCarData(prev => ({
-                ...prev,
-                model: e.target.value
-              }))}
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label>Year</label>
-            <input
-              type="number"
-              value={newCarData.year}
-              onChange={(e) => setNewCarData(prev => ({
-                ...prev,
-                year: e.target.value
-              }))}
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label>Plate Number</label>
-            <input
-              type="text"
-              value={newCarData.plateNumber}
-              onChange={(e) => setNewCarData(prev => ({
-                ...prev,
-                plateNumber: e.target.value
-              }))}
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label>Engine</label>
-            <input
-              type="text"
-              value={newCarData.engine}
-              onChange={(e) => setNewCarData(prev => ({
-                ...prev,
-                engine: e.target.value
-              }))}
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label>Transmission</label>
-            <select
-              value={newCarData.transmission}
-              onChange={(e) => setNewCarData(prev => ({
-                ...prev,
-                transmission: e.target.value
-              }))}
-              required
-            >
-              <option value="">Select Transmission</option>
-              <option value="Manual">Manual</option>
-              <option value="Automatic">Automatic</option>
-              <option value="CVT">CVT</option>
-            </select>
-          </div>
-          <div className="form-group">
-            <label>Current Mileage</label>
-            <input
-              type="number"
-              value={newCarData.mileage}
-              onChange={(e) => setNewCarData(prev => ({
-                ...prev,
-                mileage: e.target.value
-              }))}
-              required
-            />
-          </div>
-          <div className="modal-actions">
-            <button type="submit" className="save-btn">Add Vehicle</button>
-            <button 
-              type="button" 
-              className="cancel-btn"
-              onClick={() => setIsAddingCar(false)}
-            >
+
+          <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: 24 }}>
+            <button type="button" className="cancel-btn" onClick={() => setIsAddingCar(false)} style={{ background: '#f3f4f6', color: '#232b3e', borderRadius: 8, border: 'none', padding: '0.75rem 2rem', fontWeight: 600, fontSize: '1rem', cursor: 'pointer' }}>
               Cancel
+            </button>
+            <button 
+              type="submit" 
+              className="save-btn"
+              style={{ background: 'var(--header-bg)', color: '#fff', borderRadius: 8, border: 'none', padding: '0.75rem 2rem', fontWeight: 600, fontSize: '1rem', cursor: 'pointer' }}
+            >
+              Add Vehicle
             </button>
           </div>
         </form>

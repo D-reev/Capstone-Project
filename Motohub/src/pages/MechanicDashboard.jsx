@@ -278,10 +278,10 @@ export default function MechanicDashboard() {
   }
 
   return (
-    <div className="dashboard-container">
+    <div className={`dashboard-container mechanic-page${!sidebarOpen ? ' sidebar-collapsed' : ''}`}> 
       {/* MechanicSidebar */}
       <MechanicSidebar sidebarOpen={sidebarOpen} user={user} />
-      <div className="main-content">
+      <div className={`main-content${!sidebarOpen ? ' expanded' : ''}`}> 
         <TopBar
           title="Mechanic"
           onToggle={() => setSidebarOpen(!sidebarOpen)}
