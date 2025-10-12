@@ -9,7 +9,9 @@ import {
   User,
   Wrench,
   Package,
-  ClipboardList  
+  ClipboardList,
+  ChevronRight,
+  FileText
 } from 'lucide-react';
 
 function NavItem({ icon: Icon, label, active = false, badge, color = "red", sidebarOpen, onClick }) {
@@ -84,6 +86,13 @@ export default function AdminSidebar({ sidebarOpen, user }) {
           sidebarOpen={sidebarOpen}
           onClick={() => navigate('/admindashboard/adminrequest')}
         />
+        <NavItem
+          icon={FileText}
+          label="Activity Logs"
+          active={isPathActive('/admindashboard/logs')}
+          sidebarOpen={sidebarOpen}
+          onClick={() => navigate('/admindashboard/logs')}
+        />
         <NavItem 
           icon={Settings} 
           label="Settings" 
@@ -109,7 +118,8 @@ export default function AdminSidebar({ sidebarOpen, user }) {
         style={{ 
           cursor: 'pointer',
           background: isPathActive('/admindashboard/profile') ? 'rgba(255,255,255,0.1)' : 'transparent',
-          transition: 'background-color 0.2s'
+          transition: 'background-color 0.2s',
+          position: 'relative'
         }}
         role="button"
         title="View Profile"
@@ -132,6 +142,20 @@ export default function AdminSidebar({ sidebarOpen, user }) {
             </div>
           )}
         </div>
+        {sidebarOpen && (
+          <div className="profile-indicator" style={{
+            opacity: 1,
+            color: '#e2e8f0',
+            fontSize: '0.75rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            textDecoration: 'underline'
+          }}>
+            <span>View Profile</span>
+            <ChevronRight size={16} />
+          </div>
+        )}
       </div>
 
       <nav className="sidebar-nav">

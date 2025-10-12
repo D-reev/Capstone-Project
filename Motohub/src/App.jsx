@@ -10,6 +10,7 @@ import ServiceHistory from "./pages/ServiceHistory";
 import MechanicDashboard from "./pages/MechanicDashboard";
 import Inventory from "./pages/Inventory";
 import AdminRequest from "./pages/AdminRequests";
+import AdminLogs from "./pages/AdminLogs";
 import ProfileSection from "./pages/ProfileSection";
 
 function App() {
@@ -44,6 +45,11 @@ function App() {
           <Route path="/admindashboard/adminrequest" element={
             <PrivateRoute allowedRoles={['admin']}>
               <AdminRequest />
+            </PrivateRoute>
+          } />
+          <Route path="/admindashboard/logs" element={
+            <PrivateRoute allowedRoles={['admin']}>
+              <AdminLogs />
             </PrivateRoute>
           } />
 

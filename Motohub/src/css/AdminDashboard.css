@@ -38,7 +38,7 @@ body {
 
 /* Sidebar Styles */
 .sidebar {
-  background-color: var(--light-black);
+  background-color: #1F2937; /* Match top bar color */
   color: white;
   transition: width 0.3s ease;
   display: flex;

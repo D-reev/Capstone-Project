@@ -30,13 +30,14 @@
 }
 
 /* Sidebar with transitions */
+
 .sidebar {
   position: fixed;
   top: 0;
   left: 0;
   width: 240px;
   height: 100vh;
-  background: #1A202C;
+  background: var(--header-bg); /* Use same color variable as top bar */
   z-index: 1000;
   transition: transform 0.3s ease;
 }
@@ -64,11 +65,11 @@
 
 /* Top bar should be full width and fixed height */
 .top-bar {
-  background: var(--header-bg);
+  background: var(--header-bg); /* Use same color variable as sidebar */
   color: var(--header-text);
   padding: 1rem 2rem;
-  box-shadow: var(--shadow-sm);
-  border-bottom: 1px solid #374151;
+  box-shadow: none;
+  border-bottom: 0 !important; /* Remove any border under top bar */
   flex-shrink: 0;
   height: 64px;
   display: flex;
@@ -517,7 +518,7 @@
 }
 
 .user-profile-header {
-  background: linear-gradient(135deg, var(--header-bg) 0%, #374151 100%);
+  background: #1F2937; /* Solid color to match top bar and sidebar */
   color: var(--header-text);
   padding: 2rem;
   text-align: center;
