@@ -240,7 +240,14 @@
   transition: background 0.2s, color 0.2s;
 }
 .requests-tab.active {
-  background: #2563eb !important;
-  color: #fff !important;
+  background: #FFC300 !important;
+  color: #232b3e !important;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(35,43,62,0.08);
+}
+.requests-tab {
+  background: #f3f4f6;
+  color: #232b3e;
+  font-weight: 600;
 }
 /* keep existing modal styles if Modal.css is used */

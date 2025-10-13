@@ -144,37 +144,37 @@ export default function CarPartsRequestModal({ car, customer, onSubmit, onClose 
   if (error) return <div className="modal-error">{error}</div>;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Request Parts for Vehicle</h2>
-          <button className="close-button" onClick={onClose}>
-            <X size={20} />
+    <div className="modal-overlay" onClick={onClose} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.45)' }}>
+      <div className="modal-content advanced-modal" style={{ borderRadius: 18, boxShadow: '0 8px 32px rgba(35,43,62,0.16)', padding: 0, maxWidth: 540, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column', background: '#fff' }} onClick={e => e.stopPropagation()}>
+        <div style={{ background: 'var(--header-bg)', padding: '1.5rem 2rem 1rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h2 style={{ margin: 0, fontWeight: 700, fontSize: '1.5rem', color: 'var(--signature-yellow, #FFC300)', letterSpacing: '0.04em' }}>Request Parts for Vehicle</h2>
+          <button className="close-button" onClick={onClose} style={{ background: 'rgba(0,0,0,0.04)', borderRadius: 8, border: 'none', padding: 6, cursor: 'pointer' }}>
+            <X size={20} color="var(--signature-yellow, #FFC300)" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="add-part-form">
-          <div className="form-grid">
-            <div className="form-group full-width">
-              <h3>Vehicle Details</h3>
-              <div className="details-grid">
-                <p>Owner: {customer?.displayName || "Unknown"}</p>
-                <p>Vehicle: {car ? `${car.year} ${car.make} ${car.model}` : "N/A"}</p>
-                <p>Plate: {car?.plateNumber || "N/A"}</p>
+        <form onSubmit={handleSubmit} className="add-part-form" style={{ padding: '2rem', background: '#fff', overflowY: 'auto', flex: 1 }}>
+          <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem 2rem', marginBottom: 0 }}>
+            <div className="form-group full-width" style={{ gridColumn: '1/3', marginBottom: 0 }}>
+              <h3 style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: 8, color: '#232b3e' }}>Vehicle Details</h3>
+              <div className="details-grid" style={{ display: 'flex', gap: 24 }}>
+                <p style={{ margin: 0, color: '#232b3e' }}>Owner: {customer?.displayName || "Unknown"}</p>
+                <p style={{ margin: 0, color: '#232b3e' }}>Vehicle: {car ? `${car.year} ${car.make} ${car.model}` : "N/A"}</p>
+                <p style={{ margin: 0, color: '#232b3e' }}>Plate: {car?.plateNumber || "N/A"}</p>
               </div>
             </div>
 
-            <div className="form-group full-width">
-              <h3>Select Parts</h3>
+            <div className="form-group full-width" style={{ gridColumn: '1/3' }}>
+              <h3 style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: 8, color: '#232b3e' }}>Select Parts</h3>
               {availableParts.length > 0 ? (
-                <div className="parts-selection">
+                <div className="parts-selection" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {availableParts.map(part => (
-                    <div key={part.id} className="part-selection-item">
-                      <div className="part-info">
-                        <span className="part-name">{part.name}</span>
-                        <div className="part-details">
+                    <div key={part.id} className="part-selection-item" style={{ display: 'flex', alignItems: 'center', gap: 16, background: '#f9fafb', borderRadius: 8, padding: '0.75rem 1rem', boxShadow: '0 2px 8px rgba(35,43,62,0.06)' }}>
+                      <div className="part-info" style={{ flex: 1 }}>
+                        <span className="part-name" style={{ fontWeight: 600, color: '#232b3e' }}>{part.name}</span>
+                        <div className="part-details" style={{ fontSize: '0.95rem', color: '#888', marginTop: 2 }}>
                           <span className="part-stock">Available: {part.quantity}</span>
-                          <span className="part-price">₱{part.price?.toLocaleString()}</span>
+                          <span className="part-price" style={{ marginLeft: 12 }}>₱{part.price?.toLocaleString()}</span>
                         </div>
                       </div>
                       <input
@@ -185,50 +185,54 @@ export default function CarPartsRequestModal({ car, customer, onSubmit, onClose 
                         onChange={(e) => handlePartSelection(part.id, e.target.value)}
                         placeholder="Qty"
                         className="quantity-input"
+                        style={{ width: 70, padding: '0.5rem 1rem', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: '1rem', background: '#fff' }}
                       />
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="no-parts-message">No parts available</div>
+                <div className="no-parts-message" style={{ color: '#888', fontStyle: 'italic', padding: '1rem' }}>No parts available</div>
               )}
             </div>
 
-            <div className="form-group full-width">
-              <label htmlFor="notes">Notes</label>
+            <div className="form-group full-width" style={{ gridColumn: '1/3' }}>
+              <label htmlFor="notes" style={{ fontWeight: 600, marginBottom: 6, display: 'block', color: '#232b3e' }}>Notes</label>
               <textarea
                 id="notes"
                 value={requestData.notes}
                 onChange={(e) => setRequestData(prev => ({ ...prev, notes: e.target.value }))}
                 rows="3"
                 placeholder="Add any additional notes..."
+                style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: '1rem', background: '#f9fafb', marginTop: 2 }}
               />
             </div>
 
-            <div className="form-group">
-              <label className="checkbox-label">
+          </div>
+
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginTop: 24 }}>
+              <label className="checkbox-label" style={{ fontWeight: 600, color: '#232b3e', display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap', height: '48px' }}>
                 <input
                   type="checkbox"
                   checked={requestData.urgent}
                   onChange={(e) => setRequestData(prev => ({ ...prev, urgent: e.target.checked }))}
+                  style={{ accentColor: 'var(--signature-yellow, #FFC300)', marginRight: 8, marginTop: 0 }}
                 />
-                Mark as Urgent
+                <span style={{ lineHeight: '1', display: 'inline-block' }}>Mark as Urgent</span>
               </label>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button type="button" className="cancel-btn" onClick={onClose} style={{ background: '#f3f4f6', color: '#232b3e', borderRadius: 8, border: 'none', padding: '0.75rem 2rem', fontWeight: 600, fontSize: '1rem', cursor: 'pointer' }}>
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="submit-btn"
+                  disabled={requestData.parts.length === 0 || isSubmitting}
+                  style={{ background: 'var(--header-bg)', color: '#fff', borderRadius: 8, border: 'none', padding: '0.75rem 2rem', fontWeight: 600, fontSize: '1rem', cursor: requestData.parts.length === 0 || isSubmitting ? 'not-allowed' : 'pointer' }}
+                >
+                  {isSubmitting ? 'Submitting...' : 'Submit Request'}
+                </button>
+              </div>
             </div>
-          </div>
-
-          <div className="modal-footer">
-            <button type="button" className="cancel-btn" onClick={onClose}>
-              Cancel
-            </button>
-            <button 
-              type="submit" 
-              className="submit-btn"
-              disabled={requestData.parts.length === 0 || isSubmitting}
-            >
-              {isSubmitting ? 'Submitting...' : 'Submit Request'}
-            </button>
-          </div>
         </form>
       </div>
     </div>

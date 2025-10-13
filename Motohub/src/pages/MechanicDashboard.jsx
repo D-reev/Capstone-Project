@@ -269,71 +269,16 @@ export default function MechanicDashboard() {
   }
 
   return (
-    <div className={`dashboard-container${!sidebarOpen ? ' sidebar-collapsed' : ''}`}> {/* responsive class */}
+    <div className={`dashboard-container mechanic-page${!sidebarOpen ? ' sidebar-collapsed' : ''}`}> 
       {/* MechanicSidebar */}
-      <MechanicSidebar 
-        sidebarOpen={sidebarOpen} 
-        user={user}
-        className={`mechanic-sidebar${sidebarOpen ? '' : ' collapsed'}${sidebarMobileOpen ? ' open' : ''}`}
-        onCloseMobile={() => setSidebarMobileOpen(false)}
-      />
-
-      <div className="main-content">
-        {/* Top Bar */}
-        <div className="customer-top-bar">
-          <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-            <button
-              onClick={() => {
-                if (window.innerWidth <= 768) {
-                  setSidebarMobileOpen(!sidebarMobileOpen);
-                } else {
-                  setSidebarOpen(!sidebarOpen);
-                }
-              }}
-              style={{
-                background: 'rgba(251, 191, 36, 0.15)',
-                border: 'none',
-                color: '#fbbf24',
-                cursor: 'pointer',
-                padding: '0.5rem',
-                borderRadius: '0.5rem',
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.background = 'rgba(251, 191, 36, 0.25)';
-                e.currentTarget.style.transform = 'scale(1.05)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.background = 'rgba(251, 191, 36, 0.15)';
-                e.currentTarget.style.transform = 'scale(1)';
-              }}
-            >
-              <Menu size={20} />
-            </button>
-            <h1>Motohub</h1>
-          </div>
-          <div style={{
-            position: 'absolute',
-            right: 0,
-            top: 0,
-            bottom: 0,
-            display: 'flex',
-            alignItems: 'center',
-            height: '100%',
-            paddingRight: '2rem'
-          }}>
-            <div style={{
-              width: '147px',
-              height: '47px',
-              background: `url(${logo}) center/contain no-repeat`,
-              display: 'block'
-            }} />
-          </div>
-        </div>
-
+      <MechanicSidebar sidebarOpen={sidebarOpen} user={user} />
+      <div className={`main-content${!sidebarOpen ? ' expanded' : ''}`}> 
+        <TopBar
+          title="Mechanic"
+          onToggle={() => setSidebarOpen(!sidebarOpen)}
+          notificationsCount={0}
+          onProfileClick={() => setProfileOpen(true)}
+        />
         <div className="content-area">
           <div className="view-toggle">
             <button 
