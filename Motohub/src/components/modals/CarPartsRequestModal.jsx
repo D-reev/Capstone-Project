@@ -130,7 +130,7 @@ export default function CarPartsRequestModal({ car, customer, onSubmit, onClose 
         notes: requestData.notes
       }, user.uid);
 
-      await onSubmit(response);
+      // Just call onClose directly since createPartsRequest already handles the submission
       onClose();
     } catch (error) {
       console.error('Error submitting request:', error);

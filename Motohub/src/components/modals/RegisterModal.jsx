@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Modal.css';
 import { registerWithUsername } from '../../utils/auth';
 
 export default function RegisterModal({ open, onClose, onSuccess }) {
-  if (!open) return null;
-
   const [firstName, setFirstName] = useState('');
   const [middleName, setMiddleName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -12,8 +10,8 @@ export default function RegisterModal({ open, onClose, onSuccess }) {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-
   const [fieldErrors, setFieldErrors] = useState({});
+  const [isValid, setIsValid] = useState(false);
 
   const validateName = (v) => {
     if (!v || !v.trim()) return 'Required';
@@ -32,26 +30,38 @@ export default function RegisterModal({ open, onClose, onSuccess }) {
   const validatePassword = (v) => {
     if (!v) return 'Required';
     if (v.length < 8) return 'Must be at least 8 characters';
-    if (!/[0-9]/.test(v)) return 'Include at least one number';
-    if (!/[A-Z]/.test(v)) return 'Include at least one uppercase letter';
     return '';
   };
 
   const runAllValidations = () => {
     const errs = {
-      firstName: validateName(firstName),
-      lastName: validateName(lastName),
-      username: validateUsername(username),
-      password: validatePassword(password)
+      firstName: firstName.trim() ? validateName(firstName) : 'Required',
+      lastName: lastName.trim() ? validateName(lastName) : 'Required',
+      username: username.trim() ? validateUsername(username) : 'Required',
+      password: password ? validatePassword(password) : 'Required'
     };
     setFieldErrors(errs);
-    // return true if no errors
-    return !Object.values(errs).some(Boolean);
+    
+    // Simplified validation - just check if required fields are filled
+    const valid = firstName.trim() && 
+                 lastName.trim() && 
+                 username.trim() && 
+                 password.length >= 8;
+    
+    setIsValid(valid);
+    return valid;
   };
+
+  useEffect(() => {
+    if (open) {
+      runAllValidations();
+    }
+  }, [firstName, lastName, username, password, open]);
 
   const handleRegister = async (e) => {
     e?.preventDefault();
     setError('');
+    
     if (!runAllValidations()) {
       setError('Please fix the errors highlighted below');
       return;
@@ -77,6 +87,8 @@ export default function RegisterModal({ open, onClose, onSuccess }) {
     }
   };
 
+  if (!open) return null;
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content auth-modal" onClick={(e) => e.stopPropagation()}>
@@ -88,65 +100,83 @@ export default function RegisterModal({ open, onClose, onSuccess }) {
         <form className="modal-body" onSubmit={handleRegister}>
           {error && <div className="error-message">{error}</div>}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-            <input
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              onBlur={() => setFieldErrors(prev => ({ ...prev, firstName: validateName(firstName) }))}
-              placeholder="First name"
-              required
-              className="input-field"
-              disabled={isLoading}
-            />
-            {fieldErrors.firstName && <div className="field-error">{fieldErrors.firstName}</div>}
-            <input
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              onBlur={() => setFieldErrors(prev => ({ ...prev, lastName: validateName(lastName) }))}
-              placeholder="Last name"
-              required
-              className="input-field"
-              disabled={isLoading}
-            />
-            {fieldErrors.lastName && <div className="field-error">{fieldErrors.lastName}</div>}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">First name *</label>
+              <input
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                required
+                className="input-field"
+                disabled={isLoading}
+              />
+              {fieldErrors.firstName && <div className="field-error">{fieldErrors.firstName}</div>}
+            </div>
+            
+            <div className="form-group">
+              <label className="form-label">Last name *</label>
+              <input
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                required
+                className="input-field"
+                disabled={isLoading}
+              />
+              {fieldErrors.lastName && <div className="field-error">{fieldErrors.lastName}</div>}
+            </div>
           </div>
 
-          <input
-            value={middleName}
-            onChange={(e) => setMiddleName(e.target.value)}
-            placeholder="Middle name (optional)"
-            className="input-field"
-            disabled={isLoading}
-          />
+          <div className="form-group">
+            <label className="form-label">Middle name (optional)</label>
+            <input
+              value={middleName}
+              onChange={(e) => setMiddleName(e.target.value)}
+              className="input-field"
+              disabled={isLoading}
+            />
+          </div>
 
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            onBlur={() => setFieldErrors(prev => ({ ...prev, username: validateUsername(username) }))}
-            placeholder="Username"
-            required
-            className="input-field"
-            disabled={isLoading}
-          />
-          {fieldErrors.username && <div className="field-error">{fieldErrors.username}</div>}
+          <div className="form-group">
+            <label className="form-label">Username *</label>
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              className="input-field"
+              disabled={isLoading}
+            />
+            {fieldErrors.username && <div className="field-error">{fieldErrors.username}</div>}
+          </div>
 
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onBlur={() => setFieldErrors(prev => ({ ...prev, password: validatePassword(password) }))}
-            placeholder="Password"
-            required
-            className="input-field"
-            disabled={isLoading}
-          />
-          {fieldErrors.password && <div className="field-error">{fieldErrors.password}</div>}
+          <div className="form-group">
+            <label className="form-label">Password *</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="input-field"
+              disabled={isLoading}
+              minLength={8}
+            />
+            {fieldErrors.password && <div className="field-error">{fieldErrors.password}</div>}
+            <small className="helper-text">Must be at least 8 characters</small>
+          </div>
 
           <div className="modal-actions">
-            <button type="submit" className="submit-btn" disabled={isLoading || !runAllValidations()}>
+            <button 
+              type="submit" 
+              className="submit-btn" 
+              disabled={isLoading || !isValid}
+            >
               {isLoading ? 'Registering…' : 'Register'}
             </button>
-            <button type="button" className="cancel-btn" onClick={onClose} disabled={isLoading}>
+            <button 
+              type="button" 
+              className="cancel-btn" 
+              onClick={onClose} 
+              disabled={isLoading}
+            >
               Cancel
             </button>
           </div>

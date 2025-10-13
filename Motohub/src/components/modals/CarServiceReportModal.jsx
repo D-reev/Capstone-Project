@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { getFirestore, collection, getDocs, query, where } from 'firebase/firestore';
+import { useAuth } from '../../context/AuthContext';
 import './Modal.css';
 
 export default function CarServiceReportModal({ car, customer, onSubmit, onClose }) {
+  const { user } = useAuth();
   const [reportData, setReportData] = useState({
     diagnosis: '',
     workPerformed: '',
@@ -12,7 +14,9 @@ export default function CarServiceReportModal({ car, customer, onSubmit, onClose
     laborCost: 0,
     partsUsed: [],
     totalCost: 0,
-    status: 'completed'
+    status: 'completed',
+    timestamp: new Date().toISOString(), // Add timestamp
+    mechanicId: user?.uid || '' // Add mechanicId
   });
   const [availableParts, setAvailableParts] = useState([]);
   const [serviceHistory, setServiceHistory] = useState([]);
@@ -24,6 +28,11 @@ export default function CarServiceReportModal({ car, customer, onSubmit, onClose
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Check if user is authorized
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
+
         // Fetch available parts from inventory
         const partsRef = collection(db, 'inventory');
         const partsSnapshot = await getDocs(query(partsRef, 
@@ -35,8 +44,9 @@ export default function CarServiceReportModal({ car, customer, onSubmit, onClose
         }));
         setAvailableParts(partsData);
 
-        // Fetch car's service history
-        const historyRef = collection(db, `users/${customer.id}/cars/${car.id}/serviceHistory`);
+        // Fetch car's service history with proper path
+        const historyPath = `users/${customer.id}/cars/${car.id}/serviceHistory`;
+        const historyRef = collection(db, historyPath);
         const historySnapshot = await getDocs(historyRef);
         const historyData = historySnapshot.docs.map(doc => ({
           id: doc.id,
@@ -47,13 +57,15 @@ export default function CarServiceReportModal({ car, customer, onSubmit, onClose
         setLoading(false);
       } catch (err) {
         console.error('Error fetching data:', err);
-        setError('Failed to load necessary data');
+        setError(err.message || 'Failed to load necessary data');
         setLoading(false);
       }
     };
 
-    fetchData();
-  }, [db, car.id, customer.id]);
+    if (user && car && customer) {
+      fetchData();
+    }
+  }, [db, car, customer, user]);
 
   const handlePartSelection = (partId, quantity) => {
     const selectedPart = availableParts.find(p => p.id === partId);
@@ -95,16 +107,54 @@ export default function CarServiceReportModal({ car, customer, onSubmit, onClose
     return partsCost + laborCost;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit({
-      ...reportData,
-      carId: car.id,
-      customerId: customer.id,
-      timestamp: new Date().toISOString(),
-      vehicle: `${car.year} ${car.make} ${car.model}`,
-      plateNumber: car.plateNumber
-    });
+    
+    if (!user?.uid) {
+      setError('You must be logged in as a mechanic to submit a report');
+      return;
+    }
+
+    const requiredFields = [
+      'diagnosis',
+      'workPerformed',
+      'partsUsed',
+      'laborCost',
+      'totalCost',
+      'status'
+    ];
+
+    const missingFields = requiredFields.filter(field => !reportData[field]);
+    
+    if (missingFields.length > 0) {
+      setError(`Missing required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+
+    console.log("Submitting report data:", reportData, "as mechanic:", user.uid);
+
+    try {
+      const reportPayload = {
+        diagnosis: reportData.diagnosis,
+        workPerformed: reportData.workPerformed,
+        partsUsed: reportData.partsUsed,
+        laborCost: reportData.laborCost,
+        totalCost: reportData.totalCost,
+        status: reportData.status,
+        timestamp: new Date().toISOString(),
+        mechanicId: user.uid,
+        customerId: customer.id,
+        carId: car.id,
+        vehicle: `${car.year} ${car.make} ${car.model}`,
+        plateNumber: car.plateNumber
+      };
+
+      await onSubmit(reportPayload);
+      onClose();
+    } catch (error) {
+      console.error('Error submitting report:', error);
+      setError(error.message || 'Failed to submit service report');
+    }
   };
 
   if (loading) return <div className="modal-loading">Loading...</div>;
@@ -174,14 +224,72 @@ export default function CarServiceReportModal({ car, customer, onSubmit, onClose
               </div>
             </div>
 
-            {/* Rest of the form fields */}
-            {/* ... existing diagnosis, work performed, etc. fields ... */}
+            {/* Add missing form fields for required data */}
+            <div className="form-group full-width">
+              <label htmlFor="diagnosis">Diagnosis *</label>
+              <textarea
+                id="diagnosis"
+                value={reportData.diagnosis}
+                onChange={(e) => setReportData(prev => ({
+                  ...prev,
+                  diagnosis: e.target.value
+                }))}
+                required
+              />
+            </div>
+
+            <div className="form-group full-width">
+              <label htmlFor="workPerformed">Work Performed *</label>
+              <textarea
+                id="workPerformed"
+                value={reportData.workPerformed}
+                onChange={(e) => setReportData(prev => ({
+                  ...prev,
+                  workPerformed: e.target.value
+                }))}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="laborCost">Labor Cost *</label>
+              <input
+                type="number"
+                id="laborCost"
+                value={reportData.laborCost}
+                onChange={(e) => setReportData(prev => ({
+                  ...prev,
+                  laborCost: Number(e.target.value),
+                  totalCost: calculateTotalCost(prev.partsUsed, prev.laborHours, Number(e.target.value))
+                }))}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="status">Status *</label>
+              <select
+                id="status"
+                value={reportData.status}
+                onChange={(e) => setReportData(prev => ({
+                  ...prev,
+                  status: e.target.value
+                }))}
+                required
+              >
+                <option value="completed">Completed</option>
+                <option value="pending">Pending</option>
+                <option value="in-progress">In Progress</option>
+              </select>
+            </div>
 
             <div className="form-group">
               <label>Total Cost</label>
               <div className="total-cost">₱{reportData.totalCost.toLocaleString()}</div>
             </div>
           </div>
+
+          {error && <div className="error-message">{error}</div>}
 
           <div className="modal-footer">
             <button type="button" className="cancel-btn" onClick={onClose}>
