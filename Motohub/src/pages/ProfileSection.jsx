@@ -126,7 +126,7 @@ export default function ProfileSection() {
         onCloseMobile={() => setSidebarMobileOpen(false)}
       />
 
-      <div className="profile-main-content">
+      <div className={`profile-main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
         {/* Top Bar */}
         <div className="profile-top-bar">
           <div className="profile-top-bar-left">

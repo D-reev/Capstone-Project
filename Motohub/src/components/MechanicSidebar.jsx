@@ -6,9 +6,9 @@ import {
   Wrench,
   ClipboardList,
   User,
-  LogOut,
-  ChevronRight
+  LogOut
 } from 'lucide-react';
+import './Sidebar.css';
 
 function NavItem({ icon: Icon, label, active = false, badge, color = "red", sidebarOpen, onClick }) {
   const badgeClass = `nav-item-badge ${color}`;
@@ -46,6 +46,10 @@ export default function MechanicSidebar({ sidebarOpen }) {
     }
   };
 
+  const isPathActive = (path) => {
+    return location.pathname === path || location.pathname.startsWith(`${path}/`);
+  };
+
   return (
     <div className={`sidebar ${sidebarOpen ? '' : 'collapsed'}`} style={{ background: 'var(--header-bg)' }}>
       <div className="sidebar-header">
@@ -75,14 +79,14 @@ export default function MechanicSidebar({ sidebarOpen }) {
           <NavItem 
             icon={Wrench} 
             label="Dashboard" 
-            active={location.pathname === '/mechanicdashboard'}
+            active={isPathActive('/mechanicdashboard')}
             sidebarOpen={sidebarOpen}
             onClick={() => navigate('/mechanicdashboard')}
           />
           <NavItem 
             icon={ClipboardList} 
             label="My Requests" 
-            active={location.pathname === '/mechanicdashboard/requests'}
+            active={isPathActive('/mechanicdashboard/requests')}
             sidebarOpen={sidebarOpen}
             onClick={() => navigate('/mechanicdashboard/requests')}
           />

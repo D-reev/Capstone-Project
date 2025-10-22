@@ -25,6 +25,7 @@ import { useAuth } from '../context/AuthContext';
 import { createCarModel, getUserCars, updateCarModel, addServiceHistory, getCarServiceHistory } from '../utils/auth';
 import UserSidebar from '../components/UserSidebar';
 import ServiceHistoryModal from '../components/modals/ServiceHistoryModal';
+import AddCarModal from '../components/modals/AddCarModal';
 import { getFirestore, collection, getDocs } from 'firebase/firestore';
 
 import '../css/UserDashboard.css';
@@ -36,15 +37,6 @@ export default function MotohubCustomerDashboard() {
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [vehicles, setVehicles] = useState([]);
   const [isAddingCar, setIsAddingCar] = useState(false);
-  const [newCarData, setNewCarData] = useState({
-    make: '',
-    model: '',
-    year: '',
-    plateNumber: '',
-    engine: '',
-    transmission: '',
-    mileage: ''
-  });
   const { user } = useAuth();
 
   useEffect(() => {
@@ -58,119 +50,15 @@ export default function MotohubCustomerDashboard() {
     setCustomerVehicles(userCars);
   };
 
-  const handleAddCar = async (e) => {
-    e.preventDefault();
+  const handleAddCar = async (formData) => {
     try {
-      await createCarModel(user.uid, newCarData);
+      await createCarModel(user.uid, formData);
       setIsAddingCar(false);
-      setNewCarData({
-        make: '',
-        model: '',
-        year: '',
-        plateNumber: '',
-        engine: '',
-        transmission: '',
-        mileage: ''
-      });
       await loadUserCars();
     } catch (error) {
       console.error('Error adding car:', error);
     }
   };
-
-  const AddCarModal = () => (
-    <div className="add-car-modal-overlay">
-      <div className="add-car-modal-content" onClick={e => e.stopPropagation()}>
-        <div className="add-car-modal-header">
-          <h2>Add New Vehicle</h2>
-          <button className="add-car-close-button" onClick={() => setIsAddingCar(false)}>
-            <span>&times;</span>
-          </button>
-        </div>
-
-        <form onSubmit={handleAddCar} className="add-car-form">
-          <div className="add-car-form-grid">
-            <div className="add-car-form-group full-width">
-              <label>Make</label>
-              <input
-                type="text"
-                value={newCarData.make}
-                onChange={e => setNewCarData(prev => ({ ...prev, make: e.target.value }))}
-                required
-              />
-            </div>
-            <div className="add-car-form-group full-width">
-              <label>Model</label>
-              <input
-                type="text"
-                value={newCarData.model}
-                onChange={e => setNewCarData(prev => ({ ...prev, model: e.target.value }))}
-                required
-              />
-            </div>
-            <div className="add-car-form-group">
-              <label>Year</label>
-              <input
-                type="number"
-                value={newCarData.year}
-                onChange={e => setNewCarData(prev => ({ ...prev, year: e.target.value }))}
-                required
-              />
-            </div>
-            <div className="add-car-form-group">
-              <label>Plate Number</label>
-              <input
-                type="text"
-                value={newCarData.plateNumber}
-                onChange={e => setNewCarData(prev => ({ ...prev, plateNumber: e.target.value }))}
-                required
-              />
-            </div>
-            <div className="add-car-form-group">
-              <label>Engine</label>
-              <input
-                type="text"
-                value={newCarData.engine}
-                onChange={e => setNewCarData(prev => ({ ...prev, engine: e.target.value }))}
-                required
-              />
-            </div>
-            <div className="add-car-form-group">
-              <label>Transmission</label>
-              <select
-                value={newCarData.transmission}
-                onChange={e => setNewCarData(prev => ({ ...prev, transmission: e.target.value }))}
-                required
-              >
-                <option value="">Select Transmission</option>
-                <option value="Manual">Manual</option>
-                <option value="Automatic">Automatic</option>
-                <option value="CVT">CVT</option>
-              </select>
-            </div>
-            <div className="add-car-form-group full-width">
-              <label>Current Mileage</label>
-              <input
-                type="number"
-                value={newCarData.mileage}
-                onChange={e => setNewCarData(prev => ({ ...prev, mileage: e.target.value }))}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="add-car-modal-footer">
-            <button type="button" className="add-car-cancel-btn" onClick={() => setIsAddingCar(false)}>
-              Cancel
-            </button>
-            <button type="submit" className="add-car-save-btn">
-              Add Vehicle
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
 
   const VehicleCard = ({ vehicle }) => {
     const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -393,7 +281,12 @@ export default function MotohubCustomerDashboard() {
         </div>
       </div>
 
-      {isAddingCar && <AddCarModal />}
+      {isAddingCar && (
+        <AddCarModal 
+          onSubmit={handleAddCar}
+          onClose={() => setIsAddingCar(false)}
+        />
+      )}
     </div>
   );
 }

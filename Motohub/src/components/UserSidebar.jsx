@@ -12,6 +12,7 @@ import {
   User,
   ChevronRight
 } from 'lucide-react';
+import './Sidebar.css';
 
 function NavItem({ icon: Icon, label, active = false, badge, color = "red", sidebarOpen, onClick }) {
   const badgeClass = `nav-item-badge ${color}`;
