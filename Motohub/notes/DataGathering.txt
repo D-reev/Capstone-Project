@@ -1,0 +1,25 @@
+Centralized Process: All day-to-day transactions flow through front desk → accessories → parts → billing/cashier, with admin/accounting keeping official records.
+
+Management Approval: Corporate president gives final approval for sensitive transactions.
+
+Customer Records: Accounting keeps billing/job orders; service department keeps manual customer history (transitioning to a digital system).
+
+Common Issues: Miscommunication and poor coordination are frequent problems.
+
+Job Tracking: Service department tracks repair progress daily and updates customers.
+
+System Work: They are working on a database to prioritize inventory tracking (real-time updates).
+
+Parts Department: Monitors stock, handles ordering, and updates availability.
+
+Repairs: Assigned by service supervisor; mechanics report back once done.
+
+Operations & IT: Handle internal operations, system updates, and troubleshooting.
+
+Confidentiality: Customer data is secured, accessible only with admin approval.
+
+Need for Modernization: They see value in a more user-friendly, computerized system.
+
+Diagnostics: Results monitored by service team leader and staff; proper tools and skilled staff needed for faster results.
+
+Key Pain Points: Lack of coordination between mechanics and staff remains an issue.

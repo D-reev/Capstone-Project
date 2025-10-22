@@ -1,0 +1,125 @@
+@import './UserManagement.css';
+@import './AdminDashboard.css';
+
+/* Inventory-specific overrides layered on top of UserManagement.css */
+
+/* Keep only the inventory-specific styles */
+.inventory-header {
+  background: var(--card-bg, #fff);
+  margin: 2rem;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.inventory-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+/* Use the same search styles as user-table-search but keep unique selector for inventory */
+.inventory-search, .search-container {
+  display: flex;
+  align-items: center;
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.9rem;
+  min-width: 240px;
+  box-shadow: var(--shadow-sm);
+}
+
+.search-container input, .inventory-search input {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  background: transparent;
+}
+
+.add-part-btn, .user-table-add-btn {
+  background: var(--yellow-primary);
+  color: var(--text-primary);
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.65rem 1rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.add-part-btn:hover, .user-table-add-btn:hover {
+  background: var(--yellow-dark);
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+
+/* Grid: use same structure as UserManagement container */
+.inventory-grid {
+  padding: 0 2rem;
+  display: grid;
+  grid-template-columns: 2fr 380px; /* wider content area and right panel */
+  gap: 2rem;
+}
+
+.parts-list {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  width: 100%;
+  min-width: 700px;
+}
+
+/* Map parts table to user-table styles so it inherits look */
+.parts-table, .user-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--card-bg);
+}
+
+.parts-table th {
+  background: var(--secondary-bg);
+  color: var(--text-secondary);
+  padding: 1rem 1.5rem;
+  text-align: left;
+  font-weight: 600;
+}
+
+.parts-table td {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-primary);
+}
+
+.parts-table tr:hover {
+  background: var(--table-row-hover);
+}
+
+.parts-table tr.selected {
+  background: rgba(251,191,36,0.06);
+  border-left: 3px solid var(--yellow-primary);
+}
+
+/* Responsive adjustments keep from original inventory file */
+@media (max-width: 1200px) {
+  .inventory-grid {
+    grid-template-columns: 1fr;
+  }
+  .parts-list { overflow-x: auto; }
+}
+
+@media (max-width: 768px) {
+  .main-content { margin-left: 0; }
+  .top-bar { padding: 1rem; }
+  .inventory-grid { padding: 0 1rem; }
+}
