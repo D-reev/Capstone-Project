@@ -66,7 +66,7 @@ export default function RegisterModal({ open, onClose, onSuccess }) {
       setError('Please fix the errors highlighted below');
       return;
     }
-
+//TEST
     setIsLoading(true);
     try {
       const user = await registerWithUsername({
