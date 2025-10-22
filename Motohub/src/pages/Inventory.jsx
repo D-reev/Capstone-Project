@@ -14,13 +14,13 @@ import {
   MessageSquare,
   User
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
-import AdminSidebar from '../../components/AdminSidebar';
-import AddPartModal from '../../components/modals/AddPartModal';
-import EditPartModal from '../../components/modals/EditPartModal';  // Add this import
-import TopBar from '../../components/TopBar';
-import ProfileModal from '../../components/modals/ProfileModal';
+import AdminSidebar from '../components/AdminSidebar';
+import AddPartModal from '../components/modals/AddPartModal';
+import EditPartModal from '../components/modals/EditPartModal';
+import TopBar from '../components/TopBar';
+import ProfileModal from '../components/modals/ProfileModal';
 import '../css/Inventory.css';
 
 export default function Inventory() {
@@ -36,7 +36,7 @@ export default function Inventory() {
   const { user } = useAuth();
   const db = getFirestore();
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10; // show 10 rows per page
+  const pageSize = 10;
 
   useEffect(() => {
     fetchParts();
@@ -52,7 +52,6 @@ export default function Inventory() {
       }));
       setParts(partsList);
       
-      // Check for low stock items
       const lowStock = partsList.filter(part => part.quantity <= part.minStock);
       setLowStockAlert(lowStock);
     } catch (error) {
@@ -83,7 +82,6 @@ export default function Inventory() {
         updatedAt: new Date().toISOString()
       });
       fetchParts();
-      // clear selection and close edit modal
       setSelectedPart(null);
       setEditPart(null);
       setIsEditModalOpen(false);
@@ -109,10 +107,10 @@ export default function Inventory() {
   );
 
   const totalPages = Math.max(1, Math.ceil(filteredParts.length / pageSize));
-  // clamp currentPage if needed
+  
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(1);
-  }, [filteredParts.length, totalPages]);
+  }, [filteredParts.length, totalPages, currentPage]);
 
   const paginatedParts = filteredParts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
@@ -121,7 +119,6 @@ export default function Inventory() {
       <AdminSidebar sidebarOpen={sidebarOpen} user={user} />
 
       <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
-        {/* Keep TopBar (already added) */}
         <TopBar
           title="Inventory"
           onToggle={() => setSidebarOpen(!sidebarOpen)}
@@ -129,8 +126,7 @@ export default function Inventory() {
           onProfileClick={() => setProfileOpen(true)}
         />
 
-  {/* Reuse UserManagement layout/classes */}
-  <div className={`user-management-container ${!selectedPart ? 'single-column' : ''}`}>
+        <div className={`user-management-container ${!selectedPart ? 'single-column' : ''}`}>
           <div className="user-table-section">
             <div className="user-table-header">
               <h1 className="user-table-title">Inventory</h1>
@@ -164,45 +160,67 @@ export default function Inventory() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedParts.map(part => (
-                    <tr 
-                      key={part.id}
-                      className={selectedPart?.id === part.id ? 'selected' : ''}
-                      onClick={(e) => {
-                        // Prevent selecting when clicking on action buttons inside the row
-                        if (e.target.closest('.user-table-action-btn')) return;
-                        // Toggle selection: click same part closes the panel
-                        setSelectedPart(prev => (prev && prev.id === part.id) ? null : part);
-                      }}
-                    >
-                      <td>
-                        <div className="user-table-user">
-                          <div className="user-table-avatar">
-                            {part.image ? (
-                              <img src={part.image} alt={part.name} />
-                            ) : (
-                              part.name.slice(0,2).toUpperCase()
-                            )}
-                          </div>
-                          <span className="user-table-name">{part.name}</span>
-                        </div>
-                      </td>
-                      <td>{part.category}</td>
-                      <td className={part.quantity <= part.minStock ? 'low-stock' : ''}>{part.quantity}</td>
-                      <td>₱{part.price}</td>
-                      <td>
-                        <span className={`role-badge ${part.status?.toLowerCase()}`}>{part.status}</span>
-                      </td>
-                      <td className="user-table-actions-col">
-                        <button onClick={(e) => { e.stopPropagation(); setSelectedPart(part); setEditPart(part); setIsEditModalOpen(true); }} className="user-table-action-btn edit" title="Edit part">
-                          <Edit size={16} />
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); handleDeletePart(part.id); }} className="user-table-action-btn delete" title="Delete part">
-                          <Trash2 size={16} />
-                        </button>
+                  {paginatedParts.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                        {searchTerm ? 'No parts found matching your search.' : 'No parts available.'}
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    paginatedParts.map(part => (
+                      <tr 
+                        key={part.id}
+                        className={selectedPart?.id === part.id ? 'selected' : ''}
+                        onClick={(e) => {
+                          if (e.target.closest('.user-table-action-btn')) return;
+                          setSelectedPart(prev => (prev && prev.id === part.id) ? null : part);
+                        }}
+                      >
+                        <td>
+                          <div className="user-table-user">
+                            <div className="user-table-avatar">
+                              {part.image ? (
+                                <img src={part.image} alt={part.name} />
+                              ) : (
+                                part.name.slice(0,2).toUpperCase()
+                              )}
+                            </div>
+                            <span className="user-table-name">{part.name}</span>
+                          </div>
+                        </td>
+                        <td>{part.category}</td>
+                        <td className={part.quantity <= part.minStock ? 'low-stock' : ''}>{part.quantity}</td>
+                        <td>₱{part.price}</td>
+                        <td>
+                          <span className={`role-badge ${part.status?.toLowerCase()}`}>{part.status}</span>
+                        </td>
+                        <td className="user-table-actions-col">
+                          <button 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              setSelectedPart(part); 
+                              setEditPart(part); 
+                              setIsEditModalOpen(true); 
+                            }} 
+                            className="user-table-action-btn edit" 
+                            title="Edit part"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              handleDeletePart(part.id); 
+                            }} 
+                            className="user-table-action-btn delete" 
+                            title="Delete part"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -222,7 +240,6 @@ export default function Inventory() {
             )}
           </div>
 
-          {/* Right panel - reuse user-profile-panel styles for part details */}
           {selectedPart && (
             <div className={`user-profile-panel ${selectedPart ? 'active' : ''}`}>
               <div className="user-profile-header">
@@ -262,20 +279,20 @@ export default function Inventory() {
                     <span>{selectedPart.minStock}</span>
                     <span className="user-profile-stat-label">Min Stock</span>
                   </div>
+                </div>
 
-                  <div className="user-profile-booking-stats">
-                    <div className="stat">
-                      <span>---</span>
-                      <span className="stat-label">Reserved</span>
-                    </div>
-                    <div className="stat">
-                      <span>---</span>
-                      <span className="stat-label">Available</span>
-                    </div>
-                    <div className="stat">
-                      <span>---</span>
-                      <span className="stat-label">Backordered</span>
-                    </div>
+                <div className="user-profile-booking-stats">
+                  <div className="stat">
+                    <span>---</span>
+                    <span className="stat-label">Reserved</span>
+                  </div>
+                  <div className="stat">
+                    <span>---</span>
+                    <span className="stat-label">Available</span>
+                  </div>
+                  <div className="stat">
+                    <span>---</span>
+                    <span className="stat-label">Backordered</span>
                   </div>
                 </div>
               </div>
@@ -284,7 +301,6 @@ export default function Inventory() {
         </div>
       </div>
 
-      {/* modals */}
       <AddPartModal 
         onClose={() => setIsAddModalOpen(false)}
         onAdd={handleAddPart}

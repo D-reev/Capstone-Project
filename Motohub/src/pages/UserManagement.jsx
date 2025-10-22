@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import Loading from '../../components/Loading'; // added
+import { useAuth } from '../context/AuthContext';
+import Loading from '../components/Loading';
 import { getFirestore, collection, getDocs, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { Users, Pencil, Trash2, Search, UserPlus, Menu, Mail, Calendar, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import AdminSidebar from '../../components/AdminSidebar';
-import EditUserModal from '../../components/modals/EditUserModal';
-import TopBar from '../../components/TopBar';
-import ProfileModal from '../../components/modals/ProfileModal';
+import AdminSidebar from '../components/AdminSidebar';
+import EditUserModal from '../components/modals/EditUserModal';
+import TopBar from '../components/TopBar';
+import ProfileModal from '../components/modals/ProfileModal';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../../config/firebase';
+import { auth } from '../config/firebase';
 import '../css/UserManagement.css';
 
 export default function UserManagement() {
@@ -159,7 +159,7 @@ export default function UserManagement() {
   };
 
   if (loading) {
-    return <Loading text="Loading users" />; // replaced previous spinner/partial layout
+    return <Loading text="Loading users" />;
   }
 
   return (
