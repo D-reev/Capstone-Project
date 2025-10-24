@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { Modal, Form, Input, InputNumber, Select, message, Spin } from 'antd';
 import { getFirestore, collection, getDocs, query, where, addDoc } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
 import './Modal.css';
 
-export default function CarServiceReportModal({ car, customer, onSubmit, onClose }) {
+const { TextArea } = Input;
+const { Option } = Select;
+
+export default function CarServiceReportModal({ car, customer, open, onSubmit, onClose }) {
   const { user } = useAuth();
+  const [form] = Form.useForm();
   const [reportData, setReportData] = useState({
     diagnosis: '',
     workPerformed: '',
@@ -15,23 +19,24 @@ export default function CarServiceReportModal({ car, customer, onSubmit, onClose
     partsUsed: [],
     totalCost: 0,
     status: 'completed',
-    timestamp: new Date().toISOString(), // Add timestamp
-    mechanicId: user?.uid || '' // Add mechanicId
+    timestamp: new Date().toISOString(),
+    mechanicId: user?.uid || ''
   });
   const [availableParts, setAvailableParts] = useState([]);
   const [serviceHistory, setServiceHistory] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const db = getFirestore();
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!open || !user || !car || !customer) {
+        return;
+      }
+
       try {
-        // Check if user is authorized
-        if (!user) {
-          throw new Error('User not authenticated');
-        }
+        setLoading(true);
 
         // Fetch available parts from inventory
         const partsRef = collection(db, 'inventory');
@@ -57,15 +62,13 @@ export default function CarServiceReportModal({ car, customer, onSubmit, onClose
         setLoading(false);
       } catch (err) {
         console.error('Error fetching data:', err);
-        setError(err.message || 'Failed to load necessary data');
+        message.error(err.message || 'Failed to load necessary data');
         setLoading(false);
       }
     };
 
-    if (user && car && customer) {
-      fetchData();
-    }
-  }, [db, car, customer, user]);
+    fetchData();
+  }, [db, car, customer, user, open]);
 
   const handlePartSelection = (partId, quantity) => {
     const selectedPart = availableParts.find(p => p.id === partId);
@@ -123,40 +126,24 @@ export default function CarServiceReportModal({ car, customer, onSubmit, onClose
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
+  const handleSubmit = async () => {
     if (!user?.uid) {
-      setError('You must be logged in as a mechanic to submit a report');
+      message.error('You must be logged in as a mechanic to submit a report');
       return;
     }
-
-    const requiredFields = [
-      'diagnosis',
-      'workPerformed',
-      'partsUsed',
-      'laborCost',
-      'totalCost',
-      'status'
-    ];
-
-    const missingFields = requiredFields.filter(field => !reportData[field]);
-    
-    if (missingFields.length > 0) {
-      setError(`Missing required fields: ${missingFields.join(', ')}`);
-      return;
-    }
-
-    console.log("Submitting report data:", reportData, "as mechanic:", user.uid);
 
     try {
+      const values = await form.validateFields();
+      setIsSubmitting(true);
+
       const reportPayload = {
-        diagnosis: reportData.diagnosis,
-        workPerformed: reportData.workPerformed,
+        diagnosis: values.diagnosis,
+        workPerformed: values.workPerformed,
+        recommendations: values.recommendations || '',
         partsUsed: reportData.partsUsed,
-        laborCost: reportData.laborCost,
+        laborCost: values.laborCost || 0,
         totalCost: reportData.totalCost,
-        status: reportData.status,
+        status: values.status,
         timestamp: new Date().toISOString(),
         mechanicId: user.uid,
         customerId: customer.id,
@@ -166,158 +153,251 @@ export default function CarServiceReportModal({ car, customer, onSubmit, onClose
       };
 
       await handleServiceReport(reportPayload);
-      onSubmit(reportPayload); // Keep onSubmit for any parent component handling
-      onClose();
+      message.success('Service report submitted successfully!');
+      form.resetFields();
+      setReportData({
+        diagnosis: '',
+        workPerformed: '',
+        recommendations: '',
+        laborHours: 0,
+        laborCost: 0,
+        partsUsed: [],
+        totalCost: 0,
+        status: 'completed',
+        timestamp: new Date().toISOString(),
+        mechanicId: user?.uid || ''
+      });
+      onSubmit(reportPayload);
     } catch (error) {
-      console.error('Error submitting report:', error);
-      setError(error.message || 'Failed to submit service report');
+      if (error.errorFields) {
+        message.error('Please fill in all required fields');
+      } else {
+        console.error('Error submitting report:', error);
+        message.error(error.message || 'Failed to submit service report');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  if (loading) return <div className="modal-loading">Loading...</div>;
+  const handleCancel = () => {
+    form.resetFields();
+    setReportData({
+      diagnosis: '',
+      workPerformed: '',
+      recommendations: '',
+      laborHours: 0,
+      laborCost: 0,
+      partsUsed: [],
+      totalCost: 0,
+      status: 'completed',
+      timestamp: new Date().toISOString(),
+      mechanicId: user?.uid || ''
+    });
+    onClose();
+  };
+
   if (error) return <div className="modal-error">{error}</div>;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Car Service Report</h2>
-          <button className="close-button" onClick={onClose}>
-            <X size={20} />
-          </button>
+    <Modal
+      title="Car Service Report"
+      open={open}
+      onOk={handleSubmit}
+      onCancel={handleCancel}
+      confirmLoading={isSubmitting}
+      width={800}
+      okText="Submit Report"
+      cancelText="Cancel"
+      destroyOnClose
+      okButtonProps={{
+        style: {
+          backgroundColor: '#FFC300',
+          borderColor: '#FFC300',
+          color: '#000',
+          fontWeight: 600
+        }
+      }}
+      cancelButtonProps={{
+        style: {
+          borderColor: '#d9d9d9'
+        }
+      }}
+    >
+      <style>
+        {`
+          .ant-input:focus,
+          .ant-input:hover,
+          .ant-input-number:hover .ant-input-number-input,
+          .ant-input-number-focused .ant-input-number-input,
+          .ant-select:hover .ant-select-selector,
+          .ant-select-focused .ant-select-selector {
+            border-color: #FFC300 !important;
+            box-shadow: 0 0 0 2px rgba(255, 195, 0, 0.2) !important;
+          }
+          .ant-input:focus,
+          .ant-input-number-focused .ant-input-number-input,
+          .ant-select-focused .ant-select-selector {
+            outline: 0;
+            box-shadow: 0 0 0 2px rgba(255, 195, 0, 0.2) !important;
+          }
+          .ant-btn-primary:hover:not(:disabled),
+          .ant-btn-primary:focus:not(:disabled) {
+            background-color: #FFD54F !important;
+            border-color: #FFD54F !important;
+          }
+        `}
+      </style>
+      <Spin spinning={loading}>
+        {/* Vehicle Details Section */}
+        <div style={{ marginBottom: 24, padding: 16, background: '#FFF9E6', borderRadius: 8, border: '2px solid #FFC300' }}>
+          <h3 style={{ marginTop: 0, marginBottom: 12, color: '#000' }}>Vehicle Details</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <p style={{ margin: 0 }}><strong>Owner:</strong> {customer?.displayName}</p>
+            <p style={{ margin: 0 }}><strong>Vehicle:</strong> {car?.year} {car?.make} {car?.model}</p>
+            <p style={{ margin: 0 }}><strong>Plate:</strong> {car?.plateNumber}</p>
+            <p style={{ margin: 0 }}><strong>Mileage:</strong> {car?.mileage} km</p>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="add-part-form">
-          <div className="form-grid">
-            {/* Vehicle Details Section */}
-            <div className="form-group full-width">
-              <h3>Vehicle Details</h3>
-              <div className="details-grid">
-                <p>Owner: {customer.displayName}</p>
-                <p>Vehicle: {car.year} {car.make} {car.model}</p>
-                <p>Plate: {car.plateNumber}</p>
-                <p>Mileage: {car.mileage} km</p>
-              </div>
-            </div>
+        {/* Service History Summary */}
+        <div style={{ marginBottom: 24, padding: 16, background: '#f5f5f5', borderRadius: 8 }}>
+          <h3 style={{ marginTop: 0, marginBottom: 12 }}>Service History</h3>
+          <div style={{ maxHeight: 120, overflowY: 'auto' }}>
+            {serviceHistory.length > 0 ? (
+              <ul style={{ margin: 0, paddingLeft: 20 }}>
+                {serviceHistory.slice(-3).map(service => (
+                  <li key={service.id} style={{ marginBottom: 8 }}>
+                    <strong>{new Date(service.timestamp).toLocaleDateString()}</strong> - {service.workPerformed}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p style={{ margin: 0, color: '#888' }}>No previous service records found</p>
+            )}
+          </div>
+        </div>
 
-            {/* Service History Summary */}
-            <div className="form-group full-width">
-              <h3>Service History</h3>
-              <div className="service-history">
-                {serviceHistory.length > 0 ? (
-                  <ul>
-                    {serviceHistory.slice(-3).map(service => (
-                      <li key={service.id}>
-                        <span>{new Date(service.timestamp).toLocaleDateString()}</span>
-                        <span>{service.workPerformed}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p>No previous service records found</p>
-                )}
-              </div>
-            </div>
+        <Form
+          form={form}
+          layout="vertical"
+          initialValues={{
+            status: 'completed',
+            laborCost: 0
+          }}
+        >
+          <Form.Item
+            name="diagnosis"
+            label="Diagnosis"
+            rules={[{ required: true, message: 'Please enter the diagnosis' }]}
+          >
+            <TextArea
+              rows={3}
+              placeholder="Describe the issue diagnosed..."
+            />
+          </Form.Item>
 
-            {/* Parts Selection */}
-            <div className="form-group full-width">
-              <h3>Parts Used</h3>
-              <div className="parts-selection">
-                {availableParts.map(part => (
-                  <div key={part.id} className="part-selection-item">
-                    <div className="part-info">
-                      <span>{part.name}</span>
-                      <span className="part-price">₱{part.price}</span>
+          <Form.Item
+            name="workPerformed"
+            label="Work Performed"
+            rules={[{ required: true, message: 'Please describe the work performed' }]}
+          >
+            <TextArea
+              rows={4}
+              placeholder="Describe the work that was performed..."
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="recommendations"
+            label="Recommendations"
+          >
+            <TextArea
+              rows={2}
+              placeholder="Any recommendations for future maintenance..."
+            />
+          </Form.Item>
+
+          {/* Parts Selection */}
+          <div style={{ marginBottom: 24 }}>
+            <h4>Parts Used</h4>
+            <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid #d9d9d9', borderRadius: 4, padding: 12 }}>
+              {availableParts.length > 0 ? (
+                availableParts.map(part => (
+                  <div key={part.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid #f0f0f0' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 500 }}>{part.name}</div>
+                      <div style={{ fontSize: 12, color: '#888' }}>₱{part.price} (Stock: {part.quantity})</div>
                     </div>
-                    <input
-                      type="number"
-                      min="0"
+                    <InputNumber
+                      min={0}
                       max={part.quantity}
-                      onChange={(e) => handlePartSelection(part.id, e.target.value)}
                       placeholder="Qty"
+                      style={{ width: 80 }}
+                      onChange={(value) => handlePartSelection(part.id, value || 0)}
                     />
                   </div>
-                ))}
+                ))
+              ) : (
+                <p style={{ margin: 0, color: '#888' }}>No parts available</p>
+              )}
+            </div>
+            {reportData.partsUsed.length > 0 && (
+              <div style={{ marginTop: 12, padding: 12, background: '#FFF9E6', borderRadius: 4, border: '1px solid #FFC300' }}>
+                <strong style={{ color: '#000' }}>Selected Parts:</strong>
+                <ul style={{ margin: '8px 0 0 0', paddingLeft: 20 }}>
+                  {reportData.partsUsed.map((part, idx) => (
+                    <li key={idx}>
+                      {part.name} - Qty: {part.quantity} - ₱{(part.price * part.quantity).toLocaleString()}
+                    </li>
+                  ))}
+                </ul>
               </div>
-            </div>
-
-            {/* Add missing form fields for required data */}
-            <div className="form-group full-width">
-              <label htmlFor="diagnosis">Diagnosis *</label>
-              <textarea
-                id="diagnosis"
-                value={reportData.diagnosis}
-                onChange={(e) => setReportData(prev => ({
-                  ...prev,
-                  diagnosis: e.target.value
-                }))}
-                required
-              />
-            </div>
-
-            <div className="form-group full-width">
-              <label htmlFor="workPerformed">Work Performed *</label>
-              <textarea
-                id="workPerformed"
-                value={reportData.workPerformed}
-                onChange={(e) => setReportData(prev => ({
-                  ...prev,
-                  workPerformed: e.target.value
-                }))}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="laborCost">Labor Cost *</label>
-              <input
-                type="number"
-                id="laborCost"
-                value={reportData.laborCost}
-                onChange={(e) => setReportData(prev => ({
-                  ...prev,
-                  laborCost: Number(e.target.value),
-                  totalCost: calculateTotalCost(prev.partsUsed, prev.laborHours, Number(e.target.value))
-                }))}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="status">Status *</label>
-              <select
-                id="status"
-                value={reportData.status}
-                onChange={(e) => setReportData(prev => ({
-                  ...prev,
-                  status: e.target.value
-                }))}
-                required
-              >
-                <option value="completed">Completed</option>
-                <option value="pending">Pending</option>
-                <option value="in-progress">In Progress</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Total Cost</label>
-              <div className="total-cost">₱{reportData.totalCost.toLocaleString()}</div>
-            </div>
+            )}
           </div>
 
-          {error && <div className="error-message">{error}</div>}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <Form.Item
+              name="laborCost"
+              label="Labor Cost"
+              rules={[{ required: true, message: 'Please enter labor cost' }]}
+            >
+              <InputNumber
+                style={{ width: '100%' }}
+                min={0}
+                prefix="₱"
+                placeholder="0.00"
+                onChange={(value) => {
+                  setReportData(prev => ({
+                    ...prev,
+                    laborCost: value || 0,
+                    totalCost: calculateTotalCost(prev.partsUsed, prev.laborHours, value || 0)
+                  }));
+                }}
+              />
+            </Form.Item>
 
-          <div className="modal-footer">
-            <button type="button" className="cancel-btn" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="submit" className="submit-btn">
-              Submit Report
-            </button>
+            <Form.Item
+              name="status"
+              label="Status"
+              rules={[{ required: true, message: 'Please select status' }]}
+            >
+              <Select>
+                <Option value="completed">Completed</Option>
+                <Option value="pending">Pending</Option>
+                <Option value="in-progress">In Progress</Option>
+              </Select>
+            </Form.Item>
           </div>
-        </form>
-      </div>
-    </div>
+
+          <div style={{ padding: 16, background: '#FFF9E6', borderRadius: 8, border: '2px solid #FFC300' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <strong style={{ fontSize: 16, color: '#000' }}>Total Cost:</strong>
+              <strong style={{ fontSize: 20, color: '#000' }}>₱{reportData.totalCost.toLocaleString()}</strong>
+            </div>
+          </div>
+        </Form>
+      </Spin>
+    </Modal>
   );
 }

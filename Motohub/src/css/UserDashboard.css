@@ -1201,7 +1201,7 @@ body {
 
 .service-due-n\/a,
 .vehicle-spec-value:not([class*="service-due-"]) {
-  color: #48bb78;
+  color: var(--signature-yellow);
 }
 
 /* Vehicle Card Image Icon */

@@ -58,6 +58,15 @@ export default function MechanicDashboard() {
   const db = getFirestore();
 
   useEffect(() => {
+    console.log('Modal states:', { 
+      isReportingService, 
+      isRequestingParts, 
+      hasSelectedCar: !!selectedCar, 
+      hasSelectedCustomer: !!selectedCustomer 
+    });
+  }, [isReportingService, isRequestingParts, selectedCar, selectedCustomer]);
+
+  useEffect(() => {
     checkUserAccess();
   }, [user]);
 
@@ -298,8 +307,10 @@ export default function MechanicDashboard() {
                           </div>
                           <div className="car-actions">
                             <button
+                              type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
+                                console.log('Write Report clicked for car:', car);
                                 setSelectedCar(car);
                                 setIsReportingService(true);
                               }}
@@ -309,8 +320,10 @@ export default function MechanicDashboard() {
                               Write Report
                             </button>
                             <button
+                              type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
+                                console.log('Request Parts clicked for car:', car);
                                 setSelectedCar(car);
                                 setIsRequestingParts(true);
                               }}
@@ -336,21 +349,21 @@ export default function MechanicDashboard() {
       </div>
 
       {/* Modals */}
-      {isReportingService && selectedCar && selectedCustomer && (
-        <ServiceReportModal
-          car={selectedCar}
-          customer={selectedCustomer}
-          onSubmit={() => {
-            setIsReportingService(false);
-            setSuccessMessage('Service report submitted successfully');
-            setSuccessModalOpen(true);
-          }}
-          onClose={() => {
-            setIsReportingService(false);
-            setSelectedCar(null);
-          }}
-        />
-      )}
+      <ServiceReportModal
+        open={isReportingService && !!selectedCar && !!selectedCustomer}
+        car={selectedCar}
+        customer={selectedCustomer}
+        onSubmit={() => {
+          setIsReportingService(false);
+          setSelectedCar(null);
+          setSuccessMessage('Service report submitted successfully');
+          setSuccessModalOpen(true);
+        }}
+        onClose={() => {
+          setIsReportingService(false);
+          setSelectedCar(null);
+        }}
+      />
 
       {isRequestingParts && selectedCar && selectedCustomer && (
         <CarPartsRequestModal

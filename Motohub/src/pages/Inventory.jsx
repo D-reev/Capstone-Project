@@ -40,22 +40,52 @@ export default function Inventory() {
 
   useEffect(() => {
     fetchParts();
-  }, []);
+  }, [db]); // Add db as dependency
 
   const fetchParts = async () => {
     try {
       const partsCollection = collection(db, 'inventory');
       const snapshot = await getDocs(partsCollection);
-      const partsList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      
+      if (snapshot.empty) {
+        setParts([]);
+        setLowStockAlert([]);
+        return;
+      }
+
+      const partsList = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          name: data.name || 'Unknown',
+          category: data.category || 'Uncategorized',
+          quantity: Number(data.quantity) || 0,
+          price: Number(data.price) || 0,
+          minStock: Number(data.minStock) || 0,
+          status: data.status || 'Available',
+          image: data.image || null,
+          ...data
+        };
+      });
+
       setParts(partsList);
       
-      const lowStock = partsList.filter(part => part.quantity <= part.minStock);
+      // Filter low stock items
+      const lowStock = partsList.filter(part => 
+        part.quantity <= part.minStock && part.quantity >= 0
+      );
       setLowStockAlert(lowStock);
     } catch (error) {
       console.error('Error fetching parts:', error);
+      setParts([]);
+      setLowStockAlert([]);
+      
+      // Optional: Show user-friendly error
+      if (error.code === 'permission-denied') {
+        alert('You do not have permission to view inventory.');
+      } else {
+        alert('Failed to load inventory. Please try again.');
+      }
     }
   };
 
@@ -279,20 +309,20 @@ export default function Inventory() {
                     <span>{selectedPart.minStock}</span>
                     <span className="user-profile-stat-label">Min Stock</span>
                   </div>
-                </div>
 
-                <div className="user-profile-booking-stats">
-                  <div className="stat">
-                    <span>---</span>
-                    <span className="stat-label">Reserved</span>
-                  </div>
-                  <div className="stat">
-                    <span>---</span>
-                    <span className="stat-label">Available</span>
-                  </div>
-                  <div className="stat">
-                    <span>---</span>
-                    <span className="stat-label">Backordered</span>
+                  <div className="user-profile-booking-stats">
+                    <div className="stat">
+                      <span>---</span>
+                      <span className="stat-label">Reserved</span>
+                    </div>
+                    <div className="stat">
+                      <span>---</span>
+                      <span className="stat-label">Available</span>
+                    </div>
+                    <div className="stat">
+                      <span>---</span>
+                      <span className="stat-label">Backordered</span>
+                    </div>
                   </div>
                 </div>
               </div>

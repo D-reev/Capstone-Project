@@ -1,36 +1,27 @@
+import React, { useEffect, useState } from 'react';
 import logo from '../assets/images/logo.jpeg';
-import React, { useState, useEffect } from 'react';
-import { 
-  Car, 
-  Calendar, 
-  Settings, 
-  User,
-  Bell,
+import {
+  Car,
   Menu,
   Wrench,
   FileText,
-  CreditCard,
-  Phone,
-  Mail,
   MessageSquare,
-  Clock,
   CheckCircle,
   AlertTriangle,
-  XCircle,
   History,
-  MapPin,
-  Download
+  Phone,
+  Mail,
+  Download,
 } from 'lucide-react';
+import { ConfigProvider, App, Modal } from 'antd';
+import { getFirestore, collection, getDocs, addDoc } from 'firebase/firestore';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 
 import { useAuth } from '../context/AuthContext';
-import { createCarModel, getUserCars, updateCarModel, addServiceHistory, getCarServiceHistory } from '../utils/auth';
 import UserSidebar from '../components/UserSidebar';
 import ServiceHistoryModal from '../components/modals/ServiceHistoryModal';
 import AddCarModal from '../components/modals/AddCarModal';
-import { getFirestore, collection, getDocs } from 'firebase/firestore';
-import { Modal, message, ConfigProvider, App } from 'antd';
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
 
 import '../css/UserDashboard.css';
 
@@ -38,7 +29,6 @@ function MotohubCustomerDashboardContent() {
   const [customerVehicles, setCustomerVehicles] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
-  const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [vehicles, setVehicles] = useState([]);
   const [isAddingCar, setIsAddingCar] = useState(false);
   const [showVehicleSelectionModal, setShowVehicleSelectionModal] = useState(false);
@@ -52,9 +42,12 @@ function MotohubCustomerDashboardContent() {
 
   const loadUserCars = async () => {
     try {
-      const userCars = await getUserCars(user.uid);
-      setVehicles(userCars);  
-      setCustomerVehicles(userCars);
+      if (!user?.uid) return;
+      const carsRef = collection(db, `users/${user.uid}/cars`);
+      const snap = await getDocs(carsRef);
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setVehicles(list);
+      setCustomerVehicles(list);
     } catch (error) {
       console.error('Error loading vehicles:', error);
       messageApi.error('Failed to load vehicles');
@@ -63,7 +56,15 @@ function MotohubCustomerDashboardContent() {
 
   const handleAddCar = async (formData) => {
     try {
-      await createCarModel(user.uid, formData);
+      if (!user?.uid) {
+        messageApi.error('You must be logged in');
+        return;
+      }
+      const carsRef = collection(db, `users/${user.uid}/cars`);
+      await addDoc(carsRef, {
+        ...formData,
+        createdAt: new Date().toISOString(),
+      });
       setIsAddingCar(false);
       await loadUserCars();
       messageApi.success('Vehicle added successfully!');
@@ -101,58 +102,49 @@ function MotohubCustomerDashboardContent() {
           <p style={{ marginBottom: '1.5rem', color: '#666' }}>
             Get in touch with our support team through any of the following channels:
           </p>
-          
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {/* Email */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <Mail size={20} style={{ color: '#FFC300', flexShrink: 0 }} />
               <div>
-                <div style={{ fontWeight: '600', fontSize: '0.875rem', marginBottom: '0.25rem' }}>
-                  Email
-                </div>
-                <a 
+                <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.25rem' }}>Email</div>
+                <a
                   href="mailto:support@motohub.com"
                   style={{ color: '#3b82f6', textDecoration: 'none', fontSize: '0.875rem' }}
-                  onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
-                  onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
+                  onMouseEnter={(e) => (e.target.style.textDecoration = 'underline')}
+                  onMouseLeave={(e) => (e.target.style.textDecoration = 'none')}
                 >
                   support@motohub.com
                 </a>
               </div>
             </div>
 
-            {/* Phone */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <Phone size={20} style={{ color: '#FFC300', flexShrink: 0 }} />
               <div>
-                <div style={{ fontWeight: '600', fontSize: '0.875rem', marginBottom: '0.25rem' }}>
-                  Phone
-                </div>
-                <a 
+                <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.25rem' }}>Phone</div>
+                <a
                   href="tel:09261184533"
                   style={{ color: '#3b82f6', textDecoration: 'none', fontSize: '0.875rem' }}
-                  onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
-                  onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
+                  onMouseEnter={(e) => (e.target.style.textDecoration = 'underline')}
+                  onMouseLeave={(e) => (e.target.style.textDecoration = 'none')}
                 >
                   0926 118 4533
                 </a>
               </div>
             </div>
 
-            {/* Facebook */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <MessageSquare size={20} style={{ color: '#FFC300', flexShrink: 0 }} />
               <div>
-                <div style={{ fontWeight: '600', fontSize: '0.875rem', marginBottom: '0.25rem' }}>
-                  Facebook
-                </div>
-                <a 
+                <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.25rem' }}>Facebook</div>
+                <a
                   href="https://www.facebook.com/cjkbautocenter"
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ color: '#3b82f6', textDecoration: 'none', fontSize: '0.875rem' }}
-                  onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
-                  onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
+                  onMouseEnter={(e) => (e.target.style.textDecoration = 'underline')}
+                  onMouseLeave={(e) => (e.target.style.textDecoration = 'none')}
                 >
                   CJ KB Auto Center
                 </a>
@@ -160,13 +152,15 @@ function MotohubCustomerDashboardContent() {
             </div>
           </div>
 
-          <div style={{ 
-            marginTop: '1.5rem', 
-            padding: '0.75rem', 
-            backgroundColor: '#fffbf0', 
-            borderLeft: '3px solid #FFC300',
-            borderRadius: '0.25rem'
-          }}>
+          <div
+            style={{
+              marginTop: '1.5rem',
+              padding: '0.75rem',
+              backgroundColor: '#fffbf0',
+              borderLeft: '3px solid #FFC300',
+              borderRadius: '0.25rem',
+            }}
+          >
             <p style={{ fontSize: '0.8125rem', color: '#666', margin: 0 }}>
               Our support team is available Monday to Saturday, 8:00 AM - 6:00 PM.
               We'll get back to you as soon as possible!
@@ -180,8 +174,8 @@ function MotohubCustomerDashboardContent() {
           backgroundColor: '#FFC300',
           borderColor: '#FFC300',
           color: '#000',
-        }
-      }
+        },
+      },
     });
   };
 
@@ -191,47 +185,47 @@ function MotohubCustomerDashboardContent() {
 
       const serviceHistoryRef = collection(db, `users/${user.uid}/cars/${vehicle.id}/serviceHistory`);
       const snapshot = await getDocs(serviceHistoryRef);
-      
+
       const history = snapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       }));
-      
+
       history.sort((a, b) => {
-        const dateA = new Date(b.timestamp || b.date);
-        const dateB = new Date(a.timestamp || a.date);
+        const dateA = new Date(a.timestamp || a.date);
+        const dateB = new Date(b.timestamp || b.date);
         return dateB - dateA;
       });
 
       const doc = new jsPDF();
-      
+
       doc.setFontSize(20);
       doc.setTextColor(255, 195, 0);
       doc.text('MOTOHUB', 105, 15, { align: 'center' });
-      
+
       doc.setFontSize(16);
       doc.setTextColor(0, 0, 0);
       doc.text('Service History Report', 105, 25, { align: 'center' });
-      
+
       doc.setFontSize(12);
       doc.text(`Vehicle: ${vehicle.year} ${vehicle.make} ${vehicle.model}`, 14, 40);
       doc.text(`Plate Number: ${vehicle.plateNumber}`, 14, 47);
       doc.text(`Engine: ${vehicle.engine || 'N/A'}`, 14, 54);
       doc.text(`Transmission: ${vehicle.transmission || 'N/A'}`, 14, 61);
       doc.text(`Current Mileage: ${vehicle.mileage || 'N/A'} km`, 14, 68);
-      
+
       doc.setFontSize(10);
       doc.setTextColor(100, 100, 100);
       doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 75);
-      
+
       if (history.length > 0) {
         const tableData = history.map(service => [
           new Date(service.timestamp || service.date).toLocaleDateString(),
           service.serviceType || 'N/A',
-          service.description || 'N/A',
+          service.description || service.diagnosis || 'N/A',
           service.mechanicName || 'N/A',
           service.cost ? `₱${service.cost}` : 'N/A',
-          service.status || 'N/A'
+          service.status || 'N/A',
         ]);
 
         doc.autoTable({
@@ -242,11 +236,11 @@ function MotohubCustomerDashboardContent() {
           headStyles: {
             fillColor: [255, 195, 0],
             textColor: [0, 0, 0],
-            fontStyle: 'bold'
+            fontStyle: 'bold',
           },
           styles: {
             fontSize: 9,
-            cellPadding: 3
+            cellPadding: 3,
           },
           columnStyles: {
             0: { cellWidth: 25 },
@@ -254,8 +248,8 @@ function MotohubCustomerDashboardContent() {
             2: { cellWidth: 50 },
             3: { cellWidth: 30 },
             4: { cellWidth: 25 },
-            5: { cellWidth: 25 }
-          }
+            5: { cellWidth: 25 },
+          },
         });
       } else {
         doc.setFontSize(12);
@@ -297,14 +291,13 @@ function MotohubCustomerDashboardContent() {
       try {
         const serviceHistoryRef = collection(db, `users/${user.uid}/cars/${vehicle.id}/serviceHistory`);
         const snapshot = await getDocs(serviceHistoryRef);
-        
+
         const history = snapshot.docs.map(doc => ({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
         }));
-        
-        history.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        
+
+        history.sort((a, b) => new Date(b.timestamp || b.date) - new Date(a.timestamp || a.date));
         setServiceHistory(history);
       } catch (error) {
         console.error('Error fetching service history:', error);
@@ -315,9 +308,8 @@ function MotohubCustomerDashboardContent() {
     };
 
     useEffect(() => {
-      if (showHistoryModal) {
-        loadServiceHistory();
-      }
+      if (showHistoryModal) loadServiceHistory();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showHistoryModal]);
 
     const getStatusColor = (status) => {
@@ -350,7 +342,7 @@ function MotohubCustomerDashboardContent() {
               <span>{vehicle.status}</span>
             </div>
           </div>
-          
+
           <div className="vehicle-card-content">
             <div className="vehicle-header">
               <div className="vehicle-info">
@@ -382,7 +374,7 @@ function MotohubCustomerDashboardContent() {
             </div>
 
             <div className="vehicle-actions">
-              <button 
+              <button
                 className="vehicle-action-btn btn-secondary"
                 onClick={() => setShowHistoryModal(true)}
               >
@@ -393,13 +385,12 @@ function MotohubCustomerDashboardContent() {
           </div>
         </div>
 
-        {showHistoryModal && (
-          <ServiceHistoryModal
-            vehicle={vehicle}
-            serviceHistory={serviceHistory}
-            onClose={() => setShowHistoryModal(false)}
-          />
-        )}
+        <ServiceHistoryModal
+          vehicle={vehicle}
+          serviceHistory={serviceHistory}
+          open={showHistoryModal}
+          onClose={() => setShowHistoryModal(false)}
+        />
       </>
     );
   };
@@ -416,7 +407,7 @@ function MotohubCustomerDashboardContent() {
 
   return (
     <div className="customer-dashboard-container">
-      <UserSidebar 
+      <UserSidebar
         sidebarOpen={sidebarOpen}
         user={user}
         className={`customer-sidebar${sidebarOpen ? '' : ' collapsed'}${sidebarMobileOpen ? ' open' : ''}`}
@@ -452,16 +443,15 @@ function MotohubCustomerDashboardContent() {
           </div>
 
           <div className="quick-actions">
-          
-            <QuickActionCard 
-              icon={MessageSquare} 
-              title="Contact Support" 
+            <QuickActionCard
+              icon={MessageSquare}
+              title="Contact Support"
               description="Get help from our team"
               onClick={handleContactSupport}
             />
-            <QuickActionCard 
-              icon={FileText} 
-              title="Service History" 
+            <QuickActionCard
+              icon={FileText}
+              title="Service History"
               description="Download your vehicle History"
               onClick={handleServiceHistoryClick}
             />
@@ -470,10 +460,7 @@ function MotohubCustomerDashboardContent() {
           <div className="vehicles-section">
             <div className="section-header">
               <h3 className="vehicles-section-title">🚗 My Vehicles</h3>
-              <button 
-                className="add-vehicle-btn"
-                onClick={() => setIsAddingCar(true)}
-              >
+              <button className="add-vehicle-btn" onClick={() => setIsAddingCar(true)}>
                 <Car size={16} />
                 Add Vehicle
               </button>
@@ -488,7 +475,7 @@ function MotohubCustomerDashboardContent() {
       </div>
 
       {isAddingCar && (
-        <AddCarModal 
+        <AddCarModal
           onSubmit={handleAddCar}
           onClose={() => setIsAddingCar(false)}
         />
@@ -519,7 +506,7 @@ function MotohubCustomerDashboardContent() {
                   transition: 'all 0.2s',
                   display: 'flex',
                   justifyContent: 'space-between',
-                  alignItems: 'center'
+                  alignItems: 'center',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.borderColor = '#FFC300';
@@ -531,7 +518,7 @@ function MotohubCustomerDashboardContent() {
                 }}
               >
                 <div>
-                  <div style={{ fontWeight: '600', fontSize: '0.95rem', marginBottom: '0.25rem' }}>
+                  <div style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.25rem' }}>
                     {vehicle.year} {vehicle.make} {vehicle.model}
                   </div>
                   <div style={{ fontSize: '0.85rem', color: '#666' }}>
@@ -552,9 +539,7 @@ export default function MotohubCustomerDashboard() {
   return (
     <ConfigProvider
       theme={{
-        token: {
-          colorPrimary: '#FFC300',
-        },
+        token: { colorPrimary: '#FFC300' },
       }}
     >
       <App>

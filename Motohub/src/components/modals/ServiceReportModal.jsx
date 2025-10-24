@@ -1,35 +1,19 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { Modal, Form, Input, DatePicker, Button, message } from 'antd';
 import { getFirestore, collection, addDoc } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
-import './Modal.css';
+import dayjs from 'dayjs';
 
-export default function ServiceReportModal({ car, customer, onSubmit, onClose }) {
+const { TextArea } = Input;
+
+export default function ServiceReportModal({ car, customer, onSubmit, onClose, open }) {
   const { user } = useAuth();
-  const [reportData, setReportData] = useState({
-    diagnosis: '',
-    workPerformed: '',
-    recommendations: '',
-    partsUsed: '',
-    nextServiceDate: '',
-    status: 'completed'
-  });
-  const [error, setError] = useState('');
+  const [form] = Form.useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const db = getFirestore();
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setReportData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (values) => {
     setIsSubmitting(true);
-    setError('');
 
     try {
       if (!user?.uid) {
@@ -41,7 +25,12 @@ export default function ServiceReportModal({ car, customer, onSubmit, onClose })
       }
 
       const reportPayload = {
-        ...reportData,
+        diagnosis: values.diagnosis,
+        workPerformed: values.workPerformed,
+        recommendations: values.recommendations || '',
+        partsUsed: values.partsUsed || '',
+        nextServiceDate: values.nextServiceDate ? values.nextServiceDate.format('YYYY-MM-DD') : '',
+        status: 'completed',
         carId: car.id,
         customerId: customer.id,
         mechanicId: user.uid,
@@ -59,123 +48,143 @@ export default function ServiceReportModal({ car, customer, onSubmit, onClose })
 
       await addDoc(serviceHistoryRef, reportPayload);
       
+      message.success('Service report submitted successfully');
+      
       if (onSubmit) {
         onSubmit(reportPayload);
       }
       
+      form.resetFields();
       onClose();
     } catch (err) {
       console.error('Error submitting report:', err);
-      setError(err.message || 'Failed to submit service report');
+      message.error(err.message || 'Failed to submit service report');
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleCancel = () => {
+    form.resetFields();
+    onClose();
+  };
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Service Report</h2>
-          <button className="close-button" onClick={onClose}>
-            <X size={20} />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="add-part-form">
-          {error && (
-            <div className="error-message" style={{
-              padding: '1rem',
-              marginBottom: '1rem',
-              backgroundColor: '#fee2e2',
-              color: '#991b1b',
-              borderRadius: '0.5rem'
-            }}>
-              {error}
-            </div>
-          )}
-
-          <div className="form-grid">
-            <div className="form-group full-width">
-              <h3>Service Details</h3>
-              <p>Customer: {customer?.displayName || 'Unknown'}</p>
-              <p>Vehicle: {car ? `${car.year} ${car.make} ${car.model}` : 'N/A'}</p>
-              <p>Plate: {car?.plateNumber || 'N/A'}</p>
-            </div>
-
-            <div className="form-group full-width">
-              <label htmlFor="diagnosis">Diagnosis *</label>
-              <textarea
-                id="diagnosis"
-                name="diagnosis"
-                value={reportData.diagnosis}
-                onChange={handleChange}
-                required
-                rows="3"
-                placeholder="Enter detailed diagnosis..."
-              />
-            </div>
-
-            <div className="form-group full-width">
-              <label htmlFor="workPerformed">Work Performed *</label>
-              <textarea
-                id="workPerformed"
-                name="workPerformed"
-                value={reportData.workPerformed}
-                onChange={handleChange}
-                required
-                rows="3"
-                placeholder="Describe the work performed..."
-              />
-            </div>
-
-            <div className="form-group full-width">
-              <label htmlFor="partsUsed">Parts Used</label>
-              <textarea
-                id="partsUsed"
-                name="partsUsed"
-                value={reportData.partsUsed}
-                onChange={handleChange}
-                rows="2"
-                placeholder="List parts used (e.g., Oil filter, Brake pads)..."
-              />
-            </div>
-
-            <div className="form-group full-width">
-              <label htmlFor="recommendations">Recommendations</label>
-              <textarea
-                id="recommendations"
-                name="recommendations"
-                value={reportData.recommendations}
-                onChange={handleChange}
-                rows="2"
-                placeholder="Any recommendations for future maintenance..."
-              />
-            </div>
-
-            <div className="form-group full-width">
-              <label htmlFor="nextServiceDate">Next Service Date</label>
-              <input
-                type="date"
-                id="nextServiceDate"
-                name="nextServiceDate"
-                value={reportData.nextServiceDate}
-                onChange={handleChange}
-                min={new Date().toISOString().split('T')[0]}
-              />
-            </div>
-          </div>
-
-          <div className="modal-footer">
-            <button type="button" className="cancel-btn" onClick={onClose} disabled={isSubmitting}>
-              Cancel
-            </button>
-            <button type="submit" className="submit-btn" disabled={isSubmitting}>
-              {isSubmitting ? 'Submitting...' : 'Submit Report'}
-            </button>
-          </div>
-        </form>
+    <Modal
+      title="Service Report"
+      open={open}
+      onCancel={handleCancel}
+      footer={null}
+      width={600}
+      destroyOnClose
+    >
+      <style>
+        {`
+          .ant-input:focus,
+          .ant-input:hover,
+          .ant-picker:hover .ant-picker-input,
+          .ant-picker-focused .ant-picker-input,
+          .ant-picker:hover,
+          .ant-picker-focused {
+            border-color: #FFC300 !important;
+          }
+          .ant-input:focus,
+          .ant-picker-focused {
+            outline: 0;
+            box-shadow: 0 0 0 2px rgba(255, 195, 0, 0.2) !important;
+            border-color: #FFC300 !important;
+          }
+          .ant-btn-primary:hover,
+          .ant-btn-primary:focus {
+            background-color: #FFD54F !important;
+            border-color: #FFD54F !important;
+          }
+        `}
+      </style>
+      <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#FFF9E6', borderRadius: '0.5rem', border: '2px solid #FFC300' }}>
+        <p style={{ margin: '0.25rem 0' }}><strong>Customer:</strong> {customer?.displayName || 'Unknown'}</p>
+        <p style={{ margin: '0.25rem 0' }}><strong>Vehicle:</strong> {car ? `${car.year} ${car.make} ${car.model}` : 'N/A'}</p>
+        <p style={{ margin: '0.25rem 0' }}><strong>Plate:</strong> {car?.plateNumber || 'N/A'}</p>
       </div>
-    </div>
+
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit}
+        autoComplete="off"
+      >
+        <Form.Item
+          label="Diagnosis"
+          name="diagnosis"
+          rules={[{ required: true, message: 'Please enter the diagnosis' }]}
+        >
+          <TextArea
+            rows={3}
+            placeholder="Enter detailed diagnosis..."
+          />
+        </Form.Item>
+
+        <Form.Item
+          label="Work Performed"
+          name="workPerformed"
+          rules={[{ required: true, message: 'Please describe the work performed' }]}
+        >
+          <TextArea
+            rows={3}
+            placeholder="Describe the work performed..."
+          />
+        </Form.Item>
+
+        <Form.Item
+          label="Parts Used"
+          name="partsUsed"
+        >
+          <TextArea
+            rows={2}
+            placeholder="List parts used (e.g., Oil filter, Brake pads)..."
+          />
+        </Form.Item>
+
+        <Form.Item
+          label="Recommendations"
+          name="recommendations"
+        >
+          <TextArea
+            rows={2}
+            placeholder="Any recommendations for future maintenance..."
+          />
+        </Form.Item>
+
+        <Form.Item
+          label="Next Service Date"
+          name="nextServiceDate"
+        >
+          <DatePicker
+            style={{ width: '100%' }}
+            disabledDate={(current) => current && current < dayjs().startOf('day')}
+            format="YYYY-MM-DD"
+          />
+        </Form.Item>
+
+        <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+          <Button onClick={handleCancel} style={{ marginRight: 8 }} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          <Button 
+            type="primary" 
+            htmlType="submit" 
+            loading={isSubmitting}
+            style={{
+              backgroundColor: '#FFC300',
+              borderColor: '#FFC300',
+              color: '#000',
+              fontWeight: 600
+            }}
+          >
+            Submit Report
+          </Button>
+        </Form.Item>
+      </Form>
+    </Modal>
   );
 }

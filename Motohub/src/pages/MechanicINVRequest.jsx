@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getFirestore, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { getFirestore, collection, query, where, getDocs, orderBy, doc, getDoc } from 'firebase/firestore';
 import { 
   Package, 
   Clock, 
@@ -40,15 +40,51 @@ export default function MechanicINVRequest() {
       const requestsRef = collection(db, 'partRequests');
       const q = query(
         requestsRef,
-        where('mechanicId', '==', user.uid),
-        orderBy('createdAt', 'desc')
+        where('mechanicId', '==', user.uid)
       );
 
       const snapshot = await getDocs(q);
-      const requestsList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      
+      // Fetch car details for each request
+      const requestsList = await Promise.all(
+        snapshot.docs.map(async (docSnap) => {
+          const requestData = docSnap.data();
+          let carDetails = requestData.carDetails || requestData.car || null;
+          
+          // If we have a car ID and customer ID, fetch full car details
+          if (requestData.car?.id && requestData.customerId) {
+            try {
+              const carRef = doc(db, `users/${requestData.customerId}/cars/${requestData.car.id}`);
+              const carDoc = await getDoc(carRef);
+              
+              if (carDoc.exists()) {
+                carDetails = {
+                  ...requestData.car,
+                  ...carDoc.data()
+                };
+              }
+            } catch (error) {
+              console.error('Error fetching car details:', error);
+              // Fall back to the car data stored in the request
+              carDetails = requestData.car;
+            }
+          }
+          
+          return {
+            id: docSnap.id,
+            ...requestData,
+            carDetails: carDetails,
+            customerName: requestData.customer?.name || requestData.customerName || 'Unknown'
+          };
+        })
+      );
+      
+      // Sort by createdAt in descending order (newest first)
+      requestsList.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+        const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+        return dateB - dateA;
+      });
 
       setRequests(requestsList);
     } catch (error) {

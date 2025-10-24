@@ -1,0 +1,87 @@
+.mh-yellow-modal .ant-btn-primary,
+.mh-yellow-btn {
+  background-color: #FFC300 !important;
+  border-color: #FFC300 !important;
+  color: #000 !important;
+}
+.mh-yellow-modal .ant-btn-primary:hover,
+.mh-yellow-modal .ant-btn-primary:focus,
+.mh-yellow-btn:hover,
+.mh-yellow-btn:focus {
+  background-color: #ffcf33 !important;
+  border-color: #ffcf33 !important;
+  color: #000 !important;
+}
+
+.mh-yellow-modal .ant-btn-default,
+.mh-yellow-ghost-btn {
+  border-color: #FFC300 !important;
+  color: #000 !important;
+}
+.mh-yellow-modal .ant-btn-default:hover,
+.mh-yellow-modal .ant-btn-default:focus,
+.mh-yellow-ghost-btn:hover,
+.mh-yellow-ghost-btn:focus {
+  background-color: #fff7cc !important;
+  border-color: #FFC300 !important;
+  color: #000 !important;
+}
+
+/* List item hover effect */
+.mh-part-item {
+  background: #fafafa;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+}
+.mh-part-item:hover {
+  border-color: #FFC300;
+  background-color: #fffbf0;
+}
+
+/* Inputs and controls hover/focus accent */
+.mh-yellow-modal .ant-input:hover,
+.mh-yellow-modal .ant-input:focus,
+.mh-yellow-modal .ant-input-affix-wrapper:hover,
+.mh-yellow-modal .ant-input-affix-wrapper-focused,
+.mh-yellow-modal .ant-input-number:hover,
+.mh-yellow-modal .ant-input-number-focused,
+.mh-yellow-modal .ant-picker:hover,
+.mh-yellow-modal .ant-picker-focused,
+.mh-yellow-modal .ant-select-selector:hover,
+.mh-yellow-modal .ant-select-focused .ant-select-selector {
+  border-color: #FFC300 !important;
+  box-shadow: none !important;
+}
+
+/* Checkbox checked color */
+.mh-yellow-modal .ant-checkbox-checked .ant-checkbox-inner {
+  background-color: #FFC300 !important;
+  border-color: #FFC300 !important;
+}
+.mh-yellow-modal .ant-checkbox:hover .ant-checkbox-inner {
+  border-color: #FFC300 !important;
+}
+
+/* Footer summary row spacing */
+.mh-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+
+/* Yellow-styled success toast */
+.mh-yellow-message {
+  background: #fffbf0 !important;
+  border: 1px solid #FFC300 !important;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+}
+.mh-yellow-message .ant-message-custom-content {
+  color: #333;
+}
+.mh-yellow-message .ant-message-success .anticon {
+  color: #FFC300 !important;
+}

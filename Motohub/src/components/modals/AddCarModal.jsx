@@ -1,35 +1,10 @@
-import React, { useState } from 'react';
-import { X, Info } from 'lucide-react';
+import React from 'react';
+import { Info } from 'lucide-react';
+import { Modal, Form, Input, Select, InputNumber, Tooltip } from 'antd';
 import './Modal.css';
 
 export default function AddCarModal({ onSubmit, onClose }) {
-  const [formData, setFormData] = useState({
-    make: '',
-    model: '',
-    year: '',
-    plateNumber: '',
-    engine: '',
-    transmission: '',
-    mileage: ''
-  });
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit(formData);
-  };
-
-  const handleChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleOverlayClick = (e) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
+  const [form] = Form.useForm();
 
   const fieldInfo = {
     make: "Enter the vehicle manufacturer (e.g., Toyota, Honda, Ford)",
@@ -41,125 +16,95 @@ export default function AddCarModal({ onSubmit, onClose }) {
     mileage: "Enter the current odometer reading in kilometers"
   };
 
+  const handleFinish = (values) => {
+    onSubmit(values);
+  };
+
   return (
-    <div className="modal-overlay" onClick={handleOverlayClick}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Add New Vehicle</h2>
-          <button className="modal-close-btn" onClick={onClose}>
-            <X size={20} />
-          </button>
-        </div>
+    <Modal
+      open={true}
+      title="Add New Vehicle"
+      onCancel={onClose}
+      okText="Add Vehicle"
+      cancelText="Cancel"
+      onOk={() => form.submit()}
+      destroyOnClose
+      maskClosable
+    >
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleFinish}
+        initialValues={{
+          make: '',
+          model: '',
+          year: null,
+          plateNumber: '',
+          engine: '',
+          transmission: '',
+          mileage: null
+        }}
+      >
+        <Form.Item
+          label={<span>MAKE <Tooltip title={fieldInfo.make}><Info size={14} /></Tooltip></span>}
+          name="make"
+          rules={[{ required: true, message: 'Please enter the make' }]}
+        >
+          <Input placeholder="e.g., Toyota" />
+        </Form.Item>
 
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body">
-            <div className="form-grid">
-              <div className="form-group">
-                <label>
-                  MAKE
-                </label>
-                <input
-                  type="text"
-                  value={formData.make}
-                  onChange={(e) => handleChange('make', e.target.value)}
-                  placeholder="e.g., Toyota"
-                  required
-                />
-              </div>
+        <Form.Item
+          label={<span>MODEL <Tooltip title={fieldInfo.model}><Info size={14} /></Tooltip></span>}
+          name="model"
+          rules={[{ required: true, message: 'Please enter the model' }]}
+        >
+          <Input placeholder="e.g., Camry" />
+        </Form.Item>
 
-              <div className="form-group">
-                <label>
-                  MODEL
-                </label>
-                <input
-                  type="text"
-                  value={formData.model}
-                  onChange={(e) => handleChange('model', e.target.value)}
-                  placeholder="e.g., Camry"
-                  required
-                />
-              </div>
+        <Form.Item
+          label={<span>YEAR <Tooltip title={fieldInfo.year}><Info size={14} /></Tooltip></span>}
+          name="year"
+          rules={[{ required: true, message: 'Please enter the year' }]}
+        >
+          <InputNumber style={{ width: '100%' }} min={1886} max={2100} placeholder="e.g., 2020" />
+        </Form.Item>
 
-              <div className="form-group">
-                <label>
-                  YEAR 
-                </label>
-                <input
-                  type="number"
-                  value={formData.year}
-                  onChange={(e) => handleChange('year', e.target.value)}
-                  placeholder="e.g., 2020"
-                  required
-                />
-              </div>
+        <Form.Item
+          label={<span>PLATE NUMBER <Tooltip title={fieldInfo.plateNumber}><Info size={14} /></Tooltip></span>}
+          name="plateNumber"
+          rules={[{ required: true, message: 'Please enter the plate number' }]}
+        >
+          <Input placeholder="e.g., ABC-1234" />
+        </Form.Item>
 
-              <div className="form-group">
-                <label>
-                  PLATE NUMBER 
-                </label>
-                <input
-                  type="text"
-                  value={formData.plateNumber}
-                  onChange={(e) => handleChange('plateNumber', e.target.value)}
-                  placeholder="e.g., ABC-1234"
-                  required
-                />
-              </div>
+        <Form.Item
+          label={<span>ENGINE <Tooltip title={fieldInfo.engine}><Info size={14} /></Tooltip></span>}
+          name="engine"
+          rules={[{ required: true, message: 'Please enter engine details' }]}
+        >
+          <Input placeholder="e.g., 2.0L Turbo" />
+        </Form.Item>
 
-              <div className="form-group">
-                <label>
-                  ENGINE 
-                </label>
-                <input
-                  type="text"
-                  value={formData.engine}
-                  onChange={(e) => handleChange('engine', e.target.value)}
-                  placeholder="e.g., 2.0L Turbo"
-                  required
-                />
-              </div>
+        <Form.Item
+          label={<span>TRANSMISSION <Tooltip title={fieldInfo.transmission}><Info size={14} /></Tooltip></span>}
+          name="transmission"
+          rules={[{ required: true, message: 'Please select transmission' }]}
+        >
+          <Select placeholder="Select Transmission">
+            <Select.Option value="Manual">Manual</Select.Option>
+            <Select.Option value="Automatic">Automatic</Select.Option>
+            <Select.Option value="CVT">CVT</Select.Option>
+          </Select>
+        </Form.Item>
 
-              <div className="form-group">
-                <label>
-                  TRANSMISSION 
-                </label>
-                <select
-                  value={formData.transmission}
-                  onChange={(e) => handleChange('transmission', e.target.value)}
-                  required
-                >
-                  <option value="">Select Transmission</option>
-                  <option value="Manual">Manual</option>
-                  <option value="Automatic">Automatic</option>
-                  <option value="CVT">CVT</option>
-                </select>
-              </div>
-
-              <div className="form-group full-width">
-                <label>
-                  CURRENT MILEAGE (KM) 
-                </label>
-                <input
-                  type="number"
-                  value={formData.mileage}
-                  onChange={(e) => handleChange('mileage', e.target.value)}
-                  placeholder="e.g., 50000"
-                  required
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="modal-footer">
-            <button type="button" className="cancel-btn" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="submit" className="submit-btn">
-              Add Vehicle
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <Form.Item
+          label={<span>CURRENT MILEAGE (KM) <Tooltip title={fieldInfo.mileage}><Info size={14} /></Tooltip></span>}
+          name="mileage"
+          rules={[{ required: true, message: 'Please enter current mileage' }]}
+        >
+          <InputNumber style={{ width: '100%' }} min={0} placeholder="e.g., 50000" />
+        </Form.Item>
+      </Form>
+    </Modal>
   );
 }
