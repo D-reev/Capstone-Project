@@ -7,8 +7,10 @@ import { message } from 'antd';
 import '../css/Login.css';
 import { FcGoogle } from 'react-icons/fc';
 import RegisterModal from '../components/modals/RegisterModal';
+import LoginModal from '../components/modals/LoginModal';
 import SuccessModal from '../components/modals/SuccessModal';
 import ForgotPasswordModal from '../components/modals/ForgotPasswordModal';
+import Threads from '../components/Threads';
 import headerBg from '../assets/images/header.jpg';
 
 function Login() {
@@ -17,6 +19,7 @@ function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
@@ -114,87 +117,60 @@ function Login() {
     <>
       {contextHolder}
       <div className="login-container">
-        <div className="login-box">
-          <div className="header-section" style={{
-            backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url(${headerBg})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            padding: '1.5rem'
-          }}>
-            <h1 className="welcome-text">Welcome to Motohub</h1>
-            <p className="tagline">
-              Assuring that if your car needs to replace a part, you don't have to go anywhere 
-              else because we already have everything you need in stock and ready to install.
-            </p>
+        {/* Animated Background */}
+        <Threads 
+          color={[1.0, 0.764, 0.0]} // Yellow color (#FFC300 in RGB normalized)
+          amplitude={1.5}
+          distance={0.4}
+          enableMouseInteraction={true}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            zIndex: 0,
+            opacity: 0.4
+          }}
+        />
+        
+        <div className="hero-content">
+          <div className="new-background-badge">
+            <span>⚡ New Experience</span>
           </div>
-
-          <h2 className="form-title">Login</h2>
-
-          <form onSubmit={handleEmailLogin} className="form-container">
-            <div className="input-group">
-              <input
-                type="text"
-                placeholder="Username or Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="input-field"
-                disabled={isLoading}
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="input-field"
-                disabled={isLoading}
-              />
-            </div>
-
-            <div className="login-options">
-              <a href="#" className="forgot-password" onClick={handleForgotPasswordClick}>
-                Forgot Password?
-              </a>
-            </div>
-
+          
+          <h1 className="hero-title">Welcome to Motohub</h1>
+          <p className="hero-tagline">
+            Your one-stop automotive solution. We have all the parts you need in stock and ready to install, so you never have to go anywhere else.
+          </p>
+          
+          <div className="hero-buttons">
             <button 
-              type="submit" 
-              className="login-button"
-              disabled={isLoading}
+              type="button"
+              onClick={() => setLoginOpen(true)}
+              className="hero-button primary"
             >
-              {isLoading ? 'Logging in...' : 'Login'}
+              Login
             </button>
-          </form>
-
-          <div className="register-section">
-            <p className="register-text">
-              Don't have an account?{' '}
-              <button 
-                type="button"
-                onClick={(e) => handleRegisterClick(e)}
-                className="register-link"
-                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-              >
-                Register
-              </button>
-            </p>
+            <button 
+              type="button"
+              onClick={handleRegisterClick}
+              className="hero-button secondary"
+            >
+              Register
+            </button>
           </div>
-
-          <div className="social-login-container">
-            <span className="social-login-text">Or login with</span>
-            
-            <div className="social-buttons">
-              <button 
-                type="button"
-                onClick={handleGoogleLogin} 
-                className="google-login-button"
-                disabled={isLoading}
-              >
-                <FcGoogle className="google-icon" />
-                <span>Continue with Google</span>
-              </button>
-            </div>
+          
+          <div className="social-icon-container">
+            <button 
+              type="button"
+              onClick={handleGoogleLogin} 
+              className="google-icon-button"
+              disabled={isLoading}
+              title="Sign in with Google"
+            >
+              <FcGoogle className="google-icon-large" />
+            </button>
           </div>
         </div>
 
@@ -210,6 +186,11 @@ function Login() {
             setSuccessMessage('Registration successful. Please complete your profile in the Profile section and connect a verified Gmail account to enable notifications and password recovery.');
             setSuccessOpen(true);
           }}
+        />
+
+        <LoginModal
+          open={loginOpen}
+          onClose={() => setLoginOpen(false)}
         />
 
         <SuccessModal

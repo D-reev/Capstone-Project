@@ -1,6 +1,6 @@
 import React from 'react';
 import { Info } from 'lucide-react';
-import { Modal, Form, Input, Select, InputNumber, Tooltip } from 'antd';
+import { Modal, Form, Input, Select, InputNumber, Tooltip, Button } from 'antd';
 import './Modal.css';
 
 export default function AddCarModal({ onSubmit, onClose }) {
@@ -25,12 +25,65 @@ export default function AddCarModal({ onSubmit, onClose }) {
       open={true}
       title="Add New Vehicle"
       onCancel={onClose}
-      okText="Add Vehicle"
-      cancelText="Cancel"
-      onOk={() => form.submit()}
-      destroyOnClose
+      footer={null}
+      width={600}
+      destroyOnHidden
       maskClosable
+      centered
     >
+      <style>{`
+        .ant-modal-header {
+          background: linear-gradient(135deg, #FFC300, #FFD54F);
+        }
+        .ant-modal-title {
+          color: #000 !important;
+          font-weight: 700;
+          font-size: 18px;
+        }
+        .ant-input:hover,
+        .ant-input:focus,
+        .ant-input-focused,
+        .ant-input-number:hover,
+        .ant-input-number:focus,
+        .ant-input-number-focused,
+        .ant-select:not(.ant-select-disabled):hover .ant-select-selector,
+        .ant-select-focused:not(.ant-select-disabled) .ant-select-selector {
+          border-color: #FFC300 !important;
+        }
+        .ant-input:focus,
+        .ant-input-focused,
+        .ant-input-number:focus,
+        .ant-input-number-focused,
+        .ant-select-focused .ant-select-selector {
+          border-color: #FFC300 !important;
+          box-shadow: 0 0 0 2px rgba(255, 195, 0, 0.1) !important;
+          outline: none !important;
+        }
+        .addcar-cancel-btn {
+          height: 40px;
+          border-radius: 8px;
+          border-color: #FFC300 !important;
+          color: #FFC300 !important;
+          background: transparent !important;
+        }
+        .addcar-cancel-btn:hover:not(:disabled) {
+          border-color: #FFD54F !important;
+          color: #FFD54F !important;
+          background: transparent !important;
+        }
+        .addcar-submit-btn {
+          height: 40px;
+          border-radius: 8px;
+          background: linear-gradient(135deg, #FFC300, #FFD54F) !important;
+          border-color: #FFC300 !important;
+          color: #000 !important;
+          font-weight: 600;
+        }
+        .addcar-submit-btn:hover:not(:disabled) {
+          background: linear-gradient(135deg, #FFD54F, #FFEB3B) !important;
+          border-color: #FFD54F !important;
+        }
+      `}</style>
       <Form
         form={form}
         layout="vertical"
@@ -104,6 +157,24 @@ export default function AddCarModal({ onSubmit, onClose }) {
         >
           <InputNumber style={{ width: '100%' }} min={0} placeholder="e.g., 50000" />
         </Form.Item>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+          <Button 
+            className="addcar-cancel-btn"
+            onClick={onClose}
+            style={{ height: '40px' }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            type="primary" 
+            className="addcar-submit-btn"
+            onClick={() => form.submit()}
+            style={{ height: '40px' }}
+          >
+            Add Vehicle
+          </Button>
+        </div>
       </Form>
     </Modal>
   );

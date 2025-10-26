@@ -1,32 +1,25 @@
 import React, { useEffect, useState } from 'react';
+import { Modal, Form, Input, Button, Spin, message } from 'antd';
+import { UserOutlined, MailOutlined, PhoneOutlined, HomeOutlined } from '@ant-design/icons';
 import './Modal.css';
 import { getUserProfile, updateUserProfile } from '../../utils/auth';
 
 export default function ProfileModal({ open, onClose, user, onSaved }) {
-  if (!open || !user) return null;
-
+  const [form] = Form.useForm();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [form, setForm] = useState({
-    firstName: '',
-    middleName: '',
-    lastName: '',
-    email: '',
-    phoneNumber: '',
-    address: '',
-    city: '',
-    postalCode: ''
-  });
 
   useEffect(() => {
+    if (!open || !user) return;
+    
     let mounted = true;
     (async () => {
       setLoading(true);
       try {
         const profile = await getUserProfile(user.uid);
         if (!mounted) return;
-        setForm({
+        
+        form.setFieldsValue({
           firstName: profile?.firstName ?? '',
           middleName: profile?.middleName ?? '',
           lastName: profile?.lastName ?? '',
@@ -38,83 +31,229 @@ export default function ProfileModal({ open, onClose, user, onSaved }) {
         });
       } catch (err) {
         console.error('ProfileModal load error', err);
-        setError('Failed to load profile');
+        message.error('Failed to load profile');
       } finally {
         if (mounted) setLoading(false);
       }
     })();
     return () => { mounted = false; };
-  }, [user]);
+  }, [user, open, form]);
 
-  const onChange = (field) => (e) => setForm(f => ({ ...f, [field]: e.target.value }));
-
-  const handleSave = async (e) => {
-    e?.preventDefault();
+  const handleSave = async (values) => {
     setSaving(true);
-    setError('');
     try {
       const updates = {
-        firstName: form.firstName || null,
-        middleName: form.middleName || null,
-        lastName: form.lastName || null,
-        googleEmail: form.email || null,
-        phoneNumber: form.phoneNumber || null,
-        address: form.address || null,
-        city: form.city || null,
-        postalCode: form.postalCode || null,
+        firstName: values.firstName || null,
+        middleName: values.middleName || null,
+        lastName: values.lastName || null,
+        googleEmail: values.email || null,
+        phoneNumber: values.phoneNumber || null,
+        address: values.address || null,
+        city: values.city || null,
+        postalCode: values.postalCode || null,
         updatedAt: new Date().toISOString()
       };
       await updateUserProfile(user.uid, updates);
+      message.success('Profile saved successfully!');
       if (typeof onSaved === 'function') onSaved(updates);
       onClose();
-      alert('Profile saved. Please connect a verified Gmail for notifications if you have not done so.');
     } catch (err) {
       console.error('ProfileModal save error', err);
-      setError(err?.message || 'Failed to save profile');
+      message.error(err?.message || 'Failed to save profile');
     } finally {
       setSaving(false);
     }
   };
 
+  const handleCancel = () => {
+    form.resetFields();
+    onClose();
+  };
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content auth-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>Profile</h3>
-          <button className="close-button" onClick={onClose}>×</button>
-        </div>
+    <Modal
+      open={open}
+      title="Profile"
+      onCancel={handleCancel}
+      footer={null}
+      width={600}
+      centered
+      maskClosable={!saving}
+    >
+      <style>{`
+        .ant-modal-header {
+          background: linear-gradient(135deg, #FFC300, #FFD54F);
+        }
+        .ant-modal-title {
+          color: #000 !important;
+          font-weight: 700;
+          font-size: 18px;
+          text-align: center;
+        }
+        .ant-input:hover,
+        .ant-input:focus,
+        .ant-input-focused {
+          border-color: #FFC300 !important;
+        }
+        .ant-input:focus,
+        .ant-input-focused {
+          box-shadow: 0 0 0 2px rgba(255, 195, 0, 0.1) !important;
+          outline: none !important;
+        }
+        .ant-input-affix-wrapper:hover,
+        .ant-input-affix-wrapper:focus,
+        .ant-input-affix-wrapper-focused {
+          border-color: #FFC300 !important;
+        }
+        .ant-input-affix-wrapper:focus,
+        .ant-input-affix-wrapper-focused {
+          box-shadow: 0 0 0 2px rgba(255, 195, 0, 0.1) !important;
+          outline: none !important;
+        }
+        .profile-cancel-btn {
+          height: 42px;
+          border-radius: 8px;
+          border-color: #FFC300 !important;
+          color: #FFC300 !important;
+          background: transparent !important;
+        }
+        .profile-cancel-btn:hover:not(:disabled) {
+          border-color: #FFD54F !important;
+          color: #FFD54F !important;
+          background: transparent !important;
+        }
+        .profile-submit-btn {
+          height: 42px;
+          border-radius: 8px;
+          background: linear-gradient(135deg, #FFC300, #FFD54F) !important;
+          border-color: #FFC300 !important;
+          color: #000 !important;
+          font-weight: 600;
+        }
+        .profile-submit-btn:hover:not(:disabled) {
+          background: linear-gradient(135deg, #FFD54F, #FFEB3B) !important;
+          border-color: #FFD54F !important;
+        }
+      `}</style>
 
-        <form className="modal-body" onSubmit={handleSave}>
-          {error && <div className="error-message">{error}</div>}
-          {loading ? (
-            <div>Loading…</div>
-          ) : (
-            <>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.5rem' }}>
-                <input className="input-field" placeholder="First name" value={form.firstName} onChange={onChange('firstName')} required />
-                <input className="input-field" placeholder="Last name" value={form.lastName} onChange={onChange('lastName')} required />
-              </div>
+      <Spin spinning={loading}>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSave}
+        >
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <Form.Item
+              label="First Name"
+              name="firstName"
+              rules={[{ required: true, message: 'Please enter your first name' }]}
+            >
+              <Input 
+                prefix={<UserOutlined />} 
+                placeholder="First name" 
+                size="large"
+              />
+            </Form.Item>
 
-              <input className="input-field" placeholder="Middle name (optional)" value={form.middleName} onChange={onChange('middleName')} />
+            <Form.Item
+              label="Last Name"
+              name="lastName"
+              rules={[{ required: true, message: 'Please enter your last name' }]}
+            >
+              <Input 
+                prefix={<UserOutlined />} 
+                placeholder="Last name" 
+                size="large"
+              />
+            </Form.Item>
+          </div>
 
-              <input className="input-field" placeholder="Gmail (connect verified Gmail here)" value={form.email} onChange={onChange('email')} />
+          <Form.Item
+            label="Middle Name (optional)"
+            name="middleName"
+          >
+            <Input 
+              prefix={<UserOutlined />} 
+              placeholder="Middle name" 
+              size="large"
+            />
+          </Form.Item>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.5rem' }}>
-                <input className="input-field" placeholder="Phone number" value={form.phoneNumber} onChange={onChange('phoneNumber')} />
-                <input className="input-field" placeholder="Postal code" value={form.postalCode} onChange={onChange('postalCode')} />
-              </div>
+          <Form.Item
+            label="Gmail (for notifications)"
+            name="email"
+          >
+            <Input 
+              prefix={<MailOutlined />} 
+              placeholder="Connect verified Gmail here" 
+              size="large"
+            />
+          </Form.Item>
 
-              <input className="input-field" placeholder="City" value={form.city} onChange={onChange('city')} />
-              <input className="input-field" placeholder="Address (street, number)" value={form.address} onChange={onChange('address')} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <Form.Item
+              label="Phone Number"
+              name="phoneNumber"
+            >
+              <Input 
+                prefix={<PhoneOutlined />} 
+                placeholder="Phone number" 
+                size="large"
+              />
+            </Form.Item>
 
-              <div className="modal-actions">
-                <button type="submit" className="primary-btn" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
-                <button type="button" className="cancel-btn" onClick={onClose} disabled={saving}>Cancel</button>
-              </div>
-            </>
-          )}
-        </form>
-      </div>
-    </div>
+            <Form.Item
+              label="Postal Code"
+              name="postalCode"
+            >
+              <Input 
+                placeholder="Postal code" 
+                size="large"
+              />
+            </Form.Item>
+          </div>
+
+          <Form.Item
+            label="City"
+            name="city"
+          >
+            <Input 
+              prefix={<HomeOutlined />} 
+              placeholder="City" 
+              size="large"
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Address"
+            name="address"
+          >
+            <Input 
+              prefix={<HomeOutlined />} 
+              placeholder="Address (street, number)" 
+              size="large"
+            />
+          </Form.Item>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+            <Button 
+              className="profile-cancel-btn"
+              onClick={handleCancel}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="primary"
+              className="profile-submit-btn"
+              htmlType="submit"
+              loading={saving}
+            >
+              Save
+            </Button>
+          </div>
+        </Form>
+      </Spin>
+    </Modal>
   );
 }

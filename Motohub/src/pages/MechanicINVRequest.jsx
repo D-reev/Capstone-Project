@@ -167,7 +167,7 @@ export default function MechanicINVRequest() {
   }
 
   return (
-    <div className="dashboard-container mechanic-requests-page">
+    <div className="user-management-bg mechanic-requests-page">
       <MechanicSidebar sidebarOpen={sidebarOpen} />
 
       <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>

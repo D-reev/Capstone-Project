@@ -1,6 +1,9 @@
 import React from 'react';
-import { X, CheckCircle, XCircle } from 'lucide-react';
+import { Modal, Button, Descriptions, Tag, Typography } from 'antd';
+import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import './Modal.css';
+
+const { Title, Text } = Typography;
 
 export default function RequestDetailsModal({
   request,
@@ -10,67 +13,164 @@ export default function RequestDetailsModal({
   onReject,
   processing = false
 }) {
-  if (!open || !request) return null;
+  if (!request) return null;
+
+  if (!request) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content request-modal advanced-modal" onClick={e => e.stopPropagation()} style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.18)', borderRadius: 20, padding: 0, overflow: 'hidden', maxWidth: 520 }}>
-        <div style={{ background: 'var(--header-bg)', padding: '1.5rem 2rem 1rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTopLeftRadius: 20, borderTopRightRadius: 20, boxShadow: '0 2px 8px rgba(35,43,62,0.08)' }}>
-          <h3 style={{ margin: 0, fontWeight: 700, fontSize: '1.35rem', color: '#FBBF24', letterSpacing: '0.04em', textShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>Request Details</h3>
-          <button className="close-button" onClick={onClose} style={{ background: 'rgba(0,0,0,0.04)', borderRadius: 8, border: 'none', padding: 6, cursor: 'pointer' }}>
-            <X size={20} color="#FBBF24" />
-          </button>
-        </div>
+    <Modal
+      open={open}
+      title="Request Details"
+      onCancel={onClose}
+      footer={null}
+      width={650}
+      centered
+    >
+      <style>{`
+        .ant-modal-header {
+          background: linear-gradient(135deg, #FFC300, #FFD54F);
+        }
+        .ant-modal-title {
+          color: #000 !important;
+          font-weight: 700;
+          font-size: 18px;
+          text-align: center;
+        }
+        .reqdetails-close-btn {
+          height: 42px;
+          border-radius: 8px;
+          border-color: #FFC300 !important;
+          color: #FFC300 !important;
+          background: transparent !important;
+        }
+        .reqdetails-close-btn:hover:not(:disabled) {
+          border-color: #FFD54F !important;
+          color: #FFD54F !important;
+          background: transparent !important;
+        }
+        .reqdetails-approve-btn {
+          height: 42px;
+          border-radius: 8px;
+          background: linear-gradient(135deg, #10B981, #059669) !important;
+          border-color: #10B981 !important;
+          color: #fff !important;
+          font-weight: 600;
+        }
+        .reqdetails-approve-btn:hover:not(:disabled) {
+          background: linear-gradient(135deg, #059669, #047857) !important;
+          border-color: #059669 !important;
+        }
+        .reqdetails-reject-btn {
+          height: 42px;
+          border-radius: 8px;
+          background: linear-gradient(135deg, #EF4444, #DC2626) !important;
+          border-color: #EF4444 !important;
+          color: #fff !important;
+          font-weight: 600;
+        }
+        .reqdetails-reject-btn:hover:not(:disabled) {
+          background: linear-gradient(135deg, #DC2626, #B91C1C) !important;
+          border-color: #DC2626 !important;
+        }
+      `}</style>
 
-        <div className="modal-body" style={{ padding: '2rem', fontSize: '1rem', color: '#232b3e', background: '#fff', borderBottomLeftRadius: 20, borderBottomRightRadius: 20, boxShadow: '0 2px 16px rgba(35,43,62,0.10)' }}>
-          <div style={{ marginBottom: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem 2rem' }}>
-            <div style={{ fontWeight: 600, color: '#232b3e' }}>Mechanic:</div>
-            <div style={{ fontWeight: 400 }}>{request.mechanicName || request.requesterName}</div>
-            <div style={{ fontWeight: 600, color: '#232b3e' }}>Customer:</div>
-            <div style={{ fontWeight: 400 }}>{request.customerName || request.customer?.name}</div>
-            <div style={{ fontWeight: 600, color: '#232b3e' }}>Vehicle:</div>
-            <div style={{ fontWeight: 400 }}>{request.car?.make} {request.car?.model}{request.car?.plateNumber ? ` (${request.car.plateNumber})` : ''}</div>
-            <div style={{ fontWeight: 600, color: '#232b3e' }}>Priority:</div>
-            <div style={{ fontWeight: 400 }}>{request.priority || 'normal'}</div>
-            <div style={{ fontWeight: 600, color: '#232b3e' }}>Notes:</div>
-            <div style={{ fontWeight: 400 }}>{request.notes || '—'}</div>
-          </div>
-          <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--header-bg)', fontSize: '1.1rem', letterSpacing: '0.02em' }}>Parts</div>
-          <ul className="parts-list" style={{ margin: '10px 0 1.5rem 0', padding: 0, listStyle: 'none' }}>
-            {Array.isArray(request.parts) && request.parts.length > 0 ? (
-              request.parts.map((p, i) => (
-                <li key={i} style={{ background: '#F9FAFB', borderRadius: 8, marginBottom: 6, padding: '0.75rem 1rem', boxShadow: '0 1px 4px rgba(35,43,62,0.06)', borderLeft: '4px solid var(--header-bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 500 }}>{p.name}</span>
-                  <span style={{ color: '#374151', fontSize: '0.98rem' }}>Qty: {p.quantity}</span>
-                  <span style={{ color: '#9CA3AF', fontSize: '0.98rem' }}>Price: {p.price ?? '—'}</span>
-                </li>
-              ))
-            ) : (
-              <li style={{ color: '#9CA3AF', fontStyle: 'italic' }}>No parts listed</li>
-            )}
-          </ul>
-          <div style={{ fontWeight: 600, marginBottom: 8, color: '#232b3e' }}>Requested:</div>
-          <div style={{ marginBottom: '2rem', color: '#232b3e', fontWeight: 400 }}>{request.createdAt ? (request.createdAt.toDate ? request.createdAt.toDate().toLocaleString() : new Date(request.createdAt).toLocaleString()) : '—'}</div>
-        </div>
+      <Descriptions column={1} bordered size="small" style={{ marginBottom: '16px' }}>
+        <Descriptions.Item label="Mechanic">
+          {request.mechanicName || request.requesterName || 'N/A'}
+        </Descriptions.Item>
+        <Descriptions.Item label="Customer">
+          {request.customerName || request.customer?.name || 'N/A'}
+        </Descriptions.Item>
+        <Descriptions.Item label="Vehicle">
+          {request.car?.make} {request.car?.model}
+          {request.car?.plateNumber ? ` (${request.car.plateNumber})` : ''}
+        </Descriptions.Item>
+        <Descriptions.Item label="Priority">
+          <Tag color={request.priority === 'urgent' ? 'red' : 'default'}>
+            {request.priority || 'normal'}
+          </Tag>
+        </Descriptions.Item>
+        <Descriptions.Item label="Notes">
+          {request.notes || '—'}
+        </Descriptions.Item>
+        <Descriptions.Item label="Requested">
+          {request.createdAt ? (
+            request.createdAt.toDate ? 
+              request.createdAt.toDate().toLocaleString() : 
+              new Date(request.createdAt).toLocaleString()
+          ) : '—'}
+        </Descriptions.Item>
+      </Descriptions>
 
-        <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, padding: '1.25rem 2rem', background: '#F9FAFB', borderTop: '1px solid #F3F4F6' }}>
-          {request.status === 'pending' ? (
-            <>
-              <button className="approve-btn" onClick={() => onApprove(request.id)} disabled={processing} style={{ background: 'var(--header-bg)', color: '#fff', borderRadius: 8, border: 'none', padding: '0.75rem 1.5rem', fontWeight: 600, fontSize: '1rem', cursor: processing ? 'not-allowed' : 'pointer', boxShadow: '0 1px 4px rgba(35,43,62,0.08)', display: 'flex', alignItems: 'center', gap: 8, transition: 'background 0.2s' }}>
-                <CheckCircle size={18} /> Approve
-              </button>
-              <button className="reject-btn" onClick={() => onReject(request.id)} disabled={processing} style={{ background: '#ef4444', color: '#fff', borderRadius: 8, border: 'none', padding: '0.75rem 1.5rem', fontWeight: 600, fontSize: '1rem', cursor: processing ? 'not-allowed' : 'pointer', boxShadow: '0 1px 4px rgba(239,68,68,0.08)', display: 'flex', alignItems: 'center', gap: 8, transition: 'background 0.2s' }}>
-                <XCircle size={18} /> Reject
-              </button>
-              <button className="cancel-btn" onClick={onClose} disabled={processing} style={{ background: '#F3F4F6', color: '#232b3e', borderRadius: 8, border: 'none', padding: '0.75rem 1.5rem', fontWeight: 600, fontSize: '1rem', cursor: processing ? 'not-allowed' : 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', transition: 'background 0.2s' }}>
-                Cancel
-              </button>
-            </>
-          ) : (
-            <button className="close-btn" onClick={onClose} style={{ background: '#F3F4F6', color: '#232b3e', borderRadius: 8, border: 'none', padding: '0.75rem 1.5rem', fontWeight: 600, fontSize: '1rem', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', transition: 'background 0.2s' }}>Close</button>
-          )}
+      <Title level={5} style={{ marginTop: 16, marginBottom: 12 }}>Parts Requested</Title>
+      {Array.isArray(request.parts) && request.parts.length > 0 ? (
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: 8,
+          marginBottom: 24
+        }}>
+          {request.parts.map((part, index) => (
+            <div key={index} style={{ 
+              background: '#f9fafb', 
+              borderRadius: 8, 
+              padding: '12px 16px',
+              display: 'flex', 
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderLeft: '4px solid #FFC300'
+            }}>
+              <Text strong>{part.name}</Text>
+              <div style={{ display: 'flex', gap: 16 }}>
+                <Text type="secondary">Qty: {part.quantity}</Text>
+                {part.price && <Text type="secondary">₱{part.price}</Text>}
+              </div>
+            </div>
+          ))}
         </div>
+      ) : (
+        <Text type="secondary" style={{ display: 'block', marginBottom: 24, fontStyle: 'italic' }}>
+          No parts listed
+        </Text>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+        {request.status === 'pending' ? (
+          <>
+            <Button 
+              className="reqdetails-approve-btn"
+              icon={<CheckCircleOutlined />}
+              onClick={() => onApprove(request.id)}
+              disabled={processing}
+              loading={processing}
+            >
+              Approve
+            </Button>
+            <Button 
+              className="reqdetails-reject-btn"
+              icon={<CloseCircleOutlined />}
+              onClick={() => onReject(request.id)}
+              disabled={processing}
+            >
+              Reject
+            </Button>
+            <Button 
+              className="reqdetails-close-btn"
+              onClick={onClose}
+              disabled={processing}
+            >
+              Cancel
+            </Button>
+          </>
+        ) : (
+          <Button 
+            className="reqdetails-close-btn"
+            onClick={onClose}
+          >
+            Close
+          </Button>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }

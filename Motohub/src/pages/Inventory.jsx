@@ -1,91 +1,51 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Wrench, 
-  Package, 
-  ShoppingCart, 
-  Plus,
-  Search,
-  Edit,
-  Trash2,
-  AlertCircle,
-  Menu,
-  Bell,
-  MessageSquare,
-  User
-} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, FilterOutlined, TagOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { Table, Tag, Input, Button, Space, Avatar, ConfigProvider, Select, Modal, message } from 'antd';
 import AdminSidebar from '../components/AdminSidebar';
 import AddPartModal from '../components/modals/AddPartModal';
 import EditPartModal from '../components/modals/EditPartModal';
 import TopBar from '../components/TopBar';
 import ProfileModal from '../components/modals/ProfileModal';
+import Loading from '../components/Loading';
 import '../css/Inventory.css';
+
+const { Option } = Select;
 
 export default function Inventory() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
   const [parts, setParts] = useState([]);
-  const [selectedPart, setSelectedPart] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editPart, setEditPart] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [lowStockAlert, setLowStockAlert] = useState([]);
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [expandedRowKeys, setExpandedRowKeys] = useState([]);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [partToDelete, setPartToDelete] = useState(null);
   const { user } = useAuth();
   const db = getFirestore();
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
 
   useEffect(() => {
     fetchParts();
-  }, [db]); // Add db as dependency
+  }, []);
 
   const fetchParts = async () => {
     try {
       const partsCollection = collection(db, 'inventory');
       const snapshot = await getDocs(partsCollection);
-      
-      if (snapshot.empty) {
-        setParts([]);
-        setLowStockAlert([]);
-        return;
-      }
-
-      const partsList = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          name: data.name || 'Unknown',
-          category: data.category || 'Uncategorized',
-          quantity: Number(data.quantity) || 0,
-          price: Number(data.price) || 0,
-          minStock: Number(data.minStock) || 0,
-          status: data.status || 'Available',
-          image: data.image || null,
-          ...data
-        };
-      });
-
+      const partsList = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
       setParts(partsList);
-      
-      // Filter low stock items
-      const lowStock = partsList.filter(part => 
-        part.quantity <= part.minStock && part.quantity >= 0
-      );
-      setLowStockAlert(lowStock);
+      setLoading(false);
     } catch (error) {
       console.error('Error fetching parts:', error);
-      setParts([]);
-      setLowStockAlert([]);
-      
-      // Optional: Show user-friendly error
-      if (error.code === 'permission-denied') {
-        alert('You do not have permission to view inventory.');
-      } else {
-        alert('Failed to load inventory. Please try again.');
-      }
+      setLoading(false);
     }
   };
 
@@ -112,243 +72,462 @@ export default function Inventory() {
         updatedAt: new Date().toISOString()
       });
       fetchParts();
-      setSelectedPart(null);
       setEditPart(null);
       setIsEditModalOpen(false);
+      setExpandedRowKeys([]);
     } catch (error) {
       console.error('Error updating part:', error);
     }
   };
 
   const handleDeletePart = async (id) => {
-    if (window.confirm('Are you sure you want to delete this part?')) {
-      try {
-        await deleteDoc(doc(db, 'inventory', id));
-        fetchParts();
-      } catch (error) {
-        console.error('Error deleting part:', error);
+    setPartToDelete(id);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!partToDelete) return;
+    
+    try {
+      await deleteDoc(doc(db, 'inventory', partToDelete));
+      
+      // Update local state
+      setParts(prevParts => prevParts.filter(part => part.id !== partToDelete));
+      
+      if (expandedRowKeys.includes(partToDelete)) {
+        setExpandedRowKeys([]);
       }
+      
+      message.success('Part deleted successfully!');
+      setDeleteModalOpen(false);
+      setPartToDelete(null);
+    } catch (error) {
+      console.error('Error deleting part:', error);
+      message.error('Failed to delete part');
     }
   };
 
-  const filteredParts = parts.filter(part => 
-    part.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    part.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const cancelDelete = () => {
+    setDeleteModalOpen(false);
+    setPartToDelete(null);
+  };
 
-  const totalPages = Math.max(1, Math.ceil(filteredParts.length / pageSize));
-  
-  useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(1);
-  }, [filteredParts.length, totalPages, currentPage]);
+  const handleEditFromDeleteModal = () => {
+    const part = parts.find(p => p.id === partToDelete);
+    if (part) {
+      setEditPart(part);
+      setIsEditModalOpen(true);
+      setDeleteModalOpen(false);
+      setPartToDelete(null);
+    }
+  };
 
-  const paginatedParts = filteredParts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const filteredParts = parts.filter(part => {
+    const matchesSearch = part.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         part.category?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || part.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
 
-  return (
-    <div className="dashboard-container inventory-page">
-      <AdminSidebar sidebarOpen={sidebarOpen} user={user} />
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
 
-      <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
-        <TopBar
-          title="Inventory"
-          onToggle={() => setSidebarOpen(!sidebarOpen)}
-          notificationsCount={0}
-          onProfileClick={() => setProfileOpen(true)}
-        />
+  const getPartInitials = (name) => {
+    if (!name) return '?';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
 
-        <div className={`user-management-container ${!selectedPart ? 'single-column' : ''}`}>
-          <div className="user-table-section">
-            <div className="user-table-header">
-              <h1 className="user-table-title">Inventory</h1>
-              <div className="user-table-actions">
-                <div className="user-table-search">
-                  <Search size={18} />
-                  <input
-                    type="text"
-                    placeholder="Search parts..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                <button className="user-table-add-btn" onClick={() => setIsAddModalOpen(true)}>
-                  <Plus size={16} />
-                  Add Part
-                </button>
-              </div>
-            </div>
+  const handleRowExpand = (expanded, record) => {
+    const keys = expanded ? [record.id] : [];
+    setExpandedRowKeys(keys);
+  };
 
-            <div className="user-table-container">
-              <table className="user-table">
-                <thead>
-                  <tr>
-                    <th>Part Name</th>
-                    <th>Category</th>
-                    <th>Stock</th>
-                    <th>Price</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedParts.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                        {searchTerm ? 'No parts found matching your search.' : 'No parts available.'}
-                      </td>
-                    </tr>
-                  ) : (
-                    paginatedParts.map(part => (
-                      <tr 
-                        key={part.id}
-                        className={selectedPart?.id === part.id ? 'selected' : ''}
-                        onClick={(e) => {
-                          if (e.target.closest('.user-table-action-btn')) return;
-                          setSelectedPart(prev => (prev && prev.id === part.id) ? null : part);
-                        }}
-                      >
-                        <td>
-                          <div className="user-table-user">
-                            <div className="user-table-avatar">
-                              {part.image ? (
-                                <img src={part.image} alt={part.name} />
-                              ) : (
-                                part.name.slice(0,2).toUpperCase()
-                              )}
-                            </div>
-                            <span className="user-table-name">{part.name}</span>
-                          </div>
-                        </td>
-                        <td>{part.category}</td>
-                        <td className={part.quantity <= part.minStock ? 'low-stock' : ''}>{part.quantity}</td>
-                        <td>₱{part.price}</td>
-                        <td>
-                          <span className={`role-badge ${part.status?.toLowerCase()}`}>{part.status}</span>
-                        </td>
-                        <td className="user-table-actions-col">
-                          <button 
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              setSelectedPart(part); 
-                              setEditPart(part); 
-                              setIsEditModalOpen(true); 
-                            }} 
-                            className="user-table-action-btn edit" 
-                            title="Edit part"
-                          >
-                            <Edit size={16} />
-                          </button>
-                          <button 
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              handleDeletePart(part.id); 
-                            }} 
-                            className="user-table-action-btn delete" 
-                            title="Delete part"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+  const handleRowClick = (record) => {
+    const isExpanded = expandedRowKeys.includes(record.id);
+    setExpandedRowKeys(isExpanded ? [] : [record.id]);
+  };
 
-            {totalPages > 1 && (
-              <div className="user-table-pagination">
-                {Array.from({ length: totalPages }).map((_, i) => (
-                  <button
-                    key={i}
-                    className={`user-table-pagination-btn ${currentPage === i + 1 ? 'active' : ''}`}
-                    onClick={() => setCurrentPage(i + 1)}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-              </div>
-            )}
+  // Get unique categories for filter
+  const categories = ['all', ...new Set(parts.map(part => part.category).filter(Boolean))];
+
+  // Expanded row render
+  const expandedRowRender = (record) => {
+    return (
+      <div className="inventory-expanded-info">
+        <div className="inventory-expanded-grid">
+          <div className="inventory-expanded-item">
+            <span className="inventory-expanded-label">Part ID</span>
+            <span className="inventory-expanded-value">{record.id || 'N/A'}</span>
           </div>
-
-          {selectedPart && (
-            <div className={`user-profile-panel ${selectedPart ? 'active' : ''}`}>
-              <div className="user-profile-header">
-                <div className="user-profile-avatar">
-                  {selectedPart.image ? (
-                    <img src={selectedPart.image} alt={selectedPart.name} />
-                  ) : (
-                    selectedPart.name.slice(0,2).toUpperCase()
-                  )}
-                </div>
-                <h3 className="user-profile-name">{selectedPart.name}</h3>
-                <p className="user-profile-email">{selectedPart.category}</p>
-              </div>
-
-              <div className="user-profile-content">
-                <div className="user-profile-info">
-                  <div className="user-profile-info-row">
-                    <span className="icon">📦</span>
-                    <span>Stock: {selectedPart.quantity}</span>
-                  </div>
-                  <div className="user-profile-info-row">
-                    <span className="icon">₱</span>
-                    <span>Price: ₱{selectedPart.price}</span>
-                  </div>
-                  <div className="user-profile-info-row">
-                    <span className="icon">⚙️</span>
-                    <span>Min Stock: {selectedPart.minStock}</span>
-                  </div>
-                </div>
-
-                <div className="user-profile-quick-stats">
-                  <div className="user-profile-stat">
-                    <span>{selectedPart.quantity}</span>
-                    <span className="user-profile-stat-label">In Stock</span>
-                  </div>
-                  <div className="user-profile-stat">
-                    <span>{selectedPart.minStock}</span>
-                    <span className="user-profile-stat-label">Min Stock</span>
-                  </div>
-
-                  <div className="user-profile-booking-stats">
-                    <div className="stat">
-                      <span>---</span>
-                      <span className="stat-label">Reserved</span>
-                    </div>
-                    <div className="stat">
-                      <span>---</span>
-                      <span className="stat-label">Available</span>
-                    </div>
-                    <div className="stat">
-                      <span>---</span>
-                      <span className="stat-label">Backordered</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          <div className="inventory-expanded-item">
+            <span className="inventory-expanded-label">Min Stock Level</span>
+            <span className="inventory-expanded-value">{record.minStock || '0'}</span>
+          </div>
+          <div className="inventory-expanded-item">
+            <span className="inventory-expanded-label">Supplier</span>
+            <span className="inventory-expanded-value">{record.supplier || 'Not specified'}</span>
+          </div>
+          <div className="inventory-expanded-item">
+            <span className="inventory-expanded-label">Last Updated</span>
+            <span className="inventory-expanded-value">{formatDate(record.updatedAt)}</span>
+          </div>
+        </div>
+        <div className="inventory-expanded-actions">
+          <Button
+            type="primary"
+            icon={<EditOutlined />}
+            onClick={() => {
+              setEditPart(record);
+              setIsEditModalOpen(true);
+            }}
+            style={{
+              background: '#FBBF24',
+              borderColor: '#FBBF24',
+              color: '#111827',
+              fontWeight: 600,
+            }}
+          >
+            Edit Part
+          </Button>
+          <Button
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleDeletePart(record.id)}
+          >
+            Delete Part
+          </Button>
         </div>
       </div>
+    );
+  };
 
-      <AddPartModal 
-        onClose={() => setIsAddModalOpen(false)}
-        onAdd={handleAddPart}
-        open={isAddModalOpen}
-      />
+  // Table columns configuration
+  const columns = [
+    {
+      title: 'ID',
+      dataIndex: 'id',
+      key: 'id',
+      width: 100,
+      render: (text) => (
+        <span style={{ fontFamily: 'monospace', color: '#6B7280', fontSize: '13px' }}>
+          {text?.substring(0, 8) || 'N/A'}
+        </span>
+      ),
+    },
+    {
+      title: 'Part Name',
+      dataIndex: 'name',
+      key: 'name',
+      render: (text, record) => (
+        <Space>
+          <Avatar 
+            size={40}
+            style={{ 
+              backgroundColor: '#FEF3C7', 
+              color: '#D97706',
+              fontWeight: 600,
+              border: '2px solid #FBBF24'
+            }}
+            src={record.image}
+          >
+            {getPartInitials(text)}
+          </Avatar>
+          <span style={{ fontWeight: 500, color: '#111827' }}>
+            {text || 'Unknown Part'}
+          </span>
+        </Space>
+      ),
+    },
+    {
+      title: 'Category',
+      dataIndex: 'category',
+      key: 'category',
+      render: (text) => (
+        <span style={{ color: '#6B7280' }}>{text || 'Uncategorized'}</span>
+      ),
+    },
+    {
+      title: 'Stock',
+      dataIndex: 'quantity',
+      key: 'quantity',
+      width: 100,
+      render: (quantity, record) => {
+        const isLowStock = quantity <= (record.minStock || 0);
+        return (
+          <span style={{ 
+            color: isLowStock ? '#DC2626' : '#059669',
+            fontWeight: 600,
+            fontSize: '14px'
+          }}>
+            {quantity || 0}
+          </span>
+        );
+      },
+    },
+    {
+      title: 'Price',
+      dataIndex: 'price',
+      key: 'price',
+      width: 120,
+      render: (price) => (
+        <span style={{ fontWeight: 500, color: '#111827' }}>
+          ₱{price?.toFixed(2) || '0.00'}
+        </span>
+      ),
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      width: 120,
+      render: (status) => {
+        const statusConfig = {
+          Available: { color: '#059669', bg: '#D1FAE5', label: 'Available' },
+          Unavailable: { color: '#DC2626', bg: '#FEE2E2', label: 'Unavailable' },
+          'Low Stock': { color: '#D97706', bg: '#FEF3C7', label: 'Low Stock' },
+        };
+        const config = statusConfig[status] || statusConfig.Available;
+        return (
+          <Tag 
+            style={{ 
+              backgroundColor: config.bg,
+              color: config.color,
+              border: 'none',
+              borderRadius: '6px',
+              padding: '4px 12px',
+              fontWeight: 500,
+              fontSize: '13px'
+            }}
+          >
+            {config.label}
+          </Tag>
+        );
+      },
+    },
+  ];
 
-      <EditPartModal 
-        part={editPart}
-        onClose={() => {
-          setIsEditModalOpen(false);
-          setEditPart(null);
-          setSelectedPart(null);
-        }}
-        onUpdate={handleUpdatePart}
-        open={isEditModalOpen}
-      />
+  if (loading) {
+    return <Loading text="Loading inventory..." />;
+  }
 
-      <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} user={user} />
-    </div>
+  return (
+    <ConfigProvider
+      theme={{
+        token: {
+          colorPrimary: '#FBBF24',
+          colorLink: '#FBBF24',
+          colorLinkHover: '#D97706',
+          borderRadius: 8,
+        },
+        components: {
+          Table: {
+            headerBg: '#1F2937',
+            headerColor: '#FFFFFF',
+            rowHoverBg: '#F8FAFC',
+          },
+        },
+      }}
+    >
+      <div className="inventory-page">
+        <AdminSidebar sidebarOpen={sidebarOpen} user={user} />
+
+        <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
+          <TopBar
+            title="Inventory Management"
+            onToggle={() => setSidebarOpen(!sidebarOpen)}
+            notificationsCount={0}
+            onProfileClick={() => setProfileOpen(true)}
+          />
+
+          <div className="inventory-container">
+            <div className="inventory-table-card">
+              <div className="inventory-table-header">
+                <div className="inventory-table-header-left">
+                  <h1 className="inventory-table-title">Parts Inventory</h1>
+                  <span className="inventory-table-subtitle">
+                    Showing {filteredParts.length} of {parts.length} parts
+                  </span>
+                </div>
+                <div className="inventory-table-actions">
+                  <Select
+                    value={categoryFilter}
+                    onChange={(value) => setCategoryFilter(value)}
+                    style={{ 
+                      width: 180,
+                      borderRadius: 8,
+                    }}
+                    size="large"
+                    suffixIcon={<FilterOutlined />}
+                  >
+                    <Option value="all">All Categories</Option>
+                    {categories.filter(cat => cat !== 'all').map(category => (
+                      <Option key={category} value={category}>{category}</Option>
+                    ))}
+                  </Select>
+                  <Input
+                    placeholder="Search parts..."
+                    prefix={<SearchOutlined style={{ color: '#9CA3AF' }} />}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    style={{ 
+                      width: 280,
+                      borderRadius: 8,
+                    }}
+                    size="large"
+                  />
+                  <Button 
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    size="large"
+                    onClick={() => setIsAddModalOpen(true)}
+                    style={{
+                      background: '#FBBF24',
+                      borderColor: '#FBBF24',
+                      color: '#111827',
+                      fontWeight: 600,
+                      borderRadius: 8,
+                    }}
+                  >
+                    Add Part
+                  </Button>
+                </div>
+              </div>
+
+              <div className="inventory-table-container">
+                <Table
+                  columns={columns}
+                  dataSource={filteredParts}
+                  rowKey="id"
+                  expandable={{
+                    expandedRowRender,
+                    expandedRowKeys,
+                    onExpand: handleRowExpand,
+                    expandIcon: () => null,
+                  }}
+                  onRow={(record) => ({
+                    onClick: () => handleRowClick(record),
+                    style: { cursor: 'pointer' }
+                  })}
+                  pagination={{
+                    pageSize: 10,
+                    showSizeChanger: false,
+                    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} parts`,
+                    style: { marginTop: 16, marginBottom: 16 }
+                  }}
+                  locale={{
+                    emptyText: searchTerm ? 'No parts found matching your search.' : 'No parts available in inventory.'
+                  }}
+                  className="inventory-data-table"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Modals */}
+        <AddPartModal 
+          onClose={() => setIsAddModalOpen(false)}
+          onAdd={handleAddPart}
+          open={isAddModalOpen}
+        />
+
+        <EditPartModal 
+          part={editPart}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setEditPart(null);
+          }}
+          onUpdate={handleUpdatePart}
+          open={isEditModalOpen}
+        />
+
+        <ProfileModal 
+          open={profileOpen} 
+          onClose={() => setProfileOpen(false)} 
+          user={user} 
+        />
+
+        {/* Delete Confirmation Modal */}
+        <Modal
+          title={
+            <Space>
+              <ExclamationCircleOutlined style={{ color: '#DC2626', fontSize: '24px' }} />
+              <span>Delete Part</span>
+            </Space>
+          }
+          open={deleteModalOpen}
+          onCancel={cancelDelete}
+          width={500}
+          footer={[
+            <Button
+              key="cancel"
+              size="large"
+              onClick={cancelDelete}
+            >
+              Cancel
+            </Button>,
+            <Button
+              key="edit"
+              size="large"
+              icon={<EditOutlined />}
+              onClick={handleEditFromDeleteModal}
+              style={{
+                background: '#FBBF24',
+                borderColor: '#FBBF24',
+                color: '#111827',
+                fontWeight: 600,
+              }}
+            >
+              Edit Instead
+            </Button>,
+            <Button
+              key="delete"
+              danger
+              size="large"
+              onClick={confirmDelete}
+              icon={<DeleteOutlined />}
+            >
+              Delete
+            </Button>,
+          ]}
+        >
+          <div style={{ padding: '1rem 0' }}>
+            <p style={{ fontSize: '1rem', color: '#374151', marginBottom: '1rem' }}>
+              Are you sure you want to delete this part from the inventory?
+            </p>
+            {partToDelete && parts.find(p => p.id === partToDelete) && (
+              <div style={{
+                padding: '1rem',
+                background: '#FEF3C7',
+                borderRadius: '8px',
+                borderLeft: '4px solid #FBBF24'
+              }}>
+                <p style={{ margin: 0, fontWeight: 600, color: '#92400E' }}>
+                  {parts.find(p => p.id === partToDelete)?.name}
+                </p>
+                <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem', color: '#6B7280' }}>
+                  Category: {parts.find(p => p.id === partToDelete)?.category || 'N/A'}
+                </p>
+              </div>
+            )}
+            <p style={{ 
+              fontSize: '0.875rem', 
+              color: '#DC2626', 
+              marginTop: '1rem',
+              marginBottom: 0,
+              fontWeight: 500
+            }}>
+              ⚠️ This action cannot be undone.
+            </p>
+          </div>
+        </Modal>
+      </div>
+    </ConfigProvider>
   );
 }

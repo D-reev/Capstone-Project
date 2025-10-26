@@ -1,45 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import Loading from '../components/Loading';
-import { 
-  collection, 
-  getDocs, 
-  updateDoc,
-  doc, 
-  getFirestore,
-  query,
-  orderBy,
-  addDoc,
-  getDoc,
-  deleteDoc,
-  runTransaction
-} from 'firebase/firestore';
-import { CheckCircle, XCircle, Clock } from 'lucide-react';
+import { getFirestore, collection, getDocs, updateDoc, doc, query, orderBy, getDoc, runTransaction } from 'firebase/firestore';
+import { SearchOutlined, FilterOutlined, InfoCircleOutlined, MoreOutlined, PlusOutlined } from '@ant-design/icons';
+import { Input, Button, Avatar, Dropdown, Menu, Modal, message, App, ConfigProvider } from 'antd';
 import AdminSidebar from '../components/AdminSidebar';
-import RequestDetailsModal from '../components/modals/RequestDetailsModal';
 import TopBar from '../components/TopBar';
 import ProfileModal from '../components/modals/ProfileModal';
+import Loading from '../components/Loading';
+import { logHelpers } from '../utils/logger';
 import '../css/AdminRequest.css';
 
-export default function AdminRequests() {
+function AdminRequestsContent() {
+  const { message: messageApi } = App.useApp();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('overview');
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const { user } = useAuth();
   const db = getFirestore();
-
-  const [selectedRequest, setSelectedRequest] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [processing, setProcessing] = useState(false);
-  const [activeTab, setActiveTab] = useState('pending');
-
-  const formatDate = (ts) => {
-    if (!ts) return '—';
-    if (ts?.toDate) return ts.toDate().toLocaleString();
-    try { return new Date(ts).toLocaleString(); } catch { return String(ts); }
-  };
 
   useEffect(() => {
     fetchRequests();
@@ -49,284 +31,279 @@ export default function AdminRequests() {
     try {
       setLoading(true);
       const requestsRef = collection(db, 'partRequests');
-      const q = query(requestsRef, orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
+      const snapshot = await getDocs(requestsRef);
+      
+      // Fetch mechanic names for each request
+      const requestsList = await Promise.all(
+        snapshot.docs.map(async (docSnap) => {
+          const requestData = docSnap.data();
+          let mechanicName = requestData.mechanicName || 'Unknown Mechanic';
+          let customerName = requestData.customerName || 'Unknown Customer';
+          
+          // Try to fetch mechanic details if we have mechanicId
+          if (requestData.mechanicId && !requestData.mechanicName) {
+            try {
+              const mechanicRef = doc(db, 'users', requestData.mechanicId);
+              const mechanicDoc = await getDoc(mechanicRef);
+              if (mechanicDoc.exists()) {
+                mechanicName = mechanicDoc.data().displayName || mechanicDoc.data().email || 'Unknown Mechanic';
+              }
+            } catch (error) {
+              console.error('Error fetching mechanic:', error);
+            }
+          }
+          
+          // Try to fetch customer details if we have customerId
+          if (requestData.customerId && !requestData.customerName) {
+            try {
+              const customerRef = doc(db, 'users', requestData.customerId);
+              const customerDoc = await getDoc(customerRef);
+              if (customerDoc.exists()) {
+                customerName = customerDoc.data().displayName || customerDoc.data().email || 'Unknown Customer';
+              }
+            } catch (error) {
+              console.error('Error fetching customer:', error);
+            }
+          }
+          
+          return {
+            id: docSnap.id,
+            ...requestData,
+            mechanicName,
+            customerName,
+            carDetails: requestData.carDetails || requestData.car || null
+          };
+        })
+      );
 
-      const raw = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      if (raw.length === 0) {
-        setRequests([]);
-        setLoading(false);
-        return;
-      }
-
-      const userIds = Array.from(new Set(
-        raw
-          .map(r => r.mechanicId || r.requesterId || r.customerId)
-          .filter(Boolean)
-      ));
-
-      const userDocs = await Promise.all(userIds.map(id => getDoc(doc(db, 'users', id))));
-      const usersMap = {};
-      userDocs.forEach(ud => {
-        if (ud.exists()) {
-          const data = ud.data();
-          usersMap[ud.id] = data.displayName || data.name || data.email || 'User';
-        }
+      // Sort by createdAt descending (newest first)
+      requestsList.sort((a, b) => {
+        const dateA = a.createdAt ? (a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt)) : new Date(0);
+        const dateB = b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt)) : new Date(0);
+        return dateB - dateA;
       });
-
-      const requestsList = raw.map(r => ({
-        ...r,
-        mechanicName: r.mechanicName || usersMap[r.mechanicId] || r.requesterName || usersMap[r.requesterId] || 'Unknown',
-        customerName: r.customer?.name || usersMap[r.customerId] || 'Customer'
-      }));
-
-      setRequests(requestsList);
-    } catch (err) {
-      console.error('Error fetching requests:', err);
-      setError('Failed to load requests');
+    } catch (error) {
+      console.error('Error fetching requests:', error);
+      alert('Failed to fetch requests. Check console for details.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleStatusUpdate = async (requestId, newStatus) => {
-    try {
-      setProcessing(true);
-      const requestRef = doc(db, 'partRequests', requestId);
-
-      if (newStatus === 'approved') {
-        await runTransaction(db, async (tx) => {
-          const reqSnap = await tx.get(requestRef);
-          if (!reqSnap.exists()) throw new Error('Request not found');
-          const request = { id: reqSnap.id, ...reqSnap.data() };
-
-          if (!Array.isArray(request.parts) || request.parts.length === 0) {
-            throw new Error('No parts to approve');
-          }
-
-          const partRefs = request.parts.map(p => doc(db, 'inventory', p.partId));
-          const partSnaps = await Promise.all(partRefs.map(rf => tx.get(rf)));
-
-          const insufficient = [];
-          partSnaps.forEach((ps, idx) => {
-            const requested = Number(request.parts[idx]?.quantity || 0);
-            const current = Number(ps.exists() ? (ps.data().quantity || 0) : 0);
-            if (!ps.exists() || current < requested) {
-              insufficient.push(request.parts[idx]?.name || request.parts[idx]?.partId || 'unknown');
-            }
-          });
-
-          if (insufficient.length > 0) {
-            throw new Error(`Insufficient stock for: ${insufficient.join(', ')}`);
-          }
-
-          partSnaps.forEach((ps, idx) => {
-            const requested = Number(request.parts[idx]?.quantity || 0);
-            const current = Number(ps.data().quantity || 0);
-            tx.update(partRefs[idx], {
-              quantity: current - requested,
-              updatedAt: new Date().toISOString()
-            });
-          });
-
-          tx.update(requestRef, {
-            status: 'approved',
-            updatedAt: new Date().toISOString(),
-            approvedBy: user?.displayName || user?.email || 'admin',
-            approvedAt: new Date().toISOString()
-          });
-        });
-
-        const requestSnap = await getDoc(requestRef);
-        const request = requestSnap.exists() ? { id: requestSnap.id, ...requestSnap.data() } : null;
-        const mechanicSafe = request?.mechanicName ?? request?.requesterName ?? request?.mechanicId ?? 'Unknown';
-        const vehicleSafe = `${request?.car?.make ?? ''} ${request?.car?.model ?? ''}`.trim() || 'Unknown';
-        const partsSafe = (request?.parts || []).map(p => ({
-          name: p?.name ?? p?.partId ?? 'Unknown',
-          quantity: Number(p?.quantity ?? 0),
-          price: Number(p?.price ?? 0),
-          total: Number(p?.price ?? 0) * Number(p?.quantity ?? 0)
-        }));
-        const totalAmountSafe = partsSafe.reduce((s, p) => s + p.total, 0);
-
-        await addDoc(collection(db, 'logs'), {
-          type: 'PARTS_REQUEST_APPROVED',
-          timestamp: new Date().toISOString(),
-          description: `Parts request approved for ${mechanicSafe}`,
-          details: {
-            requestId: request?.id ?? null,
-            mechanic: mechanicSafe,
-            mechanicId: request?.mechanicId ?? null,
-            vehicle: vehicleSafe,
-            parts: partsSafe,
-            totalAmount: totalAmountSafe
-          }
-        });
-      } else {
-        await updateDoc(requestRef, {
-          status: newStatus,
-          updatedAt: new Date().toISOString(),
-          ...(newStatus === 'completed' && { completedBy: user?.displayName || user?.email || 'admin', completedAt: new Date().toISOString() })
-        });
-      }
-
-      setModalOpen(false);
-      setSelectedRequest(null);
-      await fetchRequests();
-    } catch (err) {
-      console.error('Error updating request:', err);
-      alert(err.message || 'Failed to update request');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
   const handleApprove = async (requestId) => {
-    await handleStatusUpdate(requestId, 'approved');
+    try {
+      const requestRef = doc(db, 'partRequests', requestId);
+      await updateDoc(requestRef, {
+        status: 'approved',
+        approvedBy: user?.displayName || user?.email,
+        approvedAt: new Date().toISOString()
+      });
+      
+      // Update the local state instead of fetching all data
+      setRequests(prevRequests => 
+        prevRequests.map(req => 
+          req.id === requestId 
+            ? { 
+                ...req, 
+                status: 'approved',
+                approvedBy: user?.displayName || user?.email,
+                approvedAt: new Date().toISOString()
+              }
+            : req
+        )
+      );
+      
+      messageApi.success('Request approved successfully!');
+      setDetailsModalOpen(false);
+      setSelectedRequest(null);
+    } catch (error) {
+      console.error('Error approving request:', error);
+      messageApi.error('Failed to approve request');
+    }
   };
 
   const handleReject = async (requestId) => {
     try {
-      setProcessing(true);
       const requestRef = doc(db, 'partRequests', requestId);
-      const requestSnap = await getDoc(requestRef);
-      if (!requestSnap.exists()) throw new Error('Request not found');
-      const request = { id: requestSnap.id, ...requestSnap.data() };
-
-      await deleteDoc(requestRef);
-
-      const partsSafe = (request.parts || []).map(p => ({
-        name: p?.name ?? p?.partId ?? 'Unknown',
-        quantity: Number(p?.quantity ?? 0),
-        price: Number(p?.price ?? 0)
-      }));
-
-      await addDoc(collection(db, 'logs'), {
-        type: 'PARTS_REQUEST_REJECTED',
-        timestamp: new Date().toISOString(),
-        description: `Parts request ${request.id ?? 'unknown'} rejected by ${user?.displayName || user?.email || 'admin'}`,
-        requestId: request.id ?? null,
-        details: {
-          parts: partsSafe,
-          customerId: request.customerId ?? request.customer?.id ?? null,
-          mechanicId: request.mechanicId ?? null
-        }
+      await updateDoc(requestRef, {
+        status: 'rejected',
+        rejectedBy: user?.displayName || user?.email,
+        rejectedAt: new Date().toISOString()
       });
-
-      setModalOpen(false);
+      
+      // Update the local state instead of fetching all data
+      setRequests(prevRequests => 
+        prevRequests.map(req => 
+          req.id === requestId 
+            ? { 
+                ...req, 
+                status: 'rejected',
+                rejectedBy: user?.displayName || user?.email,
+                rejectedAt: new Date().toISOString()
+              }
+            : req
+        )
+      );
+      
+      messageApi.error('Request rejected successfully!');
+      setDetailsModalOpen(false);
       setSelectedRequest(null);
-      await fetchRequests();
-    } catch (err) {
-      console.error('Error rejecting request:', err);
-      alert(err.message || 'Failed to reject request');
-    } finally {
-      setProcessing(false);
+    } catch (error) {
+      console.error('Error rejecting request:', error);
+      messageApi.error('Failed to reject request');
     }
   };
 
-  const openModal = (request) => {
+  const handleRowClick = (request) => {
     setSelectedRequest(request);
-    setModalOpen(true);
+    setDetailsModalOpen(true);
   };
 
-  const closeModal = () => {
-    setModalOpen(false);
-    setSelectedRequest(null);
+  const formatDate = (timestamp) => {
+    if (!timestamp) return 'N/A';
+    const date = timestamp?.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  if (loading) return <Loading text="Loading requests" />;
-  if (error) return <div className="error-message">{error}</div>;
+  const calculateTotalTime = (request) => {
+    if (!request.parts || !Array.isArray(request.parts)) return '0';
+    return request.parts.reduce((sum, part) => sum + (part.quantity || 0), 0);
+  };
 
-  const displayedRequests = requests.filter(r => 
-    activeTab === 'pending'
-      ? (r.status || 'pending') === 'pending'
-      : (r.status || '') === 'approved'
-  );
+  const filteredRequests = requests.filter(request => {
+    const matchesSearch = 
+      request.mechanicName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.carDetails?.plateNumber?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Filter by tab
+    let matchesTab = true;
+    if (activeTab === 'timeoff') {
+      // Pending Requests tab - only show pending
+      matchesTab = request.status === 'pending';
+    } else if (activeTab === 'overtime') {
+      // Approved Requests tab - only show approved
+      matchesTab = request.status === 'approved';
+    }
+    // When activeTab === 'overview', matchesTab stays true - shows ALL statuses
+    
+    return matchesSearch && matchesTab;
+  });
+
+  const getStatusCounts = () => ({
+    all: requests.length,
+    pending: requests.filter(r => r.status === 'pending').length,
+    approved: requests.filter(r => r.status === 'approved').length
+  });
+
+  const counts = getStatusCounts();
+
+  if (loading) return <Loading text="Loading requests..." />;
 
   return (
-    <div className={`dashboard-container${sidebarOpen ? '' : ' sidebar-collapsed'}`}>
+    <div className="requests-page">
       <AdminSidebar sidebarOpen={sidebarOpen} user={user} />
-      <div className={`main-content${sidebarOpen ? '' : ' expanded'}`}>
+
+      <div className={`requests-main ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
         <TopBar
-          title="Motohub"
+          title="Parts Requests Management"
           onToggle={() => setSidebarOpen(!sidebarOpen)}
-          notificationsCount={0}
+          notificationsCount={counts.pending}
           onProfileClick={() => setProfileOpen(true)}
         />
 
-        <div className="content-area">
-          <div className="requests-tabs">
-            <button
-              className={`requests-tab${activeTab === 'pending' ? ' active' : ''}`}
-              onClick={() => setActiveTab('pending')}
-            >
-              Pending
-            </button>
-            <button
-              className={`requests-tab${activeTab === 'approved' ? ' active' : ''}`}
-              onClick={() => setActiveTab('approved')}
-            >
-              Approved
-            </button>
+        <div className="requests-content">
+          <h1 className="page-title">Parts Requests</h1>
+
+          {/* Controls Card */}
+          <div className="controls-card">
+            {/* Tabs */}
+            <div className="tabs">
+              <button 
+                className={`tab ${activeTab === 'overview' ? 'active' : ''}`}
+                onClick={() => setActiveTab('overview')}
+              >
+                Overview
+              </button>
+              <button 
+                className={`tab ${activeTab === 'timeoff' ? 'active' : ''}`}
+                onClick={() => setActiveTab('timeoff')}
+              >
+                Pending Requests
+              </button>
+              <button 
+                className={`tab ${activeTab === 'overtime' ? 'active' : ''}`}
+                onClick={() => setActiveTab('overtime')}
+              >
+                Approved Requests
+              </button>
+            </div>
+
+            {/* Actions Bar */}
+            <div className="actions-bar">
+              <Input
+                placeholder="Search by mechanic, customer, or plate number..."
+                prefix={<SearchOutlined />}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ width: 320 }}
+              />
+            </div>
           </div>
 
-          <div className="requests-table-container">
-            <table className="requests-table">
+          {/* Table Card */}
+          <div className="table-card">
+            <div className="card-header">
+              <h2>Parts Requests ({filteredRequests.length})</h2>
+              <button className="view-all" onClick={fetchRequests}>Refresh</button>
+            </div>
+
+            <table className="data-table">
               <thead>
                 <tr>
                   <th>Mechanic</th>
+                  <th>Customer</th>
                   <th>Vehicle</th>
-                  <th>Parts Requested</th>
-                  <th>Date</th>
-                  <th>Priority</th>
+                  <th>Parts Count</th>
+                  <th>Request Date</th>
                   <th>Status</th>
-                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {displayedRequests.map(request => (
-                  <tr
-                    key={request.id}
-                    className="request-row hoverable"
-                    onClick={() => openModal(request)}
-                  >
-                    <td>{request.mechanicName || request.requesterName}</td>
-                    <td>{request.car?.make} {request.car?.model}</td>
-                    <td>
-                      <ul className="parts-list">
-                        {Array.isArray(request.parts) ? request.parts.map((part, index) => (
-                          <li key={index}>{part.name} (Qty: {part.quantity})</li>
-                        )) : null}
-                      </ul>
-                    </td>
-                    <td>{formatDate(request.createdAt)}</td>
-                    <td><span className={`priority-badge ${request.priority || 'normal'}`}>{request.priority || 'normal'}</span></td>
-                    <td><span className={`status-badge ${request.status || 'pending'}`}>{request.status || 'pending'}</span></td>
-                    <td>
-                      <div className="action-buttons">
-                        {request.status === 'pending' && (
-                          <>
-                            <button onClick={(e) => { e.stopPropagation(); handleStatusUpdate(request.id, 'approved'); }} className="approve-btn" title="Approve">
-                              <CheckCircle size={18} />
-                            </button>
-                            <button onClick={(e) => { e.stopPropagation(); handleReject(request.id); }} className="reject-btn" title="Reject">
-                              <XCircle size={18} />
-                            </button>
-                          </>
-                        )}
-                        {request.status === 'approved' && (
-                          <button onClick={(e) => { e.stopPropagation(); handleStatusUpdate(request.id, 'completed'); }} className="complete-btn" title="Mark Completed">
-                            <Clock size={18} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {displayedRequests.length === 0 && (
+                {filteredRequests.length > 0 ? (
+                  filteredRequests.map((request) => (
+                    <tr 
+                      key={request.id} 
+                      onClick={() => handleRowClick(request)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <td>
+                        <div className="name-cell">
+                          <Avatar size={32} style={{ backgroundColor: '#3B82F6' }}>
+                            {request.mechanicName?.charAt(0) || 'M'}
+                          </Avatar>
+                          <span>{request.mechanicName || 'Unknown Mechanic'}</span>
+                        </div>
+                      </td>
+                      <td>{request.customerName || 'N/A'}</td>
+                      <td>
+                        {request.carDetails ? 
+                          `${request.carDetails.year || ''} ${request.carDetails.make || ''} ${request.carDetails.model || ''}`.trim() || request.carDetails.plateNumber || 'N/A'
+                          : 'N/A'}
+                      </td>
+                      <td>{request.parts?.length || 0} items</td>
+                      <td>{formatDate(request.createdAt)}</td>
+                      <td>
+                        <span className={`status ${request.status || 'pending'}`}>
+                          {(request.status || 'pending').charAt(0).toUpperCase() + (request.status || 'pending').slice(1)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
                   <tr>
-                    <td colSpan={7} className="no-requests-cell">
-                      No requests found
+                    <td colSpan="6" style={{ textAlign: 'center', padding: '3rem', color: '#6B7280' }}>
+                      {loading ? 'Loading requests...' : searchTerm ? 'No requests match your search' : requests.length === 0 ? 'No parts requests found in database' : 'No requests found'}
                     </td>
                   </tr>
                 )}
@@ -336,15 +313,187 @@ export default function AdminRequests() {
         </div>
       </div>
 
-      <RequestDetailsModal
-        request={selectedRequest}
-        open={modalOpen}
-        onClose={closeModal}
-        onApprove={handleApprove}
-        onReject={handleReject}
-        processing={processing}
-      />
+      {/* Request Details Modal */}
+      <Modal
+        title="Request Details"
+        open={detailsModalOpen}
+        onCancel={() => {
+          setDetailsModalOpen(false);
+          setSelectedRequest(null);
+        }}
+        footer={null}
+        width={700}
+      >
+        {selectedRequest && (
+          <div style={{ padding: '1rem 0' }}>
+            {/* Request Information */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: '#111827' }}>
+                Request Information
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: '#6B7280', marginBottom: '0.25rem' }}>Mechanic</p>
+                  <p style={{ fontSize: '1rem', fontWeight: 600, color: '#111827', margin: 0 }}>
+                    {selectedRequest.mechanicName || 'Unknown Mechanic'}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: '#6B7280', marginBottom: '0.25rem' }}>Customer</p>
+                  <p style={{ fontSize: '1rem', fontWeight: 600, color: '#111827', margin: 0 }}>
+                    {selectedRequest.customerName || 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: '#6B7280', marginBottom: '0.25rem' }}>Request Date</p>
+                  <p style={{ fontSize: '1rem', fontWeight: 600, color: '#111827', margin: 0 }}>
+                    {formatDate(selectedRequest.createdAt)}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: '#6B7280', marginBottom: '0.25rem' }}>Status</p>
+                  <span className={`status ${selectedRequest.status || 'pending'}`}>
+                    {(selectedRequest.status || 'pending').charAt(0).toUpperCase() + (selectedRequest.status || 'pending').slice(1)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Vehicle Information */}
+            {selectedRequest.carDetails && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: '#111827' }}>
+                  Vehicle Information
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <p style={{ fontSize: '0.875rem', color: '#6B7280', marginBottom: '0.25rem' }}>Vehicle</p>
+                    <p style={{ fontSize: '1rem', fontWeight: 600, color: '#111827', margin: 0 }}>
+                      {`${selectedRequest.carDetails.year || ''} ${selectedRequest.carDetails.make || ''} ${selectedRequest.carDetails.model || ''}`.trim() || 'N/A'}
+                    </p>
+                  </div>
+                  {selectedRequest.carDetails.plateNumber && (
+                    <div>
+                      <p style={{ fontSize: '0.875rem', color: '#6B7280', marginBottom: '0.25rem' }}>Plate Number</p>
+                      <p style={{ fontSize: '1rem', fontWeight: 600, color: '#111827', margin: 0 }}>
+                        {selectedRequest.carDetails.plateNumber}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Parts Requested */}
+            {selectedRequest.parts && selectedRequest.parts.length > 0 && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: '#111827' }}>
+                  Parts Requested ({selectedRequest.parts.length} items)
+                </h3>
+                <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead style={{ background: '#F9FAFB' }}>
+                      <tr>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#6B7280' }}>
+                          Part Name
+                        </th>
+                        <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: '#6B7280' }}>
+                          Quantity
+                        </th>
+                        <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: 600, color: '#6B7280' }}>
+                          Price
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedRequest.parts.map((part, index) => (
+                        <tr key={index} style={{ borderTop: '1px solid #E5E7EB' }}>
+                          <td style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#111827' }}>
+                            {part.name || 'N/A'}
+                          </td>
+                          <td style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.875rem', color: '#111827' }}>
+                            {part.quantity || 0}
+                          </td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>
+                            ₱{((part.price || 0) * (part.quantity || 0)).toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot style={{ background: '#F9FAFB', borderTop: '2px solid #E5E7EB' }}>
+                      <tr>
+                        <td colSpan="2" style={{ padding: '0.75rem', fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>
+                          Total Amount
+                        </td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '1rem', fontWeight: 700, color: '#FBBF24' }}>
+                          ₱{selectedRequest.parts.reduce((sum, part) => sum + ((part.price || 0) * (part.quantity || 0)), 0).toLocaleString()}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Notes */}
+            {selectedRequest.notes && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem', color: '#111827' }}>
+                  Notes
+                </h3>
+                <p style={{ padding: '1rem', background: '#FEF3C7', borderRadius: '8px', borderLeft: '4px solid #FBBF24', fontSize: '0.875rem', color: '#111827', margin: 0 }}>
+                  {selectedRequest.notes}
+                </p>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '2rem' }}>
+              <Button 
+                size="large"
+                onClick={() => {
+                  setDetailsModalOpen(false);
+                  setSelectedRequest(null);
+                }}
+              >
+                Close
+              </Button>
+              {selectedRequest.status === 'pending' && (
+                <>
+                  <Button 
+                    danger
+                    size="large"
+                    onClick={() => handleReject(selectedRequest.id)}
+                  >
+                    Reject Request
+                  </Button>
+                  <Button 
+                    type="primary"
+                    size="large"
+                    style={{ background: '#10B981', borderColor: '#10B981' }}
+                    onClick={() => handleApprove(selectedRequest.id)}
+                  >
+                    Approve Request
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
+
       <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} user={user} />
     </div>
   );
 }
+
+export default function AdminRequests() {
+  return (
+    <ConfigProvider>
+      <App>
+        <AdminRequestsContent />
+      </App>
+    </ConfigProvider>
+  );
+}
+

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, InputNumber, Select, message, Spin } from 'antd';
+import { Modal, Form, Input, InputNumber, Select, message, Spin, Button } from 'antd';
 import { getFirestore, collection, getDocs, query, where, addDoc } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
 import './Modal.css';
@@ -203,47 +203,71 @@ export default function CarServiceReportModal({ car, customer, open, onSubmit, o
     <Modal
       title="Car Service Report"
       open={open}
-      onOk={handleSubmit}
       onCancel={handleCancel}
-      confirmLoading={isSubmitting}
+      footer={null}
       width={800}
-      okText="Submit Report"
-      cancelText="Cancel"
-      destroyOnClose
-      okButtonProps={{
-        style: {
-          backgroundColor: '#FFC300',
-          borderColor: '#FFC300',
-          color: '#000',
-          fontWeight: 600
-        }
-      }}
-      cancelButtonProps={{
-        style: {
-          borderColor: '#d9d9d9'
-        }
-      }}
+      destroyOnHidden
+      centered
+      maskClosable={!isSubmitting}
     >
       <style>
         {`
-          .ant-input:focus,
+          .ant-modal-header {
+            background: linear-gradient(135deg, #FFC300, #FFD54F);
+          }
+          .ant-modal-title {
+            color: #000 !important;
+            font-weight: 700;
+            font-size: 18px;
+          }
           .ant-input:hover,
-          .ant-input-number:hover .ant-input-number-input,
-          .ant-input-number-focused .ant-input-number-input,
-          .ant-select:hover .ant-select-selector,
-          .ant-select-focused .ant-select-selector {
+          .ant-input:focus,
+          .ant-input-focused,
+          .ant-input-number:hover,
+          .ant-input-number:focus,
+          .ant-select:not(.ant-select-disabled):hover .ant-select-selector,
+          .ant-select-focused:not(.ant-select-disabled) .ant-select-selector,
+          .ant-picker:hover .ant-picker-input,
+          .ant-picker-focused .ant-picker-input,
+          .ant-checkbox-wrapper:hover .ant-checkbox-inner,
+          .ant-checkbox:hover .ant-checkbox-inner {
             border-color: #FFC300 !important;
-            box-shadow: 0 0 0 2px rgba(255, 195, 0, 0.2) !important;
           }
           .ant-input:focus,
-          .ant-input-number-focused .ant-input-number-input,
-          .ant-select-focused .ant-select-selector {
-            outline: 0;
-            box-shadow: 0 0 0 2px rgba(255, 195, 0, 0.2) !important;
+          .ant-input-focused,
+          .ant-input-number:focus,
+          .ant-select-focused .ant-select-selector,
+          .ant-picker-focused {
+            border-color: #FFC300 !important;
+            box-shadow: 0 0 0 2px rgba(255, 195, 0, 0.1) !important;
+            outline: none !important;
           }
-          .ant-btn-primary:hover:not(:disabled),
-          .ant-btn-primary:focus:not(:disabled) {
-            background-color: #FFD54F !important;
+          .ant-checkbox-checked .ant-checkbox-inner {
+            background-color: #FFC300 !important;
+            border-color: #FFC300 !important;
+          }
+          .carservicereport-cancel-btn {
+            height: 40px;
+            border-radius: 8px;
+            border-color: #FFC300 !important;
+            color: #FFC300 !important;
+            background: transparent !important;
+          }
+          .carservicereport-cancel-btn:hover:not(:disabled) {
+            border-color: #FFD54F !important;
+            color: #FFD54F !important;
+            background: transparent !important;
+          }
+          .carservicereport-submit-btn {
+            height: 40px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #FFC300, #FFD54F) !important;
+            border-color: #FFC300 !important;
+            color: #000 !important;
+            font-weight: 600;
+          }
+          .carservicereport-submit-btn:hover:not(:disabled) {
+            background: linear-gradient(135deg, #FFD54F, #FFEB3B) !important;
             border-color: #FFD54F !important;
           }
         `}
@@ -395,6 +419,26 @@ export default function CarServiceReportModal({ car, customer, open, onSubmit, o
               <strong style={{ fontSize: 16, color: '#000' }}>Total Cost:</strong>
               <strong style={{ fontSize: 20, color: '#000' }}>₱{reportData.totalCost.toLocaleString()}</strong>
             </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+            <Button 
+              className="carservicereport-cancel-btn"
+              onClick={handleCancel}
+              disabled={isSubmitting}
+              style={{ height: '40px' }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="primary" 
+              className="carservicereport-submit-btn"
+              onClick={handleSubmit}
+              loading={isSubmitting}
+              style={{ height: '40px' }}
+            >
+              Submit Report
+            </Button>
           </div>
         </Form>
       </Spin>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { collection, getDocs, getFirestore, query, orderBy, limit } from 'firebase/firestore';
-import { FileText, Filter, Download, RefreshCw, AlertCircle, Eye, Shield, User } from 'lucide-react';
+import { collection, getDocs, getDoc, doc, getFirestore, query, orderBy, limit } from 'firebase/firestore';
+import { FileText, Filter, Download, RefreshCw, AlertCircle, Eye, Shield, User, Package, CheckCircle, XCircle } from 'lucide-react';
 import AdminSidebar from '../components/AdminSidebar';
 import TopBar from '../components/TopBar';
 import ProfileModal from '../components/modals/ProfileModal';
@@ -21,6 +21,8 @@ export default function AdminLogs() {
     fetchLogs();
   }, []);
 
+  // Refresh logs - fetches the latest 100 log entries from the database
+  // This is useful when logs are being created by other users/processes
   const fetchLogs = async () => {
     try {
       setLoading(true);
@@ -28,7 +30,98 @@ export default function AdminLogs() {
       const q = query(logsRef, orderBy('timestamp', 'desc'), limit(100));
       const snapshot = await getDocs(q);
 
-      const logsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const logsList = await Promise.all(
+        snapshot.docs.map(async (logDoc) => {
+          const logData = logDoc.data();
+          let userName = 'System';
+          let userRole = 'system';
+
+          // Fetch user details if userId exists
+          if (logData.userId) {
+            try {
+              const userDoc = await getDoc(doc(db, 'users', logData.userId));
+              if (userDoc.exists()) {
+                const userData = userDoc.data();
+                userName = userData.displayName || userData.email || 'Unknown User';
+                userRole = userData.role || 'user';
+              }
+            } catch (err) {
+              console.error('Error fetching user:', err);
+            }
+          } else if (logData.details?.mechanicId) {
+            // Try to fetch from mechanicId in details
+            try {
+              const userDoc = await getDoc(doc(db, 'users', logData.details.mechanicId));
+              if (userDoc.exists()) {
+                const userData = userDoc.data();
+                userName = userData.displayName || userData.email || 'Unknown User';
+                userRole = userData.role || 'mechanic';
+              }
+            } catch (err) {
+              console.error('Error fetching mechanic:', err);
+            }
+          }
+
+          // Use existing description or generate one
+          let description = logData.description || '';
+          if (!description) {
+            switch (logData.type) {
+              case 'PAGE_VIEW':
+                description = `Viewed ${logData.page || logData.details?.page || 'a page'}`;
+                break;
+              case 'UNAUTHORIZED_ACCESS_ATTEMPT':
+                description = `Attempted to access ${logData.page || logData.details?.page || 'restricted area'} without authorization`;
+                break;
+              case 'PARTS_REQUEST_CREATED':
+                const partsCount = logData.details?.parts?.length || 0;
+                const totalAmount = logData.details?.totalAmount || 0;
+                description = `Created parts request with ${partsCount} item${partsCount !== 1 ? 's' : ''} (₱${totalAmount.toFixed(2)})`;
+                break;
+              case 'PARTS_REQUEST_APPROVED':
+                description = `Approved parts request for ${logData.details?.mechanic || 'mechanic'}`;
+                break;
+              case 'PARTS_REQUEST_REJECTED':
+                description = `Rejected parts request`;
+                break;
+              case 'USER_LOGIN':
+                description = 'Logged into the system';
+                break;
+              case 'USER_LOGOUT':
+                description = 'Logged out of the system';
+                break;
+              case 'USER_CREATED':
+                description = `Created new user account`;
+                break;
+              case 'USER_UPDATED':
+                description = `Updated user information`;
+                break;
+              case 'USER_DELETED':
+                description = `Deleted user account`;
+                break;
+              case 'INVENTORY_ADDED':
+                description = `Added new part to inventory`;
+                break;
+              case 'INVENTORY_UPDATED':
+                description = `Updated inventory part`;
+                break;
+              case 'INVENTORY_DELETED':
+                description = `Deleted part from inventory`;
+                break;
+              default:
+                description = logData.type?.replace(/_/g, ' ').toLowerCase() || 'System activity';
+            }
+          }
+
+          return {
+            id: logDoc.id,
+            ...logData,
+            userName,
+            userRole,
+            description
+          };
+        })
+      );
+
       setLogs(logsList);
     } catch (err) {
       console.error('Error fetching logs:', err);
@@ -40,15 +133,28 @@ export default function AdminLogs() {
   const getLogIcon = (type) => {
     switch (type) {
       case 'PAGE_VIEW':
-        return <Eye size={20} className="log-icon-view" />;
+        return <Eye size={18} />;
       case 'UNAUTHORIZED_ACCESS_ATTEMPT':
-        return <Shield size={20} className="log-icon-warning" />;
+        return <Shield size={18} />;
+      case 'PARTS_REQUEST_CREATED':
+        return <Package size={18} />;
       case 'PARTS_REQUEST_APPROVED':
-        return <FileText size={20} className="log-icon-success" />;
+        return <CheckCircle size={18} />;
       case 'PARTS_REQUEST_REJECTED':
-        return <AlertCircle size={20} className="log-icon-error" />;
+        return <XCircle size={18} />;
+      case 'USER_LOGIN':
+      case 'USER_LOGOUT':
+        return <User size={18} />;
+      case 'USER_CREATED':
+      case 'USER_UPDATED':
+      case 'USER_DELETED':
+        return <User size={18} />;
+      case 'INVENTORY_ADDED':
+      case 'INVENTORY_UPDATED':
+      case 'INVENTORY_DELETED':
+        return <Package size={18} />;
       default:
-        return <FileText size={20} className="log-icon-default" />;
+        return <FileText size={18} />;
     }
   };
 
@@ -59,9 +165,17 @@ export default function AdminLogs() {
       case 'UNAUTHORIZED_ACCESS_ATTEMPT':
         return 'log-type-warning';
       case 'PARTS_REQUEST_APPROVED':
+      case 'USER_CREATED':
+      case 'INVENTORY_ADDED':
         return 'log-type-success';
       case 'PARTS_REQUEST_REJECTED':
+      case 'USER_DELETED':
+      case 'INVENTORY_DELETED':
         return 'log-type-error';
+      case 'PARTS_REQUEST_CREATED':
+      case 'USER_UPDATED':
+      case 'INVENTORY_UPDATED':
+        return 'log-type-info';
       default:
         return 'log-type-default';
     }
@@ -75,10 +189,10 @@ export default function AdminLogs() {
   const logTypes = ['all', ...new Set(logs.map(log => log.type))];
 
   return (
-    <div className={`dashboard-container${sidebarOpen ? '' : ' sidebar-collapsed'}`}>
+    <div className="user-management-bg logs-page">
       <AdminSidebar sidebarOpen={sidebarOpen} user={user} />
 
-      <div className="main-content">
+      <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
         <TopBar
           title="Activity Logs"
           onToggle={() => setSidebarOpen(!sidebarOpen)}
@@ -93,13 +207,9 @@ export default function AdminLogs() {
               <p className="logs-subtitle">Monitor all system activities and user actions</p>
             </div>
             <div className="logs-header-actions">
-              <button className="logs-action-btn" onClick={fetchLogs} disabled={loading}>
+              <button className="logs-action-btn" onClick={fetchLogs} disabled={loading} title="Refresh logs from database">
                 <RefreshCw size={18} className={loading ? 'rotating' : ''} />
                 Refresh
-              </button>
-              <button className="logs-action-btn">
-                <Download size={18} />
-                Export
               </button>
             </div>
           </div>
@@ -153,7 +263,6 @@ export default function AdminLogs() {
                         <th>Type</th>
                         <th>User</th>
                         <th>Description</th>
-                        <th>IP Address</th>
                         <th>Timestamp</th>
                       </tr>
                     </thead>
@@ -164,14 +273,16 @@ export default function AdminLogs() {
                             <td>
                               <div className={`log-type-badge ${getLogTypeClass(log.type)}`}>
                                 {getLogIcon(log.type)}
-                                <span>{log.type.replace(/_/g, ' ')}</span>
+                                <span>{log.type?.replace(/_/g, ' ') || 'Unknown'}</span>
                               </div>
                             </td>
                             <td>
                               <div className="user-info">
-                                <User size={16} />
+                                <div className="user-avatar">
+                                  {log.userName?.charAt(0).toUpperCase() || 'U'}
+                                </div>
                                 <div>
-                                  <div className="user-name">{log.userName || 'Unknown'}</div>
+                                  <div className="user-name">{log.userName || 'Unknown User'}</div>
                                   <div className="user-role">{log.userRole || 'N/A'}</div>
                                 </div>
                               </div>
@@ -188,9 +299,6 @@ export default function AdminLogs() {
                               )}
                             </td>
                             <td>
-                              <code className="ip-address">{log.ip || 'N/A'}</code>
-                            </td>
-                            <td>
                               <div className="log-timestamp">
                                 {new Date(log.timestamp).toLocaleString()}
                               </div>
@@ -199,7 +307,7 @@ export default function AdminLogs() {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={5} className="no-logs">
+                          <td colSpan={4} className="no-logs">
                             <FileText size={48} />
                             <p>No logs found</p>
                           </td>

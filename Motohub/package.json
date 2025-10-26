@@ -11,6 +11,7 @@
     "start": ""
   },
   "dependencies": {
+    "@ant-design/charts": "^2.6.6",
     "@firebase/auth": "^1.11.0",
     "@mui/icons-material": "^7.3.4",
     "@tailwindcss/vite": "^4.1.11",
@@ -20,6 +21,7 @@
     "jspdf": "^3.0.3",
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.539.0",
+    "ogl": "^1.0.11",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-icons": "^5.5.0",

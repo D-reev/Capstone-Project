@@ -2,15 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Loading from '../components/Loading';
 import { getFirestore, collection, getDocs, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
-import { Users, Pencil, Trash2, Search, UserPlus, Menu, Mail, Calendar, User } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { SearchOutlined, UserAddOutlined, EditOutlined, DeleteOutlined, FilterOutlined } from '@ant-design/icons';
+import { Table, Tag, Input, Button, Space, Avatar, ConfigProvider, Select } from 'antd';
 import AdminSidebar from '../components/AdminSidebar';
 import EditUserModal from '../components/modals/EditUserModal';
+import DeleteUserModal from '../components/modals/DeleteUserModal';
 import TopBar from '../components/TopBar';
 import ProfileModal from '../components/modals/ProfileModal';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import '../css/UserManagement.css';
+
+const { Option } = Select;
 
 export default function UserManagement() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -18,26 +21,15 @@ export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [expandedRowKeys, setExpandedRowKeys] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
-  const navigate = useNavigate();
   const db = getFirestore();
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
-
-  // Handle sidebar toggle
-  const handleSidebarToggle = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
-
-  // Handle user selection with smooth transitions
-  // Toggle: clicking the same user again will close the profile panel
-  const handleUserSelect = (userToSelect) => {
-    setSelectedUser(prev => (prev && prev.id === userToSelect.id) ? null : userToSelect);
-  };
 
   useEffect(() => {
     fetchUsers();
@@ -70,6 +62,7 @@ export default function UserManagement() {
       await fetchUsers();
       setIsEditModalOpen(false);
       setSelectedUser(null);
+      setExpandedRowKeys([]);
     } catch (error) {
       console.error('Error updating user:', error);
     } finally {
@@ -77,17 +70,20 @@ export default function UserManagement() {
     }
   };
 
-  const handleDeleteUser = async (userId) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
-      try {
-        await deleteDoc(doc(db, 'users', userId));
-        fetchUsers();
-        if (selectedUser?.id === userId) {
-          setSelectedUser(null);
-        }
-      } catch (error) {
-        console.error('Error deleting user:', error);
+  const handleDeleteUser = async () => {
+    setIsSubmitting(true);
+    try {
+      await deleteDoc(doc(db, 'users', userToDelete.id));
+      await fetchUsers();
+      if (expandedRowKeys.includes(userToDelete.id)) {
+        setExpandedRowKeys([]);
       }
+      setIsDeleteModalOpen(false);
+      setUserToDelete(null);
+    } catch (error) {
+      console.error('Error deleting user:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -108,7 +104,6 @@ export default function UserManagement() {
       await setDoc(userRef, {
         displayName: userData.displayName,
         role: userData.role,
-        status: userData.status,
         updatedAt: new Date().toISOString(),
         ...((!selectedUser) && {
           createdAt: new Date().toISOString(),
@@ -126,17 +121,12 @@ export default function UserManagement() {
     }
   };
 
-  const filteredUsers = users.filter(user => 
-    user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.displayName?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
-  useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(1);
-  }, [filteredUsers.length, totalPages]);
-
-  const paginatedUsers = filteredUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.displayName?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+    return matchesSearch && matchesRole;
+  });
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -152,243 +142,310 @@ export default function UserManagement() {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
-  const handleRowClick = (user, e) => {
-    // Don't select user if clicking on action buttons
-    if (e.target.closest('.user-table-action-btn')) return;
-    handleUserSelect(user);
+  const handleRowExpand = (expanded, record) => {
+    const keys = expanded ? [record.id] : [];
+    setExpandedRowKeys(keys);
   };
 
+  const handleRowClick = (record) => {
+    // Toggle expansion on row click
+    const isExpanded = expandedRowKeys.includes(record.id);
+    setExpandedRowKeys(isExpanded ? [] : [record.id]);
+  };
+
+  // Expanded row render - More Info section
+  const expandedRowRender = (record) => {
+    return (
+      <div className="user-expanded-info">
+        <div className="user-expanded-grid">
+          <div className="user-expanded-item">
+            <span className="user-expanded-label">User ID</span>
+            <span className="user-expanded-value">{record.id || 'N/A'}</span>
+          </div>
+          <div className="user-expanded-item">
+            <span className="user-expanded-label">Phone Number</span>
+            <span className="user-expanded-value">{record.phoneNumber || record.number || 'Not provided'}</span>
+          </div>
+          <div className="user-expanded-item">
+            <span className="user-expanded-label">Region</span>
+            <span className="user-expanded-value">{record.region || 'Not specified'}</span>
+          </div>
+          <div className="user-expanded-item">
+            <span className="user-expanded-label">Last Updated</span>
+            <span className="user-expanded-value">{formatDate(record.updatedAt)}</span>
+          </div>
+        </div>
+        <div className="user-expanded-actions">
+          <Button
+            type="primary"
+            icon={<EditOutlined />}
+            onClick={() => {
+              setSelectedUser(record);
+              setIsEditModalOpen(true);
+            }}
+            style={{
+              background: '#FBBF24',
+              borderColor: '#FBBF24',
+              color: '#111827',
+              fontWeight: 600,
+            }}
+          >
+            Edit User
+          </Button>
+          <Button
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => {
+              setUserToDelete(record);
+              setIsDeleteModalOpen(true);
+            }}
+          >
+            Delete User
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  // Table columns configuration
+  const columns = [
+    {
+      title: 'ID',
+      dataIndex: 'id',
+      key: 'id',
+      width: 100,
+      render: (text) => (
+        <span style={{ fontFamily: 'monospace', color: '#6B7280', fontSize: '13px' }}>
+          {text?.substring(0, 8) || 'N/A'}
+        </span>
+      ),
+    },
+    {
+      title: 'Full Name',
+      dataIndex: 'displayName',
+      key: 'displayName',
+      render: (text, record) => (
+        <Space>
+          <Avatar 
+            size={40}
+            style={{ 
+              backgroundColor: '#FEF3C7', 
+              color: '#D97706',
+              fontWeight: 600,
+              border: '2px solid #FBBF24'
+            }}
+            src={record.photoURL}
+          >
+            {getUserInitials(text)}
+          </Avatar>
+          <span style={{ fontWeight: 500, color: '#111827' }}>
+            {text || 'Unknown User'}
+          </span>
+        </Space>
+      ),
+    },
+    {
+      title: 'Email',
+      dataIndex: 'email',
+      key: 'email',
+      render: (text) => (
+        <span style={{ color: '#6B7280' }}>{text || 'No email'}</span>
+      ),
+    },
+    {
+      title: 'Role',
+      dataIndex: 'role',
+      key: 'role',
+      width: 120,
+      render: (role) => {
+        const roleConfig = {
+          admin: { color: '#DC2626', bg: '#FEE2E2', label: 'Admin' },
+          mechanic: { color: '#2563EB', bg: '#DBEAFE', label: 'Mechanic' },
+          user: { color: '#059669', bg: '#D1FAE5', label: 'User' },
+        };
+        const config = roleConfig[role] || roleConfig.user;
+        return (
+          <Tag 
+            style={{ 
+              backgroundColor: config.bg,
+              color: config.color,
+              border: 'none',
+              borderRadius: '6px',
+              padding: '4px 12px',
+              fontWeight: 500,
+              fontSize: '13px'
+            }}
+          >
+            {config.label}
+          </Tag>
+        );
+      },
+    },
+    {
+      title: 'Last Activity',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      width: 150,
+      render: (date) => (
+        <span style={{ color: '#6B7280', fontSize: '13px' }}>
+          {formatDate(date)}
+        </span>
+      ),
+    },
+  ];
+
   if (loading) {
-    return <Loading text="Loading users" />;
+    return <Loading text="Loading users..." />;
   }
 
   return (
-    <div className="user-management-bg users-page">
-      <AdminSidebar sidebarOpen={sidebarOpen} user={user} />
+    <ConfigProvider
+      theme={{
+        token: {
+          colorPrimary: '#FBBF24',
+          colorLink: '#FBBF24',
+          colorLinkHover: '#D97706',
+          borderRadius: 8,
+        },
+        components: {
+          Table: {
+            headerBg: '#1F2937',
+            headerColor: '#FFFFFF',
+            rowHoverBg: '#F8FAFC',
+          },
+        },
+      }}
+    >
+      <div className="user-management-page">
+        <AdminSidebar sidebarOpen={sidebarOpen} user={user} />
 
-      <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
-        <TopBar
-          title="User Management"
-          onToggle={handleSidebarToggle}
-          notificationsCount={0}
-          onProfileClick={() => setProfileOpen(true)}
-        />
+        <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
+          <TopBar
+            title="User Management"
+            onToggle={() => setSidebarOpen(!sidebarOpen)}
+            notificationsCount={0}
+            onProfileClick={() => setProfileOpen(true)}
+          />
 
-        <div className={`user-management-container ${!selectedUser ? 'single-column' : ''}`}>
-          {/* Main Table Section */}
-          <div className="user-table-section">
-            <div className="user-table-header">
-              <h1 className="user-table-title">Users</h1>
-              <div className="user-table-actions">
-                <div className="user-table-search">
-                  <Search size={18} />
-                  <input
-                    type="text"
-                    placeholder="Search users by name or email..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                <button 
-                  className="user-table-add-btn" 
-                  onClick={() => {
-                    setSelectedUser(null);
-                    setIsEditModalOpen(true);
-                  }}
-                >
-                  <UserPlus size={16} />
-                  Add User
-                </button>
-              </div>
-            </div>
-
-            <div className="user-table-container">
-              <table className="user-table">
-                <thead>
-                  <tr>
-                    <th>User</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Joined</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUsers.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                        {searchTerm ? 'No users found matching your search.' : 'No users available.'}
-                      </td>
-                    </tr>
-                  ) : (
-                    paginatedUsers.map(u => (
-                      <tr 
-                        key={u.id} 
-                        onClick={(e) => handleRowClick(u, e)}
-                        className={selectedUser?.id === u.id ? 'selected' : ''}
-                      >
-                        <td>
-                          <div className="user-table-user">
-                            <div className="user-table-avatar">
-                              {u.photoURL ? (
-                                <img src={u.photoURL} alt={u.displayName} />
-                              ) : (
-                                getUserInitials(u.displayName)
-                              )}
-                            </div>
-                            <span className="user-table-name">
-                              {u.displayName || 'Unknown User'}
-                            </span>
-                          </div>
-                        </td>
-                        <td>{u.email || 'No email'}</td>
-                        <td>
-                          <span className={`role-badge ${u.role || 'user'}`}>
-                            {u.role || 'user'}
-                          </span>
-                        </td>
-                        <td>{formatDate(u.createdAt)}</td>
-                        <td>
-                          <span className={`user-status-badge ${u.status || 'active'}`}>
-                            {u.status || 'active'}
-                          </span>
-                        </td>
-                        <td className="user-table-actions-col">
-                          <button 
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              setSelectedUser(u); 
-                              setIsEditModalOpen(true); 
-                            }} 
-                            className="user-table-action-btn edit"
-                            title="Edit user"
-                          >
-                            <Pencil size={16} />
-                          </button>
-                          <button 
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              handleDeleteUser(u.id); 
-                            }} 
-                            className="user-table-action-btn delete"
-                            title="Delete user"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="user-table-pagination">
-              {totalPages > 1 && (
-                <div className="user-table-pagination">
-                  {Array.from({ length: totalPages }).map((_, i) => (
-                    <button
-                      key={i}
-                      className={`user-table-pagination-btn ${currentPage === i + 1 ? 'active' : ''}`}
-                      onClick={() => setCurrentPage(i + 1)}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* User Profile Panel */}
-          {selectedUser && (
-            <div className={`user-profile-panel ${selectedUser ? 'active' : ''}`}>
-              <div className="user-profile-header">
-                <div className="user-profile-avatar">
-                  {selectedUser.photoURL ? (
-                    <img src={selectedUser.photoURL} alt={selectedUser.displayName} />
-                  ) : (
-                    getUserInitials(selectedUser.displayName)
-                  )}
-                </div>
-                <h3 className="user-profile-name">
-                  {selectedUser.displayName || 'Unknown User'}
-                </h3>
-                <p className="user-profile-email">{selectedUser.email}</p>
-                <div className="user-profile-status">
-                  <span className={`user-status-badge ${selectedUser.status || 'active'}`}>
-                    {selectedUser.status || 'active'}
+          <div className="user-management-container">
+            <div className="user-table-card">
+              <div className="user-table-header">
+                <div className="user-table-header-left">
+                  <h1 className="user-table-title">Users Data</h1>
+                  <span className="user-table-subtitle">
+                    Showing {filteredUsers.length} of {users.length} entries
                   </span>
                 </div>
+                <div className="user-table-actions">
+                  <Select
+                    value={roleFilter}
+                    onChange={(value) => setRoleFilter(value)}
+                    style={{ 
+                      width: 160,
+                      borderRadius: 8,
+                    }}
+                    size="large"
+                    suffixIcon={<FilterOutlined />}
+                  >
+                    <Option value="all">All Roles</Option>
+                    <Option value="admin">Admin</Option>
+                    <Option value="mechanic">Mechanic</Option>
+                    <Option value="user">User</Option>
+                  </Select>
+                  <Input
+                    placeholder="Search users..."
+                    prefix={<SearchOutlined style={{ color: '#9CA3AF' }} />}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    style={{ 
+                      width: 280,
+                      borderRadius: 8,
+                    }}
+                    size="large"
+                  />
+                  <Button 
+                    type="primary"
+                    icon={<UserAddOutlined />}
+                    size="large"
+                    onClick={() => {
+                      setSelectedUser(null);
+                      setIsEditModalOpen(true);
+                    }}
+                    style={{
+                      background: '#FBBF24',
+                      borderColor: '#FBBF24',
+                      color: '#111827',
+                      fontWeight: 600,
+                      borderRadius: 8,
+                    }}
+                  >
+                    Add User
+                  </Button>
+                </div>
               </div>
 
-              <div className="user-profile-content">
-                <div className="user-profile-info">
-                  <div className="user-profile-info-row">
-                    <Mail className="icon" size={16} />
-                    <span>{selectedUser.email || 'No email provided'}</span>
-                  </div>
-                  <div className="user-profile-info-row">
-                    <User className="icon" size={16} />
-                    <span>{selectedUser.role || 'user'}</span>
-                  </div>
-                  <div className="user-profile-info-row">
-                    <Calendar className="icon" size={16} />
-                    <span>Joined {formatDate(selectedUser.createdAt)}</span>
-                  </div>
-                </div>
-
-                <div className="user-profile-quick-stats">
-                  <div className="user-profile-stat">
-                    <span>0%</span>
-                    <span className="user-profile-stat-label">Acceptance Rate</span>
-                  </div>
-                  <div className="user-profile-stat">
-                    <span>0.0</span>
-                    <span className="user-profile-stat-label">Rating</span>
-                  </div>
-                </div>
-
-                <div className="user-profile-booking-stats">
-                  <div className="stat">
-                    <span>0</span>
-                    <span className="stat-label">Completed</span>
-                  </div>
-                  <div className="stat">
-                    <span>0</span>
-                    <span className="stat-label">Confirmed</span>
-                  </div>
-                  <div className="stat">
-                    <span>0</span>
-                    <span className="stat-label">Cancelled</span>
-                  </div>
-                </div>
+              <div className="user-table-container">
+                <Table
+                  columns={columns}
+                  dataSource={filteredUsers}
+                  rowKey="id"
+                  expandable={{
+                    expandedRowRender,
+                    expandedRowKeys,
+                    onExpand: handleRowExpand,
+                    expandIcon: () => null, // Hide expand icon
+                  }}
+                  onRow={(record) => ({
+                    onClick: () => handleRowClick(record),
+                    style: { cursor: 'pointer' }
+                  })}
+                  pagination={{
+                    pageSize: 10,
+                    showSizeChanger: false,
+                    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} entries`,
+                    style: { marginTop: 16, marginBottom: 16 }
+                  }}
+                  locale={{
+                    emptyText: searchTerm ? 'No users found matching your search.' : 'No users available.'
+                  }}
+                  className="user-data-table"
+                />
               </div>
             </div>
-          )}
+          </div>
         </div>
-      </div>
 
-      {/* Modals */}
-      {isEditModalOpen && (
-        <EditUserModal
-          open={isEditModalOpen}
+        {/* Modals */}
+        {isEditModalOpen && (
+          <EditUserModal
+            open={isEditModalOpen}
+            onClose={() => {
+              setIsEditModalOpen(false);
+              setSelectedUser(null);
+            }}
+            user={selectedUser}
+            onSave={selectedUser ? handleEditUser : handleAddUser}
+            isSubmitting={isSubmitting}
+          />
+        )}
+
+        <DeleteUserModal
+          open={isDeleteModalOpen}
           onClose={() => {
-            setIsEditModalOpen(false);
-            setSelectedUser(null);
+            setIsDeleteModalOpen(false);
+            setUserToDelete(null);
           }}
-          user={selectedUser}
-          onSave={selectedUser ? handleEditUser : handleAddUser}
-          isSubmitting={isSubmitting}
+          onDelete={handleDeleteUser}
+          user={userToDelete}
+          processing={isSubmitting}
         />
-      )}
 
-      <ProfileModal 
-        open={profileOpen} 
-        onClose={() => setProfileOpen(false)} 
-        user={user} 
-      />
-    </div>
+        <ProfileModal 
+          open={profileOpen} 
+          onClose={() => setProfileOpen(false)} 
+          user={user} 
+        />
+      </div>
+    </ConfigProvider>
   );
 }

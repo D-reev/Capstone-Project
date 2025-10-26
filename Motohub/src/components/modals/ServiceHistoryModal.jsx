@@ -11,23 +11,27 @@ export default function ServiceHistoryModal({ vehicle, serviceHistory = [], onCl
   return (
     <Modal
       open={open}
+      title={`Service History - ${vehicle.make} ${vehicle.model}`}
       onCancel={onClose}
       footer={null}
       width={900}
       destroyOnClose
       maskClosable
-      closable={false}
-      styles={{ body: { padding: 0 } }}
+      centered
     >
-      <div className="modal-content">
-        {/* Header */}
-        <div className="modal-header">
-          <h2>Service History - {vehicle.make} {vehicle.model}</h2>
-          <button className="modal-close-btn" onClick={onClose} aria-label="Close">×</button>
-        </div>
+      <style>{`
+        .ant-modal-header {
+          background: linear-gradient(135deg, #FFC300, #FFD54F);
+        }
+        .ant-modal-title {
+          color: #000 !important;
+          font-weight: 700;
+          font-size: 18px;
+          text-align: center;
+        }
+      `}</style>
 
-        {/* Body */}
-        <div className="modal-body">
+      <div style={{ padding: '1rem' }}>
           <Card
             size="small"
             style={{ marginBottom: '1.5rem', background: '#f7fafc' }}
@@ -138,7 +142,6 @@ export default function ServiceHistoryModal({ vehicle, serviceHistory = [], onCl
               style={{ padding: '3rem 0' }}
             />
           )}
-        </div>
       </div>
     </Modal>
   );

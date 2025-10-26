@@ -1,187 +1,191 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { Modal, Form, Input, Button, message } from 'antd';
+import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import './Modal.css';
 import { registerWithUsername } from '../../utils/auth';
 
 export default function RegisterModal({ open, onClose, onSuccess }) {
-  const [firstName, setFirstName] = useState('');
-  const [middleName, setMiddleName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [form] = Form.useForm();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [fieldErrors, setFieldErrors] = useState({});
-  const [isValid, setIsValid] = useState(false);
 
-  const validateName = (v) => {
-    if (!v || !v.trim()) return 'Required';
-    if (!/^[A-Za-z\s'-]{2,}$/.test(v.trim())) return 'Invalid name';
-    return '';
-  };
-
-  const validateUsername = (v) => {
-    if (!v || !v.trim()) return 'Required';
-    const s = v.trim();
-    if (s.length < 4) return 'Must be at least 4 characters';
-    if (!/^[a-z0-9._-]+$/.test(s)) return 'Use lowercase letters, numbers, . _ or -';
-    return '';
-  };
-
-  const validatePassword = (v) => {
-    if (!v) return 'Required';
-    if (v.length < 8) return 'Must be at least 8 characters';
-    return '';
-  };
-
-  const runAllValidations = () => {
-    const errs = {
-      firstName: firstName.trim() ? validateName(firstName) : 'Required',
-      lastName: lastName.trim() ? validateName(lastName) : 'Required',
-      username: username.trim() ? validateUsername(username) : 'Required',
-      password: password ? validatePassword(password) : 'Required'
-    };
-    setFieldErrors(errs);
-    
-    // Simplified validation - just check if required fields are filled
-    const valid = firstName.trim() && 
-                 lastName.trim() && 
-                 username.trim() && 
-                 password.length >= 8;
-    
-    setIsValid(valid);
-    return valid;
-  };
-
-  useEffect(() => {
-    if (open) {
-      runAllValidations();
-    }
-  }, [firstName, lastName, username, password, open]);
-
-  const handleRegister = async (e) => {
-    e?.preventDefault();
-    setError('');
-    
-    if (!runAllValidations()) {
-      setError('Please fix the errors highlighted below');
-      return;
-    }
-//TEST
+  const handleRegister = async (values) => {
     setIsLoading(true);
     try {
       const user = await registerWithUsername({
-        firstName: firstName.trim(),
-        middleName: middleName.trim(),
-        lastName: lastName.trim(),
-        username: username.trim(),
-        password,
+        firstName: values.firstName.trim(),
+        middleName: values.middleName?.trim() || '',
+        lastName: values.lastName.trim(),
+        username: values.username.trim().toLowerCase(),
+        password: values.password,
         role: 'user'
       });
 
+      message.success('Registration successful!');
       if (typeof onSuccess === 'function') onSuccess(user);
+      form.resetFields();
       onClose();
     } catch (err) {
-      setError(err?.message || 'Registration failed');
+      console.error('Registration error:', err);
+      message.error(err?.message || 'Registration failed');
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (!open) return null;
+  const handleCancel = () => {
+    form.resetFields();
+    onClose();
+  };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content auth-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>Create account</h3>
-          <button className="close-button" onClick={onClose}>×</button>
+    <Modal
+      open={open}
+      title="Create Account"
+      onCancel={handleCancel}
+      footer={null}
+      width={500}
+      centered
+      maskClosable={!isLoading}
+    >
+      <style>{`
+        .ant-modal-header {
+          background: linear-gradient(135deg, #FFC300, #FFD54F);
+        }
+        .ant-modal-title {
+          color: #000 !important;
+          font-weight: 700;
+          font-size: 18px;
+          text-align: center;
+        }
+        .ant-input:hover,
+        .ant-input:focus,
+        .ant-input-focused,
+        .ant-input-password:hover,
+        .ant-input-password:focus {
+          border-color: #FFC300 !important;
+        }
+        .ant-input-affix-wrapper:hover,
+        .ant-input-affix-wrapper:focus,
+        .ant-input-affix-wrapper-focused {
+          border-color: #FFC300 !important;
+        }
+        .ant-input-affix-wrapper:focus,
+        .ant-input-affix-wrapper-focused {
+          box-shadow: 0 0 0 2px rgba(255, 195, 0, 0.1) !important;
+          outline: none !important;
+        }
+        .register-cancel-btn {
+          height: 42px;
+          border-radius: 8px;
+          border-color: #FFC300 !important;
+          color: #FFC300 !important;
+          background: transparent !important;
+        }
+        .register-cancel-btn:hover:not(:disabled) {
+          border-color: #FFD54F !important;
+          color: #FFD54F !important;
+          background: transparent !important;
+        }
+        .register-submit-btn {
+          height: 42px;
+          border-radius: 8px;
+          background: linear-gradient(135deg, #FFC300, #FFD54F) !important;
+          border-color: #FFC300 !important;
+          color: #000 !important;
+          font-weight: 600;
+        }
+        .register-submit-btn:hover:not(:disabled) {
+          background: linear-gradient(135deg, #FFD54F, #FFEB3B) !important;
+          border-color: #FFD54F !important;
+        }
+      `}</style>
+
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleRegister}
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <Form.Item
+            label="First Name"
+            name="firstName"
+            rules={[
+              { required: true, message: 'Please enter your first name' },
+              { pattern: /^[A-Za-z\s'-]{2,}$/, message: 'Invalid name format' }
+            ]}
+          >
+            <Input placeholder="Enter first name" size="large" />
+          </Form.Item>
+
+          <Form.Item
+            label="Last Name"
+            name="lastName"
+            rules={[
+              { required: true, message: 'Please enter your last name' },
+              { pattern: /^[A-Za-z\s'-]{2,}$/, message: 'Invalid name format' }
+            ]}
+          >
+            <Input placeholder="Enter last name" size="large" />
+          </Form.Item>
         </div>
 
-        <form className="modal-body" onSubmit={handleRegister}>
-          {error && <div className="error-message">{error}</div>}
+        <Form.Item
+          label="Middle Name (optional)"
+          name="middleName"
+        >
+          <Input placeholder="Enter middle name" size="large" />
+        </Form.Item>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div className="form-group">
-              <label className="form-label">First name *</label>
-              <input
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                required
-                className="input-field"
-                disabled={isLoading}
-              />
-              {fieldErrors.firstName && <div className="field-error">{fieldErrors.firstName}</div>}
-            </div>
-            
-            <div className="form-group">
-              <label className="form-label">Last name *</label>
-              <input
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                required
-                className="input-field"
-                disabled={isLoading}
-              />
-              {fieldErrors.lastName && <div className="field-error">{fieldErrors.lastName}</div>}
-            </div>
-          </div>
+        <Form.Item
+          label="Username"
+          name="username"
+          rules={[
+            { required: true, message: 'Please enter a username' },
+            { min: 4, message: 'Must be at least 4 characters' },
+            { pattern: /^[a-z0-9._-]+$/, message: 'Use lowercase letters, numbers, . _ or -' }
+          ]}
+        >
+          <Input 
+            prefix={<UserOutlined />} 
+            placeholder="Enter username" 
+            size="large"
+          />
+        </Form.Item>
 
-          <div className="form-group">
-            <label className="form-label">Middle name (optional)</label>
-            <input
-              value={middleName}
-              onChange={(e) => setMiddleName(e.target.value)}
-              className="input-field"
-              disabled={isLoading}
-            />
-          </div>
+        <Form.Item
+          label="Password"
+          name="password"
+          rules={[
+            { required: true, message: 'Please enter a password' },
+            { min: 8, message: 'Must be at least 8 characters' }
+          ]}
+          extra="Must be at least 8 characters"
+        >
+          <Input.Password 
+            prefix={<LockOutlined />} 
+            placeholder="Enter password" 
+            size="large"
+          />
+        </Form.Item>
 
-          <div className="form-group">
-            <label className="form-label">Username *</label>
-            <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              className="input-field"
-              disabled={isLoading}
-            />
-            {fieldErrors.username && <div className="field-error">{fieldErrors.username}</div>}
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Password *</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="input-field"
-              disabled={isLoading}
-              minLength={8}
-            />
-            {fieldErrors.password && <div className="field-error">{fieldErrors.password}</div>}
-            <small className="helper-text">Must be at least 8 characters</small>
-          </div>
-
-          <div className="modal-actions">
-            <button 
-              type="submit" 
-              className="submit-btn" 
-              disabled={isLoading || !isValid}
-            >
-              {isLoading ? 'Registering…' : 'Register'}
-            </button>
-            <button 
-              type="button" 
-              className="cancel-btn" 
-              onClick={onClose} 
-              disabled={isLoading}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+          <Button 
+            className="register-cancel-btn"
+            onClick={handleCancel}
+            disabled={isLoading}
+          >
+            Cancel
+          </Button>
+          <Button 
+            type="primary"
+            className="register-submit-btn"
+            htmlType="submit"
+            loading={isLoading}
+          >
+            Register
+          </Button>
+        </div>
+      </Form>
+    </Modal>
   );
 }

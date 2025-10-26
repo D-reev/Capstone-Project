@@ -51,7 +51,7 @@ export default function MechanicSidebar({ sidebarOpen }) {
   };
 
   return (
-    <div className={`sidebar ${sidebarOpen ? '' : 'collapsed'}`} style={{ background: 'var(--header-bg)' }}>
+    <div className={`sidebar ${sidebarOpen ? '' : 'collapsed'}`}>
       <div className="sidebar-header">
         <div className="user-profile">
           <div className="user-avatar">

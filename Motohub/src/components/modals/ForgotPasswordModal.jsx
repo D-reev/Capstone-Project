@@ -1,288 +1,317 @@
 import React, { useState, useEffect } from 'react';
+import { Modal, Form, Input, Button, Steps, Alert, message } from 'antd';
+import { MailOutlined, LockOutlined, SafetyOutlined } from '@ant-design/icons';
 import { initiatePasswordReset, verifyOTP, resetPassword } from '../../utils/auth';
-import { X, Mail, Lock, CheckCircle, AlertCircle } from 'lucide-react';
 import './Modal.css';
 
 function ForgotPasswordModal({ open, onClose }) {
+  const [form] = Form.useForm();
+  const [step, setStep] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [step, setStep] = useState(1);
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
 
   // Reset everything when modal closes
   useEffect(() => {
     if (!open) {
+      form.resetFields();
+      setStep(0);
       setEmail('');
       setOtp('');
-      setNewPassword('');
-      setConfirmPassword('');
-      setStep(1);
-      setError('');
       setIsLoading(false);
     }
-  }, [open]);
+  }, [open, form]);
+
+  const handleEmailSubmit = async (values) => {
+    setIsLoading(true);
+    try {
+      await initiatePasswordReset(values.email);
+      setEmail(values.email);
+      setStep(1);
+    } catch (error) {
+      message.error(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOTPVerification = async (values) => {
+    setIsLoading(true);
+    try {
+      await verifyOTP(values.otp);
+      setOtp(values.otp);
+      setStep(2);
+    } catch (error) {
+      message.error('Invalid OTP. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePasswordReset = async (values) => {
+    if (values.newPassword !== values.confirmPassword) {
+      message.error('Passwords do not match');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await resetPassword(otp, values.newPassword);
+      message.success('Password reset successfully!');
+      handleClose();
+    } catch (error) {
+      message.error(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleClose = () => {
+    form.resetFields();
+    setStep(0);
     setEmail('');
     setOtp('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setStep(1);
-    setError('');
     setIsLoading(false);
     onClose();
   };
 
-  const handleEmailSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
-
-    try {
-      await initiatePasswordReset(email);
-      setStep(2);
-    } catch (error) {
-      setError(error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleOTPVerification = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
-
-    try {
-      await verifyOTP(otp);
-      setStep(3);
-    } catch (error) {
-      setError('Invalid OTP. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handlePasswordReset = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
-
-    if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      await resetPassword(otp, newPassword);
-      handleClose();
-    } catch (error) {
-      setError(error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (!open) return null;
+  const steps = [
+    { title: 'Email' },
+    { title: 'Verify OTP' },
+    { title: 'Reset Password' }
+  ];
 
   return (
-    <div className="modal-overlay" onClick={handleClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Reset Password</h2>
-          <button className="close-button" onClick={handleClose}>
-            <X size={20} />
-          </button>
-        </div>
+    <Modal
+      open={open}
+      title="Reset Password"
+      onCancel={handleClose}
+      footer={null}
+      width={500}
+      centered
+      maskClosable={!isLoading}
+    >
+      <style>{`
+        .ant-modal-header {
+          background: linear-gradient(135deg, #FFC300, #FFD54F);
+        }
+        .ant-modal-title {
+          color: #000 !important;
+          font-weight: 700;
+          font-size: 18px;
+          text-align: center;
+        }
+        .ant-input:hover,
+        .ant-input:focus,
+        .ant-input-focused,
+        .ant-input-password:hover,
+        .ant-input-password:focus {
+          border-color: #FFC300 !important;
+        }
+        .ant-input-affix-wrapper:hover,
+        .ant-input-affix-wrapper:focus,
+        .ant-input-affix-wrapper-focused {
+          border-color: #FFC300 !important;
+        }
+        .ant-input-affix-wrapper:focus,
+        .ant-input-affix-wrapper-focused {
+          box-shadow: 0 0 0 2px rgba(255, 195, 0, 0.1) !important;
+          outline: none !important;
+        }
+        .ant-steps-item-finish .ant-steps-item-icon {
+          background-color: #FFC300 !important;
+          border-color: #FFC300 !important;
+        }
+        .ant-steps-item-process .ant-steps-item-icon {
+          background-color: #FFC300 !important;
+          border-color: #FFC300 !important;
+        }
+        .forgot-cancel-btn {
+          height: 42px;
+          border-radius: 8px;
+          border-color: #FFC300 !important;
+          color: #FFC300 !important;
+          background: transparent !important;
+        }
+        .forgot-cancel-btn:hover:not(:disabled) {
+          border-color: #FFD54F !important;
+          color: #FFD54F !important;
+          background: transparent !important;
+        }
+        .forgot-submit-btn {
+          height: 42px;
+          border-radius: 8px;
+          background: linear-gradient(135deg, #FFC300, #FFD54F) !important;
+          border-color: #FFC300 !important;
+          color: #000 !important;
+          font-weight: 600;
+        }
+        .forgot-submit-btn:hover:not(:disabled) {
+          background: linear-gradient(135deg, #FFD54F, #FFEB3B) !important;
+          border-color: #FFD54F !important;
+        }
+      `}</style>
 
-        <div className="add-part-form">
-          {error && (
-            <div className="error-message" style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.5rem',
-              padding: '1rem',
-              marginBottom: '1rem',
-              backgroundColor: '#fee2e2',
-              color: '#991b1b',
-              borderRadius: '0.5rem'
-            }}>
-              <AlertCircle size={18} />
-              <span>{error}</span>
-            </div>
-          )}
+      <Steps current={step} items={steps} style={{ marginBottom: '24px' }} />
 
-          {step === 1 && (
-            <form onSubmit={handleEmailSubmit}>
-              <div className="form-group full-width">
-                <label>Email Address</label>
-                <p>Enter your email address to receive a password reset code</p>
-                <div style={{ position: 'relative' }}>
-                  <Mail 
-                    size={18} 
-                    style={{ 
-                      position: 'absolute', 
-                      left: '1rem', 
-                      top: '50%', 
-                      transform: 'translateY(-50%)',
-                      color: '#a0aec0'
-                    }} 
-                  />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="your.email@example.com"
-                    required
-                    disabled={isLoading}
-                    style={{ paddingLeft: '3rem' }}
-                  />
-                </div>
-              </div>
+      {step === 0 && (
+        <Form form={form} layout="vertical" onFinish={handleEmailSubmit}>
+          <Alert
+            message="Enter your email address to receive a password reset code"
+            type="info"
+            showIcon
+            style={{ marginBottom: '16px' }}
+          />
+          
+          <Form.Item
+            label="Email Address"
+            name="email"
+            rules={[
+              { required: true, message: 'Please enter your email' },
+              { type: 'email', message: 'Please enter a valid email' }
+            ]}
+          >
+            <Input 
+              prefix={<MailOutlined />} 
+              placeholder="your.email@example.com" 
+              size="large"
+            />
+          </Form.Item>
 
-              <div className="modal-footer" style={{ padding: '1.5rem 0 0 0', marginTop: '1.5rem' }}>
-                <button type="button" className="cancel-btn" onClick={handleClose}>
-                  Cancel
-                </button>
-                <button type="submit" className="submit-btn" disabled={isLoading}>
-                  {isLoading ? 'Sending...' : 'Send Reset Code'}
-                </button>
-              </div>
-            </form>
-          )}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+            <Button 
+              className="forgot-cancel-btn"
+              onClick={handleClose}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="primary"
+              className="forgot-submit-btn"
+              htmlType="submit"
+              loading={isLoading}
+            >
+              Send Reset Code
+            </Button>
+          </div>
+        </Form>
+      )}
 
-          {step === 2 && (
-            <form onSubmit={handleOTPVerification}>
-              <div className="form-group full-width">
-                <label>Verification Code</label>
-                <p>Enter the 6-digit code sent to <strong>{email}</strong></p>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '0.5rem',
-                  padding: '0.75rem',
-                  marginBottom: '1rem',
-                  backgroundColor: '#fef3c7',
-                  color: '#92400e',
-                  borderRadius: '0.5rem',
-                  fontSize: '0.875rem'
-                }}>
-                  <AlertCircle size={16} />
-                  <span>Check your spam/junk folder if you don't see the email</span>
-                </div>
-                <div style={{ position: 'relative' }}>
-                  <CheckCircle 
-                    size={18} 
-                    style={{ 
-                      position: 'absolute', 
-                      left: '1rem', 
-                      top: '50%', 
-                      transform: 'translateY(-50%)',
-                      color: '#a0aec0'
-                    }} 
-                  />
-                  <input
-                    type="text"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                    placeholder="Enter 6-digit code"
-                    required
-                    maxLength={6}
-                    disabled={isLoading}
-                    style={{ 
-                      paddingLeft: '3rem',
-                      textAlign: 'center',
-                      fontSize: '1.25rem',
-                      letterSpacing: '0.5rem'
-                    }}
-                  />
-                </div>
-              </div>
+      {step === 1 && (
+        <Form form={form} layout="vertical" onFinish={handleOTPVerification}>
+          <Alert
+            message={`Enter the 6-digit code sent to ${email}`}
+            type="warning"
+            description="Check your spam/junk folder if you don't see the email"
+            showIcon
+            style={{ marginBottom: '16px' }}
+          />
+          
+          <Form.Item
+            label="Verification Code"
+            name="otp"
+            rules={[
+              { required: true, message: 'Please enter the OTP code' },
+              { len: 6, message: 'OTP must be 6 digits' }
+            ]}
+          >
+            <Input 
+              prefix={<SafetyOutlined />} 
+              placeholder="Enter 6-digit code" 
+              maxLength={6}
+              size="large"
+              style={{ letterSpacing: '0.5rem', textAlign: 'center' }}
+            />
+          </Form.Item>
 
-              <div className="modal-footer" style={{ padding: '1.5rem 0 0 0', marginTop: '1.5rem' }}>
-                <button type="button" className="cancel-btn" onClick={() => setStep(1)}>
-                  Back
-                </button>
-                <button type="submit" className="submit-btn" disabled={isLoading}>
-                  {isLoading ? 'Verifying...' : 'Verify Code'}
-                </button>
-              </div>
-            </form>
-          )}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+            <Button 
+              className="forgot-cancel-btn"
+              onClick={() => setStep(0)}
+              disabled={isLoading}
+            >
+              Back
+            </Button>
+            <Button 
+              type="primary"
+              className="forgot-submit-btn"
+              htmlType="submit"
+              loading={isLoading}
+            >
+              Verify Code
+            </Button>
+          </div>
+        </Form>
+      )}
 
-          {step === 3 && (
-            <form onSubmit={handlePasswordReset}>
-              <div className="form-group full-width">
-                <label>New Password</label>
-                <p>Enter your new password (minimum 6 characters)</p>
-                <div style={{ position: 'relative' }}>
-                  <Lock 
-                    size={18} 
-                    style={{ 
-                      position: 'absolute', 
-                      left: '1rem', 
-                      top: '50%', 
-                      transform: 'translateY(-50%)',
-                      color: '#a0aec0'
-                    }} 
-                  />
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Enter new password"
-                    required
-                    minLength={6}
-                    disabled={isLoading}
-                    style={{ paddingLeft: '3rem' }}
-                  />
-                </div>
-              </div>
+      {step === 2 && (
+        <Form form={form} layout="vertical" onFinish={handlePasswordReset}>
+          <Alert
+            message="Enter your new password (minimum 6 characters)"
+            type="info"
+            showIcon
+            style={{ marginBottom: '16px' }}
+          />
+          
+          <Form.Item
+            label="New Password"
+            name="newPassword"
+            rules={[
+              { required: true, message: 'Please enter a new password' },
+              { min: 6, message: 'Password must be at least 6 characters' }
+            ]}
+          >
+            <Input.Password 
+              prefix={<LockOutlined />} 
+              placeholder="Enter new password" 
+              size="large"
+            />
+          </Form.Item>
 
-              <div className="form-group full-width">
-                <label>Confirm New Password</label>
-                <p>Re-enter your new password to confirm</p>
-                <div style={{ position: 'relative' }}>
-                  <Lock 
-                    size={18} 
-                    style={{ 
-                      position: 'absolute', 
-                      left: '1rem', 
-                      top: '50%', 
-                      transform: 'translateY(-50%)',
-                      color: '#a0aec0'
-                    }} 
-                  />
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm new password"
-                    required
-                    minLength={6}
-                    disabled={isLoading}
-                    style={{ paddingLeft: '3rem' }}
-                  />
-                </div>
-              </div>
+          <Form.Item
+            label="Confirm New Password"
+            name="confirmPassword"
+            dependencies={['newPassword']}
+            rules={[
+              { required: true, message: 'Please confirm your password' },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue('newPassword') === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error('Passwords do not match'));
+                },
+              }),
+            ]}
+          >
+            <Input.Password 
+              prefix={<LockOutlined />} 
+              placeholder="Confirm new password" 
+              size="large"
+            />
+          </Form.Item>
 
-              <div className="modal-footer" style={{ padding: '1.5rem 0 0 0', marginTop: '1.5rem' }}>
-                <button type="button" className="cancel-btn" onClick={() => setStep(2)}>
-                  Back
-                </button>
-                <button type="submit" className="submit-btn" disabled={isLoading}>
-                  {isLoading ? 'Resetting...' : 'Reset Password'}
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-      </div>
-    </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+            <Button 
+              className="forgot-cancel-btn"
+              onClick={() => setStep(1)}
+              disabled={isLoading}
+            >
+              Back
+            </Button>
+            <Button 
+              type="primary"
+              className="forgot-submit-btn"
+              htmlType="submit"
+              loading={isLoading}
+            >
+              Reset Password
+            </Button>
+          </div>
+        </Form>
+      )}
+    </Modal>
   );
 }
 

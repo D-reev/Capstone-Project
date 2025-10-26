@@ -155,18 +155,65 @@ export default function CarPartsRequestModal({ car, customer, onSubmit, onClose,
       title="Request Parts for Vehicle"
       open={isOpen}
       onCancel={handleCancel}
-      onOk={() => form.submit()}
-      okText="Submit Request"
-      cancelText="Cancel"
-      confirmLoading={isSubmitting}
+      footer={null}
       width={640}
-      destroyOnClose
-      maskClosable
+      destroyOnHidden
+      maskClosable={!isSubmitting}
       afterOpenChange={(visible) => { if (visible) fetchInventory(); }}
-      rootClassName="mh-yellow-modal"
-      okButtonProps={{ className: 'mh-yellow-btn' }}
-      cancelButtonProps={{ className: 'mh-yellow-ghost-btn' }}
+      centered
     >
+      <style>{`
+        .ant-modal-header {
+          background: linear-gradient(135deg, #FFC300, #FFD54F);
+        }
+        .ant-modal-title {
+          color: #000 !important;
+          font-weight: 700;
+          font-size: 18px;
+        }
+        .ant-input-number:hover,
+        .ant-input-number:focus,
+        .ant-input-number-focused {
+          border-color: #FFC300 !important;
+        }
+        .ant-input-number:focus,
+        .ant-input-number-focused {
+          box-shadow: 0 0 0 2px rgba(255, 195, 0, 0.1) !important;
+          outline: none !important;
+        }
+        .ant-checkbox-checked .ant-checkbox-inner {
+          background-color: #FFC300 !important;
+          border-color: #FFC300 !important;
+        }
+        .ant-checkbox-wrapper:hover .ant-checkbox-inner,
+        .ant-checkbox:hover .ant-checkbox-inner {
+          border-color: #FFC300 !important;
+        }
+        .carpartsreq-cancel-btn {
+          height: 40px;
+          border-radius: 8px;
+          border-color: #FFC300 !important;
+          color: #FFC300 !important;
+          background: transparent !important;
+        }
+        .carpartsreq-cancel-btn:hover:not(:disabled) {
+          border-color: #FFD54F !important;
+          color: #FFD54F !important;
+          background: transparent !important;
+        }
+        .carpartsreq-submit-btn {
+          height: 40px;
+          border-radius: 8px;
+          background: linear-gradient(135deg, #FFC300, #FFD54F) !important;
+          border-color: #FFC300 !important;
+          color: #000 !important;
+          font-weight: 600;
+        }
+        .carpartsreq-submit-btn:hover:not(:disabled) {
+          background: linear-gradient(135deg, #FFD54F, #FFEB3B) !important;
+          border-color: #FFD54F !important;
+        }
+      `}</style>
       <div style={{ marginBottom: 16, padding: 12, background: '#f7fafc', borderRadius: 8 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, fontSize: 13 }}>
           <Text><b>Owner:</b> {customer?.displayName || 'Unknown'}</Text>
@@ -237,6 +284,27 @@ export default function CarPartsRequestModal({ car, customer, onSubmit, onClose,
           <Text strong>
             Total: ₱{totalCost.toLocaleString()}
           </Text>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+          <Button 
+            className="carpartsreq-cancel-btn"
+            onClick={handleCancel}
+            disabled={isSubmitting}
+            style={{ height: '40px' }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            type="primary" 
+            className="carpartsreq-submit-btn"
+            onClick={() => form.submit()}
+            loading={isSubmitting}
+            disabled={selectedParts.length === 0}
+            style={{ height: '40px' }}
+          >
+            Submit Request
+          </Button>
         </div>
       </Form>
     </Modal>

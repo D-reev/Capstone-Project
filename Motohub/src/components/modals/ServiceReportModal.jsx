@@ -76,12 +76,22 @@ export default function ServiceReportModal({ car, customer, onSubmit, onClose, o
       onCancel={handleCancel}
       footer={null}
       width={600}
-      destroyOnClose
+      destroyOnHidden
+      centered
     >
       <style>
         {`
-          .ant-input:focus,
+          .ant-modal-header {
+            background: linear-gradient(135deg, #FFC300, #FFD54F);
+          }
+          .ant-modal-title {
+            color: #000 !important;
+            font-weight: 700;
+            font-size: 18px;
+          }
           .ant-input:hover,
+          .ant-input:focus,
+          .ant-input-focused,
           .ant-picker:hover .ant-picker-input,
           .ant-picker-focused .ant-picker-input,
           .ant-picker:hover,
@@ -89,14 +99,34 @@ export default function ServiceReportModal({ car, customer, onSubmit, onClose, o
             border-color: #FFC300 !important;
           }
           .ant-input:focus,
+          .ant-input-focused,
           .ant-picker-focused {
             outline: 0;
-            box-shadow: 0 0 0 2px rgba(255, 195, 0, 0.2) !important;
+            box-shadow: 0 0 0 2px rgba(255, 195, 0, 0.1) !important;
             border-color: #FFC300 !important;
           }
-          .ant-btn-primary:hover,
-          .ant-btn-primary:focus {
-            background-color: #FFD54F !important;
+          .servicereport-cancel-btn {
+            height: 40px;
+            border-radius: 8px;
+            border-color: #FFC300 !important;
+            color: #FFC300 !important;
+            background: transparent !important;
+          }
+          .servicereport-cancel-btn:hover:not(:disabled) {
+            border-color: #FFD54F !important;
+            color: #FFD54F !important;
+            background: transparent !important;
+          }
+          .servicereport-submit-btn {
+            height: 40px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #FFC300, #FFD54F) !important;
+            border-color: #FFC300 !important;
+            color: #000 !important;
+            font-weight: 600;
+          }
+          .servicereport-submit-btn:hover:not(:disabled) {
+            background: linear-gradient(135deg, #FFD54F, #FFEB3B) !important;
             border-color: #FFD54F !important;
           }
         `}
@@ -166,24 +196,25 @@ export default function ServiceReportModal({ car, customer, onSubmit, onClose, o
           />
         </Form.Item>
 
-        <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-          <Button onClick={handleCancel} style={{ marginRight: 8 }} disabled={isSubmitting}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+          <Button 
+            className="servicereport-cancel-btn"
+            onClick={handleCancel}
+            disabled={isSubmitting}
+            style={{ height: '40px' }}
+          >
             Cancel
           </Button>
           <Button 
             type="primary" 
+            className="servicereport-submit-btn"
             htmlType="submit" 
             loading={isSubmitting}
-            style={{
-              backgroundColor: '#FFC300',
-              borderColor: '#FFC300',
-              color: '#000',
-              fontWeight: 600
-            }}
+            style={{ height: '40px' }}
           >
             Submit Report
           </Button>
-        </Form.Item>
+        </div>
       </Form>
     </Modal>
   );

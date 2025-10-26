@@ -4,13 +4,14 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--header-bg, #1A202C);
-  color: var(--header-text, #E2E8F0);
+  background: var(--header-bg, #1F2937);
+  color: var(--header-text, #F9FAFB);
   padding: 0.75rem 1.25rem;
   box-shadow: 0 2px 6px rgba(2,6,23,0.06);
   border-bottom: 1px solid rgba(255,255,255,0.03);
   gap: 0.75rem;
-  z-index: 5;
+  z-index: 100;
+  height: 64px;
 }
 
 /* Left group (toggle + title) */
@@ -103,6 +104,11 @@
 
 /* Responsive: hide brand text on very small screens */
 @media (max-width: 520px) {
-  .brand-name { display: none; }
-  .customer-top-bar { padding: 0.5rem; }
+  .brand-name { 
+    display: none; 
+  }
+  
+  .customer-top-bar { 
+    padding: 0.5rem; 
+  }
 }
