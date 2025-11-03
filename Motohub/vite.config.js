@@ -32,7 +32,7 @@ export default defineConfig({
         runtimeCaching: []
       },
       devOptions: {
-        enabled: true
+        enabled: false
       }
     })
   ],
