@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Form, Input, InputNumber, Checkbox, Button, Typography, Divider } from 'antd';
+import { Modal, Form, Input, InputNumber, Checkbox, Button, Typography, Divider, App } from 'antd';
 import './Modal.css';
 
 const { TextArea } = Input;
@@ -8,6 +8,7 @@ const { Text } = Typography;
 export default function PartsRequestModal({ parts, service, onSubmit, onClose, open }) {
   const [form] = Form.useForm();
   const [selectedParts, setSelectedParts] = useState([]);
+  const { message: messageApi } = App.useApp();
 
   const handleSubmit = (values) => {
     const requestData = {
@@ -16,6 +17,7 @@ export default function PartsRequestModal({ parts, service, onSubmit, onClose, o
       notes: values.notes || ''
     };
     onSubmit(requestData);
+    messageApi.success('Parts request submitted successfully!');
     form.resetFields();
     setSelectedParts([]);
   };
@@ -49,7 +51,7 @@ export default function PartsRequestModal({ parts, service, onSubmit, onClose, o
       footer={null}
       width={600}
       centered
-      destroyOnClose
+      destroyOnHidden
     >
       <style>{`
         .ant-modal-header {

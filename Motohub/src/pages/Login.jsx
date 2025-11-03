@@ -136,10 +136,10 @@ function Login() {
         
         <div className="hero-content">
           <div className="new-background-badge">
-            <span>⚡ New Experience</span>
+            <span>⚡Experience CJKB</span>
           </div>
           
-          <h1 className="hero-title">Welcome to Motohub</h1>
+          <h1 className="hero-title">Welcome to CJKB Motohub</h1>
           <p className="hero-tagline">
             Your one-stop automotive solution. We have all the parts you need in stock and ready to install, so you never have to go anywhere else.
           </p>
@@ -183,14 +183,22 @@ function Login() {
           onClose={() => setRegisterOpen(false)}
           onSuccess={(createdUser) => {
             setRegisterOpen(false);
-            setSuccessMessage('Registration successful. Please complete your profile in the Profile section and connect a verified Gmail account to enable notifications and password recovery.');
+            setSuccessMessage('Registration successful! You can now login with your username and password. If you provided a Gmail address, you can use "Forgot Password" for account recovery.');
             setSuccessOpen(true);
+          }}
+          onSwitchToLogin={() => {
+            setRegisterOpen(false);
+            setLoginOpen(true);
           }}
         />
 
         <LoginModal
           open={loginOpen}
           onClose={() => setLoginOpen(false)}
+          onSwitchToRegister={() => {
+            setLoginOpen(false);
+            setRegisterOpen(true);
+          }}
         />
 
         <SuccessModal

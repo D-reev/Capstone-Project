@@ -8,18 +8,18 @@
 }
 
 .inventory-page .main-content {
-  margin-left: 240px;
-  width: calc(100% - 240px);
+  margin-left: 280px;
+  width: calc(100% - 280px);
   flex: 1;
   background: #F3F4F6;
   display: flex;
   flex-direction: column;
-  transition: margin-left 0.3s ease, width 0.3s ease;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .inventory-page .main-content.sidebar-collapsed {
-  margin-left: 0;
-  width: 100%;
+  margin-left: 72px;
+  width: calc(100% - 72px);
 }
 
 .inventory-container {

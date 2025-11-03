@@ -1,10 +1,15 @@
-import React from 'react';
-import { Info } from 'lucide-react';
-import { Modal, Form, Input, Select, InputNumber, Tooltip, Button } from 'antd';
+import React, { useState, useRef } from 'react';
+import { Info, X, Image as ImageIcon } from 'lucide-react';
+import { Modal, Form, Input, Select, InputNumber, Tooltip, Button, App } from 'antd';
 import './Modal.css';
 
-export default function AddCarModal({ onSubmit, onClose }) {
+export default function AddCarModal({ onSubmit, onClose, userId }) {
   const [form] = Form.useForm();
+  const [imagePreview, setImagePreview] = useState(null);
+  const [imageBase64, setImageBase64] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const fileInputRef = useRef(null);
+  const { message: messageApi, modal } = App.useApp();
 
   const fieldInfo = {
     make: "Enter the vehicle manufacturer (e.g., Toyota, Honda, Ford)",
@@ -13,11 +18,72 @@ export default function AddCarModal({ onSubmit, onClose }) {
     plateNumber: "Enter your vehicle's license plate number",
     engine: "Enter engine specifications (e.g., 2.0L Turbo, V6 3.5L)",
     transmission: "Select the type of transmission your vehicle has",
-    mileage: "Enter the current odometer reading in kilometers"
+    mileage: "Enter the current odometer reading in kilometers",
+    image: "Upload a photo of your vehicle (optional)"
   };
 
-  const handleFinish = (values) => {
-    onSubmit(values);
+  const handleImageSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        messageApi.error('Please select an image file');
+        return;
+      }
+
+      // Validate file size (2MB max for base64 storage in Firestore)
+      if (file.size > 2 * 1024 * 1024) {
+        messageApi.error('Image size should be less than 2MB');
+        return;
+      }
+
+      // Convert to base64
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result;
+        setImagePreview(base64String);
+        setImageBase64(base64String);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setImagePreview(null);
+    setImageBase64(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleFinish = async (values) => {
+    // Show confirmation modal
+    modal.confirm({
+      title: 'Confirm Add Vehicle',
+      content: `Are you sure you want to add ${values.year} ${values.make} ${values.model}?`,
+      okText: 'Yes, Add Vehicle',
+      cancelText: 'Cancel',
+      centered: true,
+      onOk: async () => {
+        setIsSubmitting(true);
+        try {
+          await onSubmit({
+            ...values,
+            imageUrl: imageBase64 // Store base64 string directly
+          });
+          messageApi.success('Vehicle added successfully!');
+          form.resetFields();
+          setImagePreview(null);
+          setImageBase64(null);
+          onClose(); // Close modal after successful submission
+        } catch (error) {
+          console.error('Error adding vehicle:', error);
+          messageApi.error('Failed to add vehicle');
+        } finally {
+          setIsSubmitting(false);
+        }
+      }
+    });
   };
 
   return (
@@ -28,7 +94,7 @@ export default function AddCarModal({ onSubmit, onClose }) {
       footer={null}
       width={600}
       destroyOnHidden
-      maskClosable
+      maskClosable={false}
       centered
     >
       <style>{`
@@ -79,9 +145,55 @@ export default function AddCarModal({ onSubmit, onClose }) {
           color: #000 !important;
           font-weight: 600;
         }
-        .addcar-submit-btn:hover:not(:disabled) {
+        .editcar-submit-btn:hover:not(:disabled) {
           background: linear-gradient(135deg, #FFD54F, #FFEB3B) !important;
           border-color: #FFD54F !important;
+        }
+        .image-upload-area {
+          border: 2px dashed #e2e8f0;
+          border-radius: 12px;
+          padding: 1.5rem;
+          text-align: center;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          background: #f7fafc;
+          margin-bottom: 1rem;
+        }
+        .image-upload-area:hover {
+          border-color: #FFC300;
+          background: #fffbf0;
+        }
+        .image-preview-container {
+          position: relative;
+          border-radius: 12px;
+          overflow: hidden;
+          margin-bottom: 1rem;
+        }
+        .image-preview {
+          width: 100%;
+          height: 200px;
+          object-fit: cover;
+          border-radius: 12px;
+        }
+        .image-remove-btn {
+          position: absolute;
+          top: 0.5rem;
+          right: 0.5rem;
+          background: rgba(239, 68, 68, 0.9);
+          color: white;
+          border: none;
+          border-radius: 50%;
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .image-remove-btn:hover {
+          background: rgba(220, 38, 38, 1);
+          transform: scale(1.1);
         }
       `}</style>
       <Form
@@ -98,6 +210,43 @@ export default function AddCarModal({ onSubmit, onClose }) {
           mileage: null
         }}
       >
+        <Form.Item
+          label={<span>VEHICLE IMAGE <Tooltip title={fieldInfo.image}><Info size={14} /></Tooltip></span>}
+        >
+          {imagePreview ? (
+            <div className="image-preview-container">
+              <img src={imagePreview} alt="Vehicle preview" className="image-preview" />
+              <button
+                type="button"
+                className="image-remove-btn"
+                onClick={handleRemoveImage}
+              >
+                <X size={18} />
+              </button>
+            </div>
+          ) : (
+            <div
+              className="image-upload-area"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <ImageIcon size={48} style={{ color: '#a0aec0', marginBottom: '0.5rem' }} />
+              <div style={{ fontSize: '0.875rem', color: '#718096', marginBottom: '0.25rem' }}>
+                Click to upload vehicle image
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#a0aec0' }}>
+                JPG, PNG up to 2MB
+              </div>
+            </div>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={handleImageSelect}
+          />
+        </Form.Item>
+
         <Form.Item
           label={<span>MAKE <Tooltip title={fieldInfo.make}><Info size={14} /></Tooltip></span>}
           name="make"
@@ -162,6 +311,7 @@ export default function AddCarModal({ onSubmit, onClose }) {
           <Button 
             className="addcar-cancel-btn"
             onClick={onClose}
+            disabled={isSubmitting}
             style={{ height: '40px' }}
           >
             Cancel
@@ -170,6 +320,7 @@ export default function AddCarModal({ onSubmit, onClose }) {
             type="primary" 
             className="addcar-submit-btn"
             onClick={() => form.submit()}
+            loading={isSubmitting}
             style={{ height: '40px' }}
           >
             Add Vehicle

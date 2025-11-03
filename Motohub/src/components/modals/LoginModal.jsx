@@ -1,28 +1,107 @@
 import React, { useState } from 'react';
-import { Modal, Form, Input, Button, Checkbox, message } from 'antd';
-import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
+import { Modal, Form, Input, Button, Checkbox, App } from 'antd';
+import { UserOutlined, LockOutlined, MailOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../config/firebase';
+import { getUserRole } from '../../utils/auth';
+import { useNavigate } from 'react-router-dom';
 import ForgotPasswordModal from './ForgotPasswordModal';
 import './Modal.css';
 
-export default function LoginModal({ open, onClose }) {
+export default function LoginModal({ open, onClose, onSwitchToRegister }) {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+  const navigate = useNavigate();
+  const { message: messageApi } = App.useApp();
 
   const handleLogin = async (values) => {
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
-      message.success('Login successful!');
+      // Support both email and username login
+      const identifier = (values.emailOrUsername || "").trim();
+      const loginEmail = identifier.includes('@') ? identifier : `${identifier}@motohub.local`;
+
+      console.log('Attempting login with:', loginEmail); // Debug log
+      
+      const userCredential = await signInWithEmailAndPassword(auth, loginEmail, values.password);
+      const role = await getUserRole(userCredential.user.uid);
+      
+      messageApi.success('Login successful!');
       form.resetFields();
       onClose();
+
+      // Navigate based on role
+      if (role === 'admin') {
+        navigate('/admindashboard');
+      } else if (role === 'mechanic'){
+        navigate('/mechanicdashboard');
+      } else {
+        navigate('/userdashboard');
+      }
     } catch (error) {
       console.error('Login error:', error);
-      message.error(error.message || 'Failed to login. Please check your credentials.');
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      console.error('Attempted email:', (values.emailOrUsername || "").trim().includes('@') 
+        ? (values.emailOrUsername || "").trim() 
+        : `${(values.emailOrUsername || "").trim()}@motohub.local`);
+      
+      const errorMessage = getErrorMessage(error.code, values.emailOrUsername);
+      
+      // Show error in a modal
+      Modal.error({
+        title: 'Login Failed',
+        icon: <ExclamationCircleOutlined />,
+        content: (
+          <div>
+            <p>{errorMessage}</p>
+            {error.code === 'auth/invalid-credential' && (
+              <div style={{ marginTop: '12px', padding: '12px', background: '#fff7e6', borderRadius: '8px' }}>
+                <strong>Tips:</strong>
+                <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
+                  <li>Double-check your username/email and password</li>
+                  <li>Remember: usernames are case-sensitive</li>
+                  <li>If you forgot your password, use "Forgot password?"</li>
+                  <li>Don't have an account? Click "Register here"</li>
+                </ul>
+              </div>
+            )}
+          </div>
+        ),
+        okText: 'Got it',
+        centered: true,
+        okButtonProps: {
+          style: {
+            background: 'linear-gradient(135deg, #FFC300, #FFD54F)',
+            borderColor: '#FFC300',
+            color: '#000',
+            fontWeight: 600
+          }
+        }
+      });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getErrorMessage = (errorCode, identifier) => {
+    const isEmail = identifier && identifier.includes('@');
+    const accountType = isEmail ? 'email address' : 'username';
+    
+    switch (errorCode) {
+      case 'auth/user-not-found':
+        return `No account found with this ${accountType}. Please check your credentials or register a new account.`;
+      case 'auth/wrong-password':
+        return 'Incorrect password. Click "Forgot password?" to reset it.';
+      case 'auth/invalid-email':
+        return 'Invalid format. Enter a valid email or username.';
+      case 'auth/too-many-requests':
+        return 'Too many failed login attempts. Please try again later or reset your password.';
+      case 'auth/invalid-credential':
+        return `Invalid ${accountType} or password. Please check your credentials. If you don't have an account, click "Register here" below.`;
+      default:
+        return 'Login failed. Please verify your credentials and try again.';
     }
   };
 
@@ -118,17 +197,18 @@ export default function LoginModal({ open, onClose }) {
           onFinish={handleLogin}
         >
           <Form.Item
-            label="Email"
-            name="email"
+            label="Email or Username"
+            name="emailOrUsername"
             rules={[
-              { required: true, message: 'Please enter your email' },
-              { type: 'email', message: 'Please enter a valid email' }
+              { required: true, message: 'Please enter your email or username' }
             ]}
+            extra="Enter your username (e.g., john_doe) or email address"
           >
             <Input 
-              prefix={<MailOutlined />} 
-              placeholder="Enter your email" 
+              prefix={<UserOutlined />} 
+              placeholder="Enter your email or username" 
               size="large"
+              autoComplete="username"
             />
           </Form.Item>
 
@@ -174,6 +254,25 @@ export default function LoginModal({ open, onClose }) {
             >
               Login
             </Button>
+          </div>
+
+          <div style={{ textAlign: 'center', marginTop: '16px', fontSize: '14px' }}>
+            Don't have an account?{' '}
+            <span 
+              onClick={() => {
+                handleCancel();
+                if (onSwitchToRegister) onSwitchToRegister();
+              }}
+              style={{ 
+                color: '#FFC300', 
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+              onMouseEnter={(e) => e.target.style.color = '#FFD54F'}
+              onMouseLeave={(e) => e.target.style.color = '#FFC300'}
+            >
+              Register here
+            </span>
           </div>
         </Form>
       </Modal>

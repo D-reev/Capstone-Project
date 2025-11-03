@@ -4,10 +4,11 @@ import { getFirestore, collection, getDocs, updateDoc, doc, query, orderBy, getD
 import { SearchOutlined, FilterOutlined, InfoCircleOutlined, MoreOutlined, PlusOutlined } from '@ant-design/icons';
 import { Input, Button, Avatar, Dropdown, Menu, Modal, message, App, ConfigProvider } from 'antd';
 import AdminSidebar from '../components/AdminSidebar';
-import TopBar from '../components/TopBar';
+import NavigationBar from '../components/NavigationBar';
 import ProfileModal from '../components/modals/ProfileModal';
 import Loading from '../components/Loading';
 import { logHelpers } from '../utils/logger';
+import { notifyRequestStatusChange } from '../utils/auth';
 import '../css/AdminRequest.css';
 
 function AdminRequestsContent() {
@@ -82,9 +83,12 @@ function AdminRequestsContent() {
         const dateB = b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt)) : new Date(0);
         return dateB - dateA;
       });
+
+      setRequests(requestsList); // ← ADD THIS LINE
     } catch (error) {
       console.error('Error fetching requests:', error);
-      alert('Failed to fetch requests. Check console for details.');
+      messageApi.error('Failed to fetch requests. Check console for details.');
+      setRequests([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -93,11 +97,19 @@ function AdminRequestsContent() {
   const handleApprove = async (requestId) => {
     try {
       const requestRef = doc(db, 'partRequests', requestId);
+      const requestSnap = await getDoc(requestRef);
+      const requestData = requestSnap.data();
+      
       await updateDoc(requestRef, {
         status: 'approved',
         approvedBy: user?.displayName || user?.email,
         approvedAt: new Date().toISOString()
       });
+      
+      // Send notification to mechanic
+      if (requestData?.mechanicId) {
+        await notifyRequestStatusChange(requestId, requestData.mechanicId, 'approved');
+      }
       
       // Update the local state instead of fetching all data
       setRequests(prevRequests => 
@@ -125,11 +137,24 @@ function AdminRequestsContent() {
   const handleReject = async (requestId) => {
     try {
       const requestRef = doc(db, 'partRequests', requestId);
+      const requestSnap = await getDoc(requestRef);
+      const requestData = requestSnap.data();
+      
       await updateDoc(requestRef, {
         status: 'rejected',
         rejectedBy: user?.displayName || user?.email,
         rejectedAt: new Date().toISOString()
       });
+      
+      // Send notification to mechanic
+      if (requestData?.mechanicId) {
+        await notifyRequestStatusChange(
+          requestId, 
+          requestData.mechanicId, 
+          'rejected', 
+          requestData.adminNotes || ''
+        );
+      }
       
       // Update the local state instead of fetching all data
       setRequests(prevRequests => 
@@ -205,11 +230,13 @@ function AdminRequestsContent() {
       <AdminSidebar sidebarOpen={sidebarOpen} user={user} />
 
       <div className={`requests-main ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
-        <TopBar
+        <NavigationBar
           title="Parts Requests Management"
-          onToggle={() => setSidebarOpen(!sidebarOpen)}
-          notificationsCount={counts.pending}
+          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           onProfileClick={() => setProfileOpen(true)}
+          userRole="admin"
+          userName={user?.displayName || 'Admin'}
+          userEmail={user?.email || ''}
         />
 
         <div className="requests-content">

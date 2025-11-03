@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Form, Input, InputNumber, Select, Button, Upload as AntUpload, message } from 'antd';
+import { Modal, Form, Input, InputNumber, Select, Button, Upload as AntUpload, App } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import './Modal.css';
 
@@ -10,16 +10,45 @@ export default function AddPartModal({ open = false, onClose = () => {}, onAdd =
   const [form] = Form.useForm();
   const [imagePreview, setImagePreview] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { message: messageApi, modal } = App.useApp();
 
   const handleSubmit = async (values) => {
-    const partData = {
-      ...values,
-      image: imageUrl || imagePreview
-    };
-    onAdd(partData);
-    form.resetFields();
-    setImagePreview('');
-    setImageUrl('');
+    // Show confirmation modal
+    modal.confirm({
+      title: 'Confirm Add Part',
+      content: `Are you sure you want to add "${values.name}" to the inventory?`,
+      okText: 'Yes, Add Part',
+      cancelText: 'Cancel',
+      centered: true,
+      onOk: async () => {
+        setIsSubmitting(true);
+        try {
+          // Filter out undefined values to prevent Firestore errors
+          const partData = Object.entries({
+            ...values,
+            image: imageUrl || imagePreview || ''
+          }).reduce((acc, [key, value]) => {
+            if (value !== undefined) {
+              acc[key] = value;
+            }
+            return acc;
+          }, {});
+          
+          await onAdd(partData);
+          messageApi.success('Part added successfully!');
+          form.resetFields();
+          setImagePreview('');
+          setImageUrl('');
+          onClose(); // Close modal after successful submission
+        } catch (error) {
+          console.error('Error adding part:', error);
+          messageApi.error('Failed to add part');
+        } finally {
+          setIsSubmitting(false);
+        }
+      }
+    });
   };
 
   const handleImageUpload = (file) => {
@@ -53,7 +82,7 @@ export default function AddPartModal({ open = false, onClose = () => {}, onAdd =
       footer={null}
       width={600}
       centered
-      destroyOnClose
+      destroyOnHidden
     >
       <style>{`
         .ant-modal-header {
@@ -247,6 +276,7 @@ export default function AddPartModal({ open = false, onClose = () => {}, onAdd =
           <Button 
             className="addpart-cancel-btn"
             onClick={handleCancel}
+            disabled={isSubmitting}
           >
             Cancel
           </Button>
@@ -254,6 +284,7 @@ export default function AddPartModal({ open = false, onClose = () => {}, onAdd =
             type="primary"
             className="addpart-submit-btn"
             htmlType="submit"
+            loading={isSubmitting}
           >
             Add Part
           </Button>

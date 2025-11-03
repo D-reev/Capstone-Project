@@ -1,0 +1,332 @@
+/* Navigation Bar - Modern Clean Design */
+
+.navigation-bar {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 89px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: 20px;
+  padding-block: 12px;
+  background: linear-gradient(to right, #1F2937 0%, #111827 100%);
+  border-bottom: 1px solid rgba(255, 195, 0, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 999;
+  gap: 1rem;
+  box-sizing: border-box;
+  line-height: 1.2;
+}
+
+/* Toggle Button */
+.nav-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: rgba(255, 195, 0, 0.08);
+  border: 1px solid rgba(255, 195, 0, 0.2);
+  border-radius: 8px;
+  color: #FFC300;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.nav-toggle-btn:hover {
+  background: rgba(255, 195, 0, 0.15);
+  border-color: rgba(255, 195, 0, 0.3);
+  transform: scale(1.05);
+}
+
+.nav-toggle-btn:active {
+  transform: scale(0.95);
+}
+
+/* Search Input Customization */
+.nav-search-input input {
+  background: transparent !important;
+  color: #fff !important;
+}
+
+.nav-search-input input::placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.nav-search-input .ant-input-suffix {
+  color: rgba(255, 195, 0, 0.6);
+}
+
+.nav-search-input:hover,
+.nav-search-input:focus-within {
+  border-color: #FFC300 !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Refresh Button */
+.nav-refresh-btn:hover {
+  background: rgba(255, 195, 0, 0.15) !important;
+  border-color: #FFC300 !important;
+  color: #FFC300 !important;
+  transform: scale(1.05);
+}
+
+.nav-refresh-btn:active {
+  transform: scale(0.95) !important;
+}
+
+/* Icon Button (Notifications) */
+.nav-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-icon-btn:hover {
+  background: rgba(255, 195, 0, 0.1);
+  border-color: rgba(255, 195, 0, 0.3);
+  color: #FFC300;
+  transform: scale(1.05);
+}
+
+.nav-icon-btn:active {
+  transform: scale(0.95);
+}
+
+/* Dropdown Overlays */
+.nav-dropdown {
+  z-index: 1050 !important;
+}
+
+.nav-dropdown .ant-dropdown-menu {
+  background: linear-gradient(to bottom, #1F2937 0%, #111827 100%);
+  border: 1px solid rgba(255, 195, 0, 0.2);
+  border-radius: 12px;
+  padding: 0.5rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(255, 195, 0, 0.1);
+  min-width: 280px;
+  margin-top: 0.5rem;
+}
+
+.nav-dropdown .ant-dropdown-menu-item {
+  padding: 0;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.nav-dropdown .ant-dropdown-menu-item:hover {
+  background: rgba(255, 195, 0, 0.08);
+}
+
+.nav-dropdown .ant-dropdown-menu-item-divider {
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0.5rem 0;
+}
+
+/* Notification Dropdown */
+.notification-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.notification-header-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #FFC300;
+}
+
+.notification-header-badge .ant-badge-count {
+  background: linear-gradient(135deg, #FFC300 0%, #FFD54F 100%);
+  color: #111827;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(255, 195, 0, 0.4);
+}
+
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.notification-item:hover {
+  background: rgba(255, 195, 0, 0.08);
+}
+
+.notification-item-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.notification-item-icon.request {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60A5FA;
+}
+
+.notification-item-icon.urgent {
+  background: rgba(239, 68, 68, 0.15);
+  color: #EF4444;
+}
+
+.notification-item-icon.info {
+  background: rgba(251, 191, 36, 0.15);
+  color: #FBBF24;
+}
+
+.notification-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.notification-item-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #F9FAFB;
+}
+
+.notification-item-time {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+}
+
+.notification-item-description {
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.notification-footer {
+  padding: 0.875rem 1.25rem;
+  text-align: center;
+  color: #FFC300;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.notification-footer:hover {
+  color: #FFD54F;
+}
+
+.notification-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  gap: 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.notification-empty svg {
+  color: #10B981;
+}
+
+.notification-empty span {
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.notification-empty p {
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+/* Badge Customization */
+.ant-badge-count {
+  background: linear-gradient(135deg, #FFC300 0%, #FFD54F 100%);
+  color: #111827;
+  font-weight: 700;
+  font-size: 0.6875rem;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  line-height: 18px;
+  border-radius: 9px;
+  box-shadow: 0 2px 6px rgba(255, 195, 0, 0.4);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .navigation-bar {
+    padding-inline: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .navigation-bar {
+    padding-inline: 12px;
+    padding-block: 10px;
+    height: 56px;
+  }
+
+  .nav-toggle-btn,
+  .nav-icon-btn {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .navigation-bar {
+    gap: 0.5rem;
+  }
+
+  .nav-toggle-btn,
+  .nav-icon-btn {
+    width: 30px;
+    height: 30px;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .navigation-bar *,
+  .nav-dropdown * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .navigation-bar {
+    display: none;
+  }
+}

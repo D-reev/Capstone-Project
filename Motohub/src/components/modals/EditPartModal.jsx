@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, InputNumber, Select, Button, Upload as AntUpload } from 'antd';
+    import React, { useState, useEffect } from 'react';
+import { Modal, Form, Input, InputNumber, Select, Button, Upload as AntUpload, App } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import './Modal.css';
 
@@ -10,6 +10,8 @@ export default function EditPartModal({ part, onClose, onUpdate, open = false })
   const [form] = Form.useForm();
   const [imagePreview, setImagePreview] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { message: messageApi, modal } = App.useApp();
 
   useEffect(() => {
     if (part && open) {
@@ -44,11 +46,31 @@ export default function EditPartModal({ part, onClose, onUpdate, open = false })
   };
 
   const handleSubmit = async (values) => {
-    const updatedData = {
-      ...values,
-      image: imageUrl || imagePreview
-    };
-    onUpdate(part.id, updatedData);
+    // Show confirmation modal
+    modal.confirm({
+      title: 'Confirm Update',
+      content: `Are you sure you want to update "${values.name}"?`,
+      okText: 'Yes, Update',
+      cancelText: 'Cancel',
+      centered: true,
+      onOk: async () => {
+        setIsSubmitting(true);
+        try {
+          const updatedData = {
+            ...values,
+            image: imageUrl || imagePreview
+          };
+          await onUpdate(part.id, updatedData);
+          messageApi.success('Part updated successfully!');
+          onClose(); // Close modal after successful update
+        } catch (error) {
+          console.error('Error updating part:', error);
+          messageApi.error('Failed to update part');
+        } finally {
+          setIsSubmitting(false);
+        }
+      }
+    });
   };
 
   const handleCancel = () => {
@@ -66,7 +88,7 @@ export default function EditPartModal({ part, onClose, onUpdate, open = false })
       footer={null}
       width={600}
       centered
-      destroyOnClose
+      destroyOnHidden
     >
       <style>{`
         .ant-modal-header {
@@ -257,6 +279,7 @@ export default function EditPartModal({ part, onClose, onUpdate, open = false })
           <Button 
             className="editpart-cancel-btn"
             onClick={handleCancel}
+            disabled={isSubmitting}
           >
             Cancel
           </Button>
@@ -264,6 +287,7 @@ export default function EditPartModal({ part, onClose, onUpdate, open = false })
             type="primary"
             className="editpart-submit-btn"
             htmlType="submit"
+            loading={isSubmitting}
           >
             Update Part
           </Button>

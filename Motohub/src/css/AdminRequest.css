@@ -13,14 +13,14 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  margin-left: 240px;
-  width: calc(100% - 240px);
-  transition: all 0.3s ease;
+  margin-left: 280px;
+  width: calc(100% - 280px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .requests-main.sidebar-collapsed {
-  margin-left: 0;
-  width: 100%;
+  margin-left: 72px;
+  width: calc(100% - 72px);
 }
 
 .requests-content {

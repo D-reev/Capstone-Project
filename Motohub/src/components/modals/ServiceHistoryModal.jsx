@@ -15,7 +15,7 @@ export default function ServiceHistoryModal({ vehicle, serviceHistory = [], onCl
       onCancel={onClose}
       footer={null}
       width={900}
-      destroyOnClose
+      destroyOnHidden
       maskClosable
       centered
     >

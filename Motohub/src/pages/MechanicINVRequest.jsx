@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getFirestore, collection, query, where, getDocs, orderBy, doc, getDoc } from 'firebase/firestore';
+import { createFollowUpNotification } from '../utils/auth';
+import { App } from 'antd';
 import { 
   Package, 
   Clock, 
@@ -10,15 +12,17 @@ import {
   Search,
   Calendar,
   User as UserIcon,
-  Car
+  Car,
+  Bell
 } from 'lucide-react';
 import MechanicSidebar from '../components/MechanicSidebar';
-import TopBar from '../components/TopBar';
+import NavigationBar from '../components/NavigationBar';
 import ProfileModal from '../components/modals/ProfileModal';
 import '../css/MechanicINVRequest.css';
 
 export default function MechanicINVRequest() {
   const { user } = useAuth();
+  const { message: messageApi } = App.useApp();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
   const [requests, setRequests] = useState([]);
@@ -26,6 +30,7 @@ export default function MechanicINVRequest() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [followingUp, setFollowingUp] = useState({});
   const db = getFirestore();
 
   useEffect(() => {
@@ -94,6 +99,24 @@ export default function MechanicINVRequest() {
     }
   };
 
+  const handleFollowUp = async (requestId) => {
+    try {
+      setFollowingUp(prev => ({ ...prev, [requestId]: true }));
+      
+      await createFollowUpNotification(requestId, user.uid, user.displayName || 'Mechanic');
+      
+      messageApi.success('Follow-up request sent to admin');
+      
+      // Refresh the requests to show updated follow-up status
+      await fetchMyRequests();
+    } catch (error) {
+      console.error('Error sending follow-up:', error);
+      messageApi.error('Failed to send follow-up request');
+    } finally {
+      setFollowingUp(prev => ({ ...prev, [requestId]: false }));
+    }
+  };
+
   const getStatusIcon = (status) => {
     switch (status?.toLowerCase()) {
       case 'pending':
@@ -152,10 +175,12 @@ export default function MechanicINVRequest() {
       <div className="dashboard-container mechanic-requests-page">
         <MechanicSidebar sidebarOpen={sidebarOpen} />
         <div className="main-content">
-          <TopBar
+          <NavigationBar
             title="My Requests"
-            onToggle={() => setSidebarOpen(!sidebarOpen)}
-            notificationsCount={0}
+            onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+            userRole="mechanic"
+            userName={user?.displayName || 'Mechanic'}
+            userEmail={user?.email || ''}
             onProfileClick={() => setProfileOpen(true)}
           />
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 100px)' }}>
@@ -171,10 +196,12 @@ export default function MechanicINVRequest() {
       <MechanicSidebar sidebarOpen={sidebarOpen} />
 
       <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
-        <TopBar
+        <NavigationBar
           title="My Requests"
-          onToggle={() => setSidebarOpen(!sidebarOpen)}
-          notificationsCount={counts.pending}
+          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          userRole="mechanic"
+          userName={user?.displayName || 'Mechanic'}
+          userEmail={user?.email || ''}
           onProfileClick={() => setProfileOpen(true)}
         />
 
@@ -309,6 +336,29 @@ export default function MechanicINVRequest() {
               </div>
 
               <div className="panel-content">
+                {/* Follow-up button for pending requests */}
+                {selectedRequest.status?.toLowerCase() === 'pending' && (
+                  <div className="detail-section follow-up-section">
+                    <button
+                      className={`follow-up-btn ${selectedRequest.followUpRequested ? 'already-requested' : ''}`}
+                      onClick={() => handleFollowUp(selectedRequest.id)}
+                      disabled={followingUp[selectedRequest.id] || selectedRequest.followUpRequested}
+                    >
+                      <Bell size={18} />
+                      {followingUp[selectedRequest.id] 
+                        ? 'Sending...' 
+                        : selectedRequest.followUpRequested 
+                        ? 'Follow-up Requested' 
+                        : 'Request Follow-up from Admin'}
+                    </button>
+                    {selectedRequest.followUpRequested && selectedRequest.followUpRequestedAt && (
+                      <p className="follow-up-info">
+                        Follow-up requested on {new Date(selectedRequest.followUpRequestedAt).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <div className="detail-section">
                   <h3>Vehicle Information</h3>
                   <div className="detail-grid">

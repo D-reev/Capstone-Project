@@ -23,3 +23,9 @@ Need for Modernization: They see value in a more user-friendly, computerized sys
 Diagnostics: Results monitored by service team leader and staff; proper tools and skilled staff needed for faster results.
 
 Key Pain Points: Lack of coordination between mechanics and staff remains an issue.
+
+
+
+TODO
+UI Modal 
+client service history to table

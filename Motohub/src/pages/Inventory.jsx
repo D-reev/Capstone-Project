@@ -2,18 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, FilterOutlined, TagOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
-import { Table, Tag, Input, Button, Space, Avatar, ConfigProvider, Select, Modal, message } from 'antd';
+import { Table, Tag, Input, Button, Space, Avatar, ConfigProvider, Select, Modal, App } from 'antd';
+import { PackagePlus } from 'lucide-react';
 import AdminSidebar from '../components/AdminSidebar';
 import AddPartModal from '../components/modals/AddPartModal';
 import EditPartModal from '../components/modals/EditPartModal';
-import TopBar from '../components/TopBar';
+import RestockModal from '../components/modals/RestockModal';
+import NavigationBar from '../components/NavigationBar';
 import ProfileModal from '../components/modals/ProfileModal';
 import Loading from '../components/Loading';
 import '../css/Inventory.css';
 
 const { Option } = Select;
 
-export default function Inventory() {
+function InventoryPage() {
+  const { message: messageApi } = App.useApp();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
   const [parts, setParts] = useState([]);
@@ -26,6 +29,8 @@ export default function Inventory() {
   const [expandedRowKeys, setExpandedRowKeys] = useState([]);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [partToDelete, setPartToDelete] = useState(null);
+  const [restockModalOpen, setRestockModalOpen] = useState(false);
+  const [partToRestock, setPartToRestock] = useState(null);
   const { user } = useAuth();
   const db = getFirestore();
 
@@ -98,12 +103,12 @@ export default function Inventory() {
         setExpandedRowKeys([]);
       }
       
-      message.success('Part deleted successfully!');
+      messageApi.success('Part deleted successfully!');
       setDeleteModalOpen(false);
       setPartToDelete(null);
     } catch (error) {
       console.error('Error deleting part:', error);
-      message.error('Failed to delete part');
+      messageApi.error('Failed to delete part');
     }
   };
 
@@ -119,6 +124,48 @@ export default function Inventory() {
       setIsEditModalOpen(true);
       setDeleteModalOpen(false);
       setPartToDelete(null);
+    }
+  };
+
+  const handleRestock = (part) => {
+    setPartToRestock(part);
+    setRestockModalOpen(true);
+  };
+
+  const handleRestockUpdate = async (id, updates) => {
+    try {
+      const partRef = doc(db, 'inventory', id);
+      
+      // Filter out undefined values to prevent Firebase errors
+      const cleanUpdates = Object.entries(updates).reduce((acc, [key, value]) => {
+        if (value !== undefined && value !== null) {
+          acc[key] = value;
+        }
+        return acc;
+      }, {});
+      
+      const updateData = {
+        ...cleanUpdates,
+        updatedAt: new Date().toISOString()
+      };
+      
+      await updateDoc(partRef, updateData);
+      
+      // Update local state with the same data
+      setParts(prevParts => 
+        prevParts.map(part => 
+          part.id === id ? { ...part, ...updateData } : part
+        )
+      );
+      
+      messageApi.success('Inventory restocked successfully!');
+      
+      setRestockModalOpen(false);
+      setPartToRestock(null);
+    } catch (error) {
+      console.error('Error restocking part:', error);
+      messageApi.error('Failed to restock inventory');
+      throw error;
     }
   };
 
@@ -179,6 +226,19 @@ export default function Inventory() {
           </div>
         </div>
         <div className="inventory-expanded-actions">
+          <Button
+            type="primary"
+            icon={<PackagePlus size={18} />}
+            onClick={() => handleRestock(record)}
+            style={{
+              background: '#059669',
+              borderColor: '#059669',
+              color: '#FFFFFF',
+              fontWeight: 600,
+            }}
+          >
+            Restock
+          </Button>
           <Button
             type="primary"
             icon={<EditOutlined />}
@@ -317,32 +377,17 @@ export default function Inventory() {
   }
 
   return (
-    <ConfigProvider
-      theme={{
-        token: {
-          colorPrimary: '#FBBF24',
-          colorLink: '#FBBF24',
-          colorLinkHover: '#D97706',
-          borderRadius: 8,
-        },
-        components: {
-          Table: {
-            headerBg: '#1F2937',
-            headerColor: '#FFFFFF',
-            rowHoverBg: '#F8FAFC',
-          },
-        },
-      }}
-    >
-      <div className="inventory-page">
+    <div className="inventory-page">
         <AdminSidebar sidebarOpen={sidebarOpen} user={user} />
 
         <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
-          <TopBar
+          <NavigationBar
             title="Inventory Management"
-            onToggle={() => setSidebarOpen(!sidebarOpen)}
-            notificationsCount={0}
+            onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
             onProfileClick={() => setProfileOpen(true)}
+            userRole="admin"
+            userName={user?.displayName || 'Admin'}
+            userEmail={user?.email || ''}
           />
 
           <div className="inventory-container">
@@ -453,6 +498,16 @@ export default function Inventory() {
           user={user} 
         />
 
+        <RestockModal
+          part={partToRestock}
+          open={restockModalOpen}
+          onClose={() => {
+            setRestockModalOpen(false);
+            setPartToRestock(null);
+          }}
+          onRestock={handleRestockUpdate}
+        />
+
         {/* Delete Confirmation Modal */}
         <Modal
           title={
@@ -528,6 +583,31 @@ export default function Inventory() {
           </div>
         </Modal>
       </div>
+  );
+}
+
+export default function InventoryContent() {
+  return (
+    <ConfigProvider
+      theme={{
+        token: {
+          colorPrimary: '#FBBF24',
+          colorLink: '#FBBF24',
+          colorLinkHover: '#D97706',
+          borderRadius: 8,
+        },
+        components: {
+          Table: {
+            headerBg: '#1F2937',
+            headerColor: '#FFFFFF',
+            rowHoverBg: '#F8FAFC',
+          },
+        },
+      }}
+    >
+      <App>
+        <InventoryPage />
+      </App>
     </ConfigProvider>
   );
 }

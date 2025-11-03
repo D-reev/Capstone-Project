@@ -4,14 +4,13 @@ import { useAuthNavigation } from '../hooks/useAuthNavigation';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Car, 
-  Calendar, 
-  History, 
   FileText, 
-  MessageSquare,
-  LogOut,
   User,
-  ChevronRight
+  LogOut,
+  ChevronRight,
+  LayoutDashboard
 } from 'lucide-react';
+import logo from '../assets/images/logo.jpeg';
 import './Sidebar.css';
 
 function NavItem({ icon: Icon, label, active = false, badge, color = "red", sidebarOpen, onClick }) {
@@ -23,13 +22,16 @@ function NavItem({ icon: Icon, label, active = false, badge, color = "red", side
       onClick={onClick}
       style={{ cursor: 'pointer' }}
     >
-      <Icon className="nav-item-icon" size={20} />
-      {sidebarOpen && (
-        <>
-          <span className="nav-item-label">{label}</span>
-          {badge && <span className={badgeClass}>{badge}</span>}
-        </>
-      )}
+      <div className="nav-item-content">
+        <Icon className="nav-item-icon" size={20} />
+        {sidebarOpen && (
+          <>
+            <span className="nav-item-label">{label}</span>
+            {badge && <span className={badgeClass}>{badge}</span>}
+            {active && <ChevronRight className="nav-item-indicator" size={16} />}
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -49,18 +51,68 @@ export default function UserSidebar({ sidebarOpen, className = '', onCloseMobile
   };
 
   const isPathActive = (path) => {
+    if (path === '/userdashboard') {
+      return location.pathname === path;
+    }
     return location.pathname.startsWith(path);
   };
 
+  const renderNavItems = () => (
+    <>
+      <NavItem 
+        icon={LayoutDashboard} 
+        label="Dashboard" 
+        active={isPathActive('/userdashboard')}
+        sidebarOpen={sidebarOpen}
+        onClick={() => navigate('/userdashboard')}
+      />
+      <NavItem 
+        icon={Car} 
+        label="My Vehicles" 
+        active={isPathActive('/mycars')}
+        sidebarOpen={sidebarOpen}
+        onClick={() => navigate('/mycars')}
+      />
+      <NavItem 
+        icon={FileText} 
+        label="Service History" 
+        active={isPathActive('/servicehistory')}
+        sidebarOpen={sidebarOpen}
+        onClick={() => navigate('/servicehistory')}
+      />
+      <NavItem
+        icon={User}
+        label="Profile"
+        active={isPathActive('/profile')}
+        sidebarOpen={sidebarOpen}
+        onClick={() => navigate('/profile')}
+      />
+    </>
+  );
+
   return (
-    <div className={`customer-sidebar${sidebarOpen ? '' : ' collapsed'} ${className}`.trim()}>
+    <div className={`sidebar${sidebarOpen ? '' : ' collapsed'} ${className}`.trim()}>
+      {/* Brand Section */}
+      <div className="sidebar-brand">
+        <div className="brand-logo">
+          <img src={logo} alt="Motohub Logo" className="brand-logo-img" />
+        </div>
+        {sidebarOpen && (
+          <div className="brand-text">
+            <h1 className="brand-title">MOTOHUB</h1>
+            <p className="brand-subtitle">Customer Portal</p>
+          </div>
+        )}
+      </div>
+
+      {/* User Profile Section */}
       <div className="sidebar-header">
         <div className="user-profile">
           <div className="user-avatar">
             {user?.photoURL ? (
               <img src={user.photoURL} alt={user.displayName} className="user-avatar-img"/>
             ) : (
-              <User size={16} />
+              <User size={24} />
             )}
           </div>
           {sidebarOpen && (
@@ -68,45 +120,40 @@ export default function UserSidebar({ sidebarOpen, className = '', onCloseMobile
               <div className="user-name">{user?.displayName || 'Guest User'}</div>
               <div className="user-status">
                 <div className="status-indicator"></div>
-                Customer
+                <span className="user-role-text">Customer</span>
               </div>
             </div>
           )}
         </div>
       </div>
 
+      {/* Navigation Section */}
       <nav className="sidebar-nav">
         <div className="nav-section">
-          {sidebarOpen && <div className="nav-section-title">My Services</div>}
-          <NavItem 
-            icon={Car} 
-            label="My Vehicles" 
-            active={isPathActive('/userdashboard')}
-            sidebarOpen={sidebarOpen}
-            onClick={() => navigate('/userdashboard')}
-          />
-          <NavItem 
-            icon={FileText} 
-            label="Service History" 
-            active={isPathActive('/servicehistory')}
-            sidebarOpen={sidebarOpen}
-            onClick={() => navigate('/servicehistory')}
-          />
-          <NavItem
-            icon={User}
-            label="Profile"
-            active={isPathActive('/profile')}
-            sidebarOpen={sidebarOpen}
-            onClick={() => navigate('/profile')}
-          />
+          {sidebarOpen && <div className="nav-section-title">MAIN MENU</div>}
+          {renderNavItems()}
+        </div>
+
+        <div className="nav-section">
+          {sidebarOpen && <div className="nav-section-title">ACCOUNT</div>}
           <NavItem 
             icon={LogOut} 
-            label="Logout" 
+            label="Sign Out" 
             sidebarOpen={sidebarOpen} 
             onClick={handleLogout}
           />
         </div>
       </nav>
+
+      {/* Footer Section */}
+      {sidebarOpen && (
+        <div className="sidebar-footer">
+          <div className="footer-info">
+            <p className="footer-text">© 2025 Motohub</p>
+            <p className="footer-version">v1.0.0</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

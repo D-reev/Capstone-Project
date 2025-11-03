@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, Button, Steps, Alert, message } from 'antd';
+import { Modal, Form, Input, Button, Steps, Alert, App } from 'antd';
 import { MailOutlined, LockOutlined, SafetyOutlined } from '@ant-design/icons';
 import { initiatePasswordReset, verifyOTP, resetPassword } from '../../utils/auth';
 import './Modal.css';
@@ -10,6 +10,7 @@ function ForgotPasswordModal({ open, onClose }) {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
+  const { message: messageApi } = App.useApp();
 
   // Reset everything when modal closes
   useEffect(() => {
@@ -29,7 +30,7 @@ function ForgotPasswordModal({ open, onClose }) {
       setEmail(values.email);
       setStep(1);
     } catch (error) {
-      message.error(error.message);
+      messageApi.error(error.message);
     } finally {
       setIsLoading(false);
     }
@@ -42,7 +43,7 @@ function ForgotPasswordModal({ open, onClose }) {
       setOtp(values.otp);
       setStep(2);
     } catch (error) {
-      message.error('Invalid OTP. Please try again.');
+      messageApi.error('Invalid OTP. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -50,17 +51,17 @@ function ForgotPasswordModal({ open, onClose }) {
 
   const handlePasswordReset = async (values) => {
     if (values.newPassword !== values.confirmPassword) {
-      message.error('Passwords do not match');
+      messageApi.error('Passwords do not match');
       return;
     }
 
     setIsLoading(true);
     try {
       await resetPassword(otp, values.newPassword);
-      message.success('Password reset successfully!');
+      messageApi.success('Password reset successfully!');
       handleClose();
     } catch (error) {
-      message.error(error.message);
+      messageApi.error(error.message);
     } finally {
       setIsLoading(false);
     }

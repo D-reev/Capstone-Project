@@ -7,7 +7,7 @@ import { Table, Tag, Input, Button, Space, Avatar, ConfigProvider, Select } from
 import AdminSidebar from '../components/AdminSidebar';
 import EditUserModal from '../components/modals/EditUserModal';
 import DeleteUserModal from '../components/modals/DeleteUserModal';
-import TopBar from '../components/TopBar';
+import NavigationBar from '../components/NavigationBar';
 import ProfileModal from '../components/modals/ProfileModal';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../config/firebase';
@@ -92,10 +92,11 @@ export default function UserManagement() {
     try {
       let uid;
       if (!selectedUser) {
+        // Create new user with the password provided in the form
         const userCredential = await createUserWithEmailAndPassword(
           auth,
           userData.email,
-          'tempPassword123'
+          userData.password || 'tempPassword123' // Use form password or fallback
         );
         uid = userCredential.user.uid;
       }
@@ -103,7 +104,16 @@ export default function UserManagement() {
       const userRef = doc(db, 'users', selectedUser?.id || uid);
       await setDoc(userRef, {
         displayName: userData.displayName,
+        firstName: userData.firstName,
+        middleName: userData.middleName || '',
+        lastName: userData.lastName,
         role: userData.role,
+        status: userData.status || 'active',
+        address: userData.address || '',
+        city: userData.city || '',
+        postalCode: userData.postalCode || '',
+        phoneNumber: userData.phoneNumber || '',
+        mobileNumber: userData.phoneNumber || '',
         updatedAt: new Date().toISOString(),
         ...((!selectedUser) && {
           createdAt: new Date().toISOString(),
@@ -320,11 +330,13 @@ export default function UserManagement() {
         <AdminSidebar sidebarOpen={sidebarOpen} user={user} />
 
         <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
-          <TopBar
+          <NavigationBar
             title="User Management"
-            onToggle={() => setSidebarOpen(!sidebarOpen)}
-            notificationsCount={0}
+            onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
             onProfileClick={() => setProfileOpen(true)}
+            userRole="admin"
+            userName={user?.displayName || 'Admin'}
+            userEmail={user?.email || ''}
           />
 
           <div className="user-management-container">

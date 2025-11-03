@@ -1,0 +1,71 @@
+/* ScrollStack Scroller Container */
+.scroll-stack-scroller {
+  width: 100%;
+  height: 600px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  border-radius: 16px;
+}
+
+.scroll-stack-inner {
+  position: relative;
+  padding: 2rem 1rem;
+}
+
+.scroll-stack-end {
+  height: 100vh;
+  pointer-events: none;
+}
+
+/* ScrollStack Card */
+.scroll-stack-card {
+  position: relative;
+  width: 100%;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.3s ease;
+  will-change: transform, filter;
+  transform-origin: top center;
+  backface-visibility: hidden;
+}
+
+.scroll-stack-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Webkit Scrollbar Styling */
+.scroll-stack-scroller::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scroll-stack-scroller::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.scroll-stack-scroller::-webkit-scrollbar-thumb {
+  background: #FFC300;
+  border-radius: 10px;
+}
+
+.scroll-stack-scroller::-webkit-scrollbar-thumb:hover {
+  background: #FFD54F;
+}
+
+/* Firefox Scrollbar */
+.scroll-stack-scroller {
+  scrollbar-width: thin;
+  scrollbar-color: #FFC300 #f1f1f1;
+}
+
+@media (max-width: 768px) {
+  .scroll-stack-scroller {
+    height: 500px;
+  }
+  
+  .scroll-stack-inner {
+    padding: 1.5rem 0.5rem;
+  }
+}

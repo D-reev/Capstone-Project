@@ -40,11 +40,13 @@ MotoHub is a modern, full-featured automotive service management system that con
 
 ### For Administrators
 - 👥 **User Management** - Manage customers, mechanics, and admin accounts
-- 📊 **Analytics Dashboard** - View system-wide statistics and metrics
+- 📊 **Analytics Dashboard** - View system-wide statistics and metrics with real-time percentage tracking
 - 🏷️ **Inventory Management** - Track and manage parts inventory
 - ✅ **Request Approval** - Approve or reject parts and service requests
 - 📝 **Activity Logs** - Comprehensive audit trail of all system activities
 - 🔍 **Advanced Search & Filters** - Quickly find and manage data
+- ⭐ **Mechanic Performance** - View mechanic ratings and service completion statistics
+- 📈 **Growth Tracking** - Month-over-month comparison for all key metrics
 
 ## 🛠️ Tech Stack
 
@@ -166,6 +168,46 @@ Motohub/
 
 ## 🎨 Key Components
 
+### Dashboard Analytics & Metrics
+
+The Admin Dashboard provides comprehensive real-time analytics with intelligent percentage tracking:
+
+#### **Percentage Change Calculation**
+- **30-Day Rolling Comparison** - Compares current month (last 30 days) vs previous month (days 31-60)
+- **Real-Time Growth Metrics** - Automatically calculates month-over-month growth for:
+  - **Total Services** - Service completions from customer vehicles
+  - **Total Revenue** - Revenue from completed/approved part requests
+  - **Inventory Parts** - New parts added to inventory
+  - **Total Customers** - New user registrations (role: 'user')
+
+#### **How Percentages Work**
+```javascript
+// Example: Services Growth Calculation
+This Month (Last 30 days): 15 services
+Last Month (Days 31-60): 10 services
+Growth: ((15 - 10) / 10 * 100) = +50% ↑
+
+// When no previous data exists:
+This Month: 5 services
+Last Month: 0 services
+Growth: 0% (fallback when comparison impossible)
+```
+
+#### **Dashboard Features**
+- 📊 **Real-time Statistics** - Live data from Firestore collections
+- 📈 **Visual Charts** - Service trends, revenue graphs, category breakdowns
+- 🔴 **Low Stock Alerts** - Automated inventory warnings
+- ⭐ **Mechanic Ratings** - Star ratings (1-5) with total review counts
+- 📦 **Recent Requests** - Latest part requests with status tracking
+- 🏆 **Top Performers** - Mechanics ranked by rating and service count
+
+#### **Data Sources**
+- **Services**: `users/{userId}/cars/{carId}/serviceHistory`
+- **Customers**: `users` collection (filtered by role)
+- **Revenue**: `partRequests` (completed/approved status)
+- **Parts**: `inventory` collection
+- **Ratings**: `mechanicRatings/{mechanicId}` with averageRating, totalRatings
+
 ### Authentication
 - Protected routes based on user roles
 - Firebase Authentication with email/password and Google OAuth
@@ -185,14 +227,18 @@ Motohub/
 - **Search & Filter** - Advanced filtering across all data tables
 - **Responsive Design** - Mobile-first approach with breakpoints
 - **Theme Consistency** - Role-based color schemes (Yellow for mechanics, Blue for admin)
+- **Star Rating System** - 5-star service ratings that aggregate to mechanic profiles
+- **Analytics Engine** - Automated calculation of growth metrics and trends
+- **Low Stock Monitoring** - Real-time inventory alerts with critical thresholds
 
 ## 🔐 Security
 
 - Firebase Authentication for secure user access
 - Role-based access control (RBAC)
 - Protected API routes
-- Firestore security rules
+- Firestore security rules (including mechanicRatings collection permissions)
 - Environment variable protection
+- Customer can create/update ratings, admins can read all, mechanics can read own ratings
 
 ## 📱 Progressive Web App
 

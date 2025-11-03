@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getFirestore, collection, getDocs } from 'firebase/firestore';
-import { Wrench, Calendar, Clock, Menu, Car } from 'lucide-react';
+import { getFirestore, collection, getDocs, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
+import { Wrench, Calendar, Clock, Car } from 'lucide-react';
+import { message } from 'antd';
 import UserSidebar from '../components/UserSidebar';
+import NavigationBar from '../components/NavigationBar';
 import ProfileModal from '../components/modals/ProfileModal';
-import logo from '../assets/images/logo.jpeg';
 import '../css/ServiceHistory.css';
 
 function ServiceHistory() {
@@ -54,6 +55,56 @@ function ServiceHistory() {
       console.error('Error fetching service history:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRatingSubmit = async (service, rating) => {
+    try {
+      if (!service.mechanicId) {
+        message.error('Mechanic information not available');
+        return;
+      }
+
+      // Update the service record with the rating
+      const serviceRef = doc(db, `users/${user.uid}/cars/${service.carId}/serviceHistory/${service.id}`);
+      await updateDoc(serviceRef, {
+        rating: rating,
+        ratedAt: new Date().toISOString()
+      });
+
+      // Update mechanic's rating profile
+      const mechanicRatingRef = doc(db, `mechanicRatings/${service.mechanicId}`);
+      const mechanicRatingDoc = await getDoc(mechanicRatingRef);
+
+      if (mechanicRatingDoc.exists()) {
+        const currentData = mechanicRatingDoc.data();
+        const totalRatings = currentData.totalRatings || 0;
+        const totalScore = currentData.totalScore || 0;
+        
+        await updateDoc(mechanicRatingRef, {
+          totalRatings: totalRatings + 1,
+          totalScore: totalScore + rating,
+          averageRating: (totalScore + rating) / (totalRatings + 1),
+          lastUpdated: new Date().toISOString()
+        });
+      } else {
+        await setDoc(mechanicRatingRef, {
+          mechanicId: service.mechanicId,
+          mechanicName: service.mechanicName,
+          totalRatings: 1,
+          totalScore: rating,
+          averageRating: rating,
+          lastUpdated: new Date().toISOString()
+        });
+      }
+
+      message.success('Thank you for your rating!');
+      
+      // Refresh the service history
+      fetchServiceHistory();
+    } catch (error) {
+      console.error('Error submitting rating:', error);
+      message.error('Failed to submit rating. Please try again.');
     }
   };
 
@@ -112,6 +163,47 @@ function ServiceHistory() {
           </div>
         )}
       </div>
+
+      {/* Rating Section - Only show for completed services */}
+      {service.status.toLowerCase() === 'completed' && (
+        <div className="service-rating-section">
+          <h5>Rate this service:</h5>
+          {service.rating ? (
+            <div className="rating-submitted">
+              <p>You rated this service: </p>
+              <div className="radio">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <label key={star} className={star <= service.rating ? 'rated' : ''}>
+                    <svg xmlns="http://www.w3.org/2000/svg" height="1em" viewBox="0 0 576 512">
+                      <path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"></path>
+                    </svg>
+                  </label>
+                ))}
+              </div>
+              <p className="rating-thank-you">Thank you for your feedback!</p>
+            </div>
+          ) : (
+            <div className="radio">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <React.Fragment key={star}>
+                  <input 
+                    value={star} 
+                    name={`rating-${service.id}`} 
+                    type="radio" 
+                    id={`rating-${service.id}-${star}`}
+                    onChange={() => handleRatingSubmit(service, star)}
+                  />
+                  <label title={`${star} star${star > 1 ? 's' : ''}`} htmlFor={`rating-${service.id}-${star}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" height="1em" viewBox="0 0 576 512">
+                      <path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"></path>
+                    </svg>
+                  </label>
+                </React.Fragment>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 
@@ -124,27 +216,20 @@ function ServiceHistory() {
         onCloseMobile={() => setSidebarMobileOpen(false)}
       />
 
-      <div className="service-history-content">
-        <div className="customer-top-bar">
-          <div className="top-bar-left">
-            <button
-              onClick={() => {
-                if (window.innerWidth <= 768) {
-                  setSidebarMobileOpen(!sidebarMobileOpen);
-                } else {
-                  setSidebarOpen(!sidebarOpen);
-                }
-              }}
-              className="menu-toggle-btn"
-            >
-              <Menu size={20} />
-            </button>
-            <h1 className="top-bar-title">Service History</h1>
-          </div>
-          <div className="top-bar-logo-container">
-            <div className="top-bar-logo" style={{ backgroundImage: `url(${logo})` }} />
-          </div>
-        </div>
+      <div className={`service-history-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
+        <NavigationBar
+          title="Service History"
+          onToggleSidebar={() => {
+            if (window.innerWidth <= 768) {
+              setSidebarMobileOpen(!sidebarMobileOpen);
+            } else {
+              setSidebarOpen(!sidebarOpen);
+            }
+          }}
+          userRole="customer"
+          userName={user?.displayName || 'User'}
+          userEmail={user?.email || ''}
+        />
 
         <div className="service-history-main">
           <div className="service-history-header">

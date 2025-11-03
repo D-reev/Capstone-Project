@@ -1,5 +1,6 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { App as AntdApp } from "antd";
 import { AuthProvider } from "./context/AuthContext";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -13,16 +14,18 @@ import AdminRequests from "./pages/AdminRequests";
 import AdminLogs from "./pages/AdminLogs";
 import ProfileSection from "./pages/ProfileSection";
 import MechanicINVRequest from "./pages/MechanicINVRequest";
+import MyCars from "./pages/MyCars";
 
 import "./App.css";
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/login" element={<Login />} />
+    <AntdApp>
+      <Router>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/login" element={<Login />} />
           
           {/* Admin Routes */}
           <Route path="/admindashboard" element={
@@ -79,6 +82,11 @@ function App() {
               <UserDashboard />
             </ProtectedRoute>
           } />
+          <Route path="/mycars" element={
+            <ProtectedRoute allowedRoles={['user']}>
+              <MyCars />
+            </ProtectedRoute>
+          } />
           <Route path="/profile" element={
             <ProtectedRoute allowedRoles={['user']}>
               <ProfileSection />
@@ -95,6 +103,7 @@ function App() {
         </Routes>
       </AuthProvider>
     </Router>
+    </AntdApp>
   );
 }
 

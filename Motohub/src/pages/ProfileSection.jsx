@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getUserProfile, updateUserProfile } from '../utils/auth';
-import { Menu, User, Save, RotateCcw, Edit2, Lock } from 'lucide-react';
+import { User, Save, RotateCcw, Edit2, Lock } from 'lucide-react';
 import UserSidebar from '../components/UserSidebar';
-import logo from '../assets/images/logo.jpeg';
+import NavigationBar from '../components/NavigationBar';
 import '../css/ProfileSection.css';
 import Loading from '../components/Loading';
 
@@ -127,27 +127,19 @@ export default function ProfileSection() {
       />
 
       <div className={`profile-main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
-        {/* Top Bar */}
-        <div className="profile-top-bar">
-          <div className="profile-top-bar-left">
-            <button
-              onClick={() => {
-                if (window.innerWidth <= 768) {
-                  setSidebarMobileOpen(!sidebarMobileOpen);
-                } else {
-                  setSidebarOpen(!sidebarOpen);
-                }
-              }}
-              className="profile-menu-btn"
-            >
-              <Menu size={20} />
-            </button>
-            <h1 className="profile-top-bar-title">PROFILE</h1>
-          </div>
-          <div className="profile-top-bar-logo">
-            <div className="logo-image" style={{ backgroundImage: `url(${logo})` }} />
-          </div>
-        </div>
+        <NavigationBar
+          title="Profile"
+          onToggleSidebar={() => {
+            if (window.innerWidth <= 768) {
+              setSidebarMobileOpen(!sidebarMobileOpen);
+            } else {
+              setSidebarOpen(!sidebarOpen);
+            }
+          }}
+          userRole="customer"
+          userName={user?.displayName || 'User'}
+          userEmail={user?.email || ''}
+        />
 
         {/* Main Content */}
         <div className="profile-content-area">

@@ -33,7 +33,7 @@ import ServiceReportModal from '../components/modals/ServiceReportModal.jsx';
 import { createPartsRequest } from '../utils/auth.js';
 import SuccessModal from '../components/modals/SuccessModal.jsx';
 import ProfileModal from '../components/modals/ProfileModal.jsx';
-import TopBar from "../components/TopBar.jsx";
+import NavigationBar from "../components/NavigationBar.jsx";
 import '../css/MechanicDashboard.css';
 
 export default function MechanicDashboard() {
@@ -110,6 +110,7 @@ export default function MechanicDashboard() {
 
   const fetchCustomers = async () => {
     try {
+      console.log('Fetching customers...');
       const usersRef = collection(db, 'users');
       const q = query(
         usersRef, 
@@ -123,6 +124,8 @@ export default function MechanicDashboard() {
         return;
       }
 
+      console.log('Found customers:', snapshot.size);
+
       const customersList = await Promise.all(
         snapshot.docs.map(async (docSnap) => {
           const customerData = { id: docSnap.id, ...docSnap.data() };
@@ -130,6 +133,7 @@ export default function MechanicDashboard() {
           try {
             const carsRef = collection(db, `users/${docSnap.id}/cars`);
             const carsSnap = await getDocs(carsRef);
+            console.log(`Customer ${customerData.displayName || docSnap.id} has ${carsSnap.size} cars`);
             return {
               ...customerData,
               carsCount: carsSnap.size
@@ -150,6 +154,7 @@ export default function MechanicDashboard() {
         return a.displayName.localeCompare(b.displayName);
       });
 
+      console.log('Sorted customers:', sortedCustomers);
       setCustomers(sortedCustomers);
     } catch (error) {
       console.error('Error fetching customers:', error);
@@ -161,21 +166,36 @@ export default function MechanicDashboard() {
     if (!customerId) return;
 
     try {
+      console.log('Fetching cars for customer:', customerId);
       const carsRef = collection(db, `users/${customerId}/cars`);
-      const q = query(carsRef, orderBy('updatedAt', 'desc'));
-      const snapshot = await getDocs(q);
+      const snapshot = await getDocs(carsRef);
+      
+      console.log('Cars snapshot size:', snapshot.size);
       
       if (snapshot.empty) {
+        console.log('No cars found for customer:', customerId);
         setCustomerCars([]);
         return;
       }
 
-      const carsList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const carsList = snapshot.docs.map(doc => {
+        const data = doc.data();
+        console.log('Car data:', { id: doc.id, ...data });
+        return {
+          id: doc.id,
+          ...data
+        };
+      });
       
-      setCustomerCars(carsList);
+      // Sort by updatedAt or createdAt if available, otherwise by id
+      const sortedCars = carsList.sort((a, b) => {
+        const dateA = new Date(a.updatedAt || a.createdAt || 0);
+        const dateB = new Date(b.updatedAt || b.createdAt || 0);
+        return dateB - dateA;
+      });
+      
+      console.log('Sorted cars list:', sortedCars);
+      setCustomerCars(sortedCars);
     } catch (error) {
       console.error('Error fetching customer cars:', error);
       setError('Failed to load customer cars');
@@ -209,14 +229,18 @@ export default function MechanicDashboard() {
   };
 
   const handleCustomerSelect = async (customer) => {
+    console.log('Customer selected:', customer);
     if (expandedCustomerId === customer.id) {
+      // Collapse
       setExpandedCustomerId(null);
       setSelectedCustomer(null);
       setCustomerCars([]);
       setSelectedCar(null);
     } else {
+      // Expand and fetch cars
       setExpandedCustomerId(customer.id);
       setSelectedCustomer(customer);
+      setCustomerCars([]); // Clear old data first
       await fetchCustomerCars(customer.id);
     }
   };
@@ -234,10 +258,12 @@ export default function MechanicDashboard() {
       {/* MechanicSidebar */}
       <MechanicSidebar sidebarOpen={sidebarOpen} active={location.pathname === '/mechanicdashboard'} />
       <div className={`main-content${!sidebarOpen ? ' expanded' : ''}`}> 
-        <TopBar
+        <NavigationBar
           title="Mechanic Dashboard"
-          onToggle={() => setSidebarOpen(!sidebarOpen)}
-          notificationsCount={0}
+          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          userRole="mechanic"
+          userName={user?.displayName || 'Mechanic'}
+          userEmail={user?.email || ''}
           onProfileClick={() => setProfileOpen(true)}
         />
         <div className="content-area">

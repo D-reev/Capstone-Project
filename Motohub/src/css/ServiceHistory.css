@@ -26,78 +26,11 @@
   overflow: hidden;
   margin-left: 260px;
   min-width: 0;
-  transition: margin-left 0.28s ease;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.customer-sidebar.collapsed + .service-history-content {
+.service-history-content.sidebar-collapsed {
   margin-left: 72px;
-}
-
-/* Top Bar */
-.customer-top-bar {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: var(--header-bg) !important;
-  color: #fff !important;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  min-height: 64px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.top-bar-left {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.menu-toggle-btn {
-  background: none;
-  border: none;
-  color: white;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 0.5rem;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.menu-toggle-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.top-bar-title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--signature-yellow);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin: 0;
-}
-
-.top-bar-logo-container {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  height: 100%;
-  padding-right: 0.5rem;
-}
-
-.top-bar-logo {
-  width: 147px;
-  height: 47px;
-  background-position: center;
-  background-size: contain;
-  background-repeat: no-repeat;
-  display: block;
 }
 
 /* Main Content */
@@ -274,6 +207,177 @@
 .next-service svg {
   color: #f59e0b;
   flex-shrink: 0;
+}
+
+/* Rating Section */
+.service-rating-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid #e2e8f0;
+}
+
+.service-rating-section h5 {
+  font-weight: 700;
+  margin: 0 0 1rem 0;
+  color: #1a202c;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.rating-submitted {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.rating-submitted p {
+  margin: 0;
+  color: #718096;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.rating-thank-you {
+  color: #10b981 !important;
+  font-weight: 700 !important;
+  font-size: 0.875rem !important;
+}
+
+/* Star Rating Styles */
+.radio {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 1rem 0;
+}
+
+.radio > input {
+  position: absolute;
+  appearance: none;
+}
+
+.radio > label {
+  cursor: pointer;
+  font-size: 30px;
+  position: relative;
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.radio > label > svg {
+  fill: #cbd5e0;
+  transition: fill 0.3s ease;
+}
+
+.radio > label.rated > svg {
+  fill: #ff9e0b;
+  filter: drop-shadow(0 0 8px rgba(255, 158, 11, 0.6));
+}
+
+.radio > label::before,
+.radio > label::after {
+  content: "";
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background-color: #ff9e0b;
+  border-radius: 50%;
+  opacity: 0;
+  transform: scale(0);
+  transition:
+    transform 0.4s ease,
+    opacity 0.4s ease;
+  animation: particle-explosion 1s ease-out;
+}
+
+.radio > label::before {
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%) scale(0);
+}
+
+.radio > label::after {
+  bottom: -15px;
+  left: 50%;
+  transform: translateX(-50%) scale(0);
+}
+
+.radio > label:hover::before,
+.radio > label:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) scale(1.5);
+}
+
+.radio > label:hover {
+  transform: scale(1.2);
+  animation: pulse-rating 0.6s infinite alternate;
+}
+
+/* Star glow and animation on hover */
+.radio > label:hover > svg {
+  fill: #ff9e0b;
+  filter: drop-shadow(0 0 15px rgba(255, 158, 11, 0.9));
+  animation: shimmer 1s ease infinite alternate;
+}
+
+.radio > input:checked + label > svg {
+  fill: #ff9e0b;
+  filter: drop-shadow(0 0 15px rgba(255, 158, 11, 0.9));
+  animation: pulse-rating 0.8s infinite alternate;
+}
+
+.radio > input:checked + label ~ label > svg,
+.radio > input:checked + label > svg {
+  fill: #ff9e0b;
+}
+
+@keyframes pulse-rating {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes particle-explosion {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    filter: drop-shadow(0 0 10px rgba(255, 158, 11, 0.5));
+  }
+  100% {
+    filter: drop-shadow(0 0 20px rgba(255, 158, 11, 1));
+  }
+}
+
+.radio > input:checked + label:hover,
+.radio > input:checked + label:hover ~ label {
+  fill: #e58e09;
+}
+
+.radio > label:hover,
+.radio > label:hover ~ label {
+  fill: #ff9e0b;
+}
+
+.radio input:checked ~ label svg {
+  fill: #ffa723;
 }
 
 /* Loading State */

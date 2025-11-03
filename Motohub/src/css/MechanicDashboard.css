@@ -14,9 +14,9 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  margin-left: 260px;
+  margin-left: 280px;
   min-width: 0;
-  transition: margin-left 0.28s ease;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .mechanic-sidebar.collapsed + .main-content {

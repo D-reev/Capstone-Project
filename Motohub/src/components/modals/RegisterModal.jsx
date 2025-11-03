@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Modal, Form, Input, Button, message } from 'antd';
-import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import { Modal, Form, Input, Button, message, Alert } from 'antd';
+import { UserOutlined, LockOutlined, ExclamationCircleOutlined, PhoneOutlined, HomeOutlined, MailOutlined } from '@ant-design/icons';
 import './Modal.css';
 import { registerWithUsername } from '../../utils/auth';
 
-export default function RegisterModal({ open, onClose, onSuccess }) {
+export default function RegisterModal({ open, onClose, onSuccess, onSwitchToLogin }) {
   const [form] = Form.useForm();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -17,7 +17,12 @@ export default function RegisterModal({ open, onClose, onSuccess }) {
         lastName: values.lastName.trim(),
         username: values.username.trim().toLowerCase(),
         password: values.password,
-        role: 'user'
+        role: 'user',
+        address: values.address?.trim() || '',
+        city: values.city?.trim() || '',
+        postalCode: values.postalCode?.trim() || '',
+        phoneNumber: values.phoneNumber?.trim() || '',
+        googleEmail: values.googleEmail?.trim() || ''
       });
 
       message.success('Registration successful!');
@@ -26,7 +31,66 @@ export default function RegisterModal({ open, onClose, onSuccess }) {
       onClose();
     } catch (err) {
       console.error('Registration error:', err);
-      message.error(err?.message || 'Registration failed');
+      
+      let errorMessage = 'Registration failed';
+      let tips = [];
+      
+      if (err?.code === 'auth/email-already-in-use') {
+        errorMessage = 'This username is already taken.';
+        tips = [
+          'Try a different username',
+          'If this is your account, use "Login here" below',
+          'Usernames must be unique across all users'
+        ];
+      } else if (err?.code === 'auth/weak-password') {
+        errorMessage = 'Password is too weak.';
+        tips = [
+          'Use at least 8 characters',
+          'Include a mix of letters and numbers',
+          'Consider adding special characters'
+        ];
+      } else if (err?.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid username format.';
+        tips = [
+          'Use only lowercase letters (a-z)',
+          'Numbers (0-9) are allowed',
+          'You can use dots (.), underscores (_), or hyphens (-)',
+          'No spaces or special characters'
+        ];
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+      
+      // Show error in a modal
+      Modal.error({
+        title: 'Registration Failed',
+        icon: <ExclamationCircleOutlined />,
+        content: (
+          <div>
+            <p>{errorMessage}</p>
+            {tips.length > 0 && (
+              <div style={{ marginTop: '12px', padding: '12px', background: '#fff7e6', borderRadius: '8px' }}>
+                <strong>Tips:</strong>
+                <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
+                  {tips.map((tip, index) => (
+                    <li key={index}>{tip}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        ),
+        okText: 'Got it',
+        centered: true,
+        okButtonProps: {
+          style: {
+            background: 'linear-gradient(135deg, #FFC300, #FFD54F)',
+            borderColor: '#FFC300',
+            color: '#000',
+            fontWeight: 600
+          }
+        }
+      });
     } finally {
       setIsLoading(false);
     }
@@ -43,9 +107,12 @@ export default function RegisterModal({ open, onClose, onSuccess }) {
       title="Create Account"
       onCancel={handleCancel}
       footer={null}
-      width={500}
+      width={600}
       centered
       maskClosable={!isLoading}
+      styles={{
+        body: { maxHeight: 'calc(90vh - 120px)', overflowY: 'auto', paddingRight: '8px' }
+      }}
     >
       <style>{`
         .ant-modal-header {
@@ -105,6 +172,13 @@ export default function RegisterModal({ open, onClose, onSuccess }) {
         layout="vertical"
         onFinish={handleRegister}
       >
+        {/* Personal Information Section */}
+        <div style={{ marginBottom: '16px' }}>
+          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: 600, color: '#333' }}>
+            Personal Information
+          </h4>
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <Form.Item
             label="First Name"
@@ -135,6 +209,71 @@ export default function RegisterModal({ open, onClose, onSuccess }) {
         >
           <Input placeholder="Enter middle name" size="large" />
         </Form.Item>
+
+        {/* Address Section */}
+        <div style={{ marginTop: '20px', marginBottom: '12px' }}>
+          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: 600, color: '#333' }}>
+            Address Information
+          </h4>
+        </div>
+
+        <Form.Item
+          label="Address"
+          name="address"
+          rules={[
+            { required: true, message: 'Please enter your address' }
+          ]}
+        >
+          <Input 
+            prefix={<HomeOutlined />}
+            placeholder="Street address, building, unit number" 
+            size="large" 
+          />
+        </Form.Item>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <Form.Item
+            label="City"
+            name="city"
+            rules={[
+              { required: true, message: 'Please enter your city' }
+            ]}
+          >
+            <Input placeholder="Enter city" size="large" />
+          </Form.Item>
+
+          <Form.Item
+            label="Postal Code"
+            name="postalCode"
+            rules={[
+              { required: true, message: 'Please enter postal code' }
+            ]}
+          >
+            <Input placeholder="Enter postal code" size="large" />
+          </Form.Item>
+        </div>
+
+        <Form.Item
+          label="Mobile Number"
+          name="phoneNumber"
+          rules={[
+            { required: true, message: 'Please enter your mobile number' },
+            { pattern: /^[0-9]{10,11}$/, message: 'Enter a valid 10-11 digit mobile number' }
+          ]}
+        >
+          <Input 
+            prefix={<PhoneOutlined />}
+            placeholder="e.g., 09171234567" 
+            size="large" 
+          />
+        </Form.Item>
+
+        {/* Account Information Section */}
+        <div style={{ marginTop: '20px', marginBottom: '12px' }}>
+          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: 600, color: '#333' }}>
+            Account Information
+          </h4>
+        </div>
 
         <Form.Item
           label="Username"
@@ -168,6 +307,28 @@ export default function RegisterModal({ open, onClose, onSuccess }) {
           />
         </Form.Item>
 
+        <Form.Item
+          label="Google Email (Gmail) - Optional"
+          name="googleEmail"
+          rules={[
+            { type: 'email', message: 'Please enter a valid email address' }
+          ]}
+        >
+          <Input 
+            prefix={<MailOutlined />}
+            placeholder="your.email@gmail.com" 
+            size="large"
+          />
+        </Form.Item>
+
+        <Alert
+          message="Important: Gmail Account"
+          description="If you don't provide a Gmail address, password recovery via 'Forgot Password' will not be available. You can add it later in your profile settings."
+          type="warning"
+          showIcon
+          style={{ marginBottom: '20px' }}
+        />
+
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
           <Button 
             className="register-cancel-btn"
@@ -184,6 +345,25 @@ export default function RegisterModal({ open, onClose, onSuccess }) {
           >
             Register
           </Button>
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: '16px', fontSize: '14px' }}>
+          Already have an account?{' '}
+          <span 
+            onClick={() => {
+              handleCancel();
+              if (onSwitchToLogin) onSwitchToLogin();
+            }}
+            style={{ 
+              color: '#FFC300', 
+              cursor: 'pointer',
+              fontWeight: 600
+            }}
+            onMouseEnter={(e) => e.target.style.color = '#FFD54F'}
+            onMouseLeave={(e) => e.target.style.color = '#FFC300'}
+          >
+            Login here
+          </span>
         </div>
       </Form>
     </Modal>

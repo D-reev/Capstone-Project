@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, InputNumber, Select, message, Spin, Button } from 'antd';
+import { Modal, Form, Input, InputNumber, Select, Spin, Button, App } from 'antd';
 import { getFirestore, collection, getDocs, query, where, addDoc } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
 import './Modal.css';
@@ -10,6 +10,7 @@ const { Option } = Select;
 export default function CarServiceReportModal({ car, customer, open, onSubmit, onClose }) {
   const { user } = useAuth();
   const [form] = Form.useForm();
+  const { message: messageApi } = App.useApp();
   const [reportData, setReportData] = useState({
     diagnosis: '',
     workPerformed: '',
@@ -62,7 +63,7 @@ export default function CarServiceReportModal({ car, customer, open, onSubmit, o
         setLoading(false);
       } catch (err) {
         console.error('Error fetching data:', err);
-        message.error(err.message || 'Failed to load necessary data');
+        messageApi.error(err.message || 'Failed to load necessary data');
         setLoading(false);
       }
     };
@@ -128,7 +129,7 @@ export default function CarServiceReportModal({ car, customer, open, onSubmit, o
 
   const handleSubmit = async () => {
     if (!user?.uid) {
-      message.error('You must be logged in as a mechanic to submit a report');
+      messageApi.error('You must be logged in as a mechanic to submit a report');
       return;
     }
 
@@ -153,7 +154,7 @@ export default function CarServiceReportModal({ car, customer, open, onSubmit, o
       };
 
       await handleServiceReport(reportPayload);
-      message.success('Service report submitted successfully!');
+      messageApi.success('Service report submitted successfully!');
       form.resetFields();
       setReportData({
         diagnosis: '',
@@ -170,10 +171,10 @@ export default function CarServiceReportModal({ car, customer, open, onSubmit, o
       onSubmit(reportPayload);
     } catch (error) {
       if (error.errorFields) {
-        message.error('Please fill in all required fields');
+        messageApi.error('Please fill in all required fields');
       } else {
         console.error('Error submitting report:', error);
-        message.error(error.message || 'Failed to submit service report');
+        messageApi.error(error.message || 'Failed to submit service report');
       }
     } finally {
       setIsSubmitting(false);

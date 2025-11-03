@@ -251,7 +251,7 @@ export const registerWithEmail = async (email, password, displayName, role = 'us
   }
 };
 
-export const registerWithUsername = async ({ firstName, middleName = '', lastName, username, password, role = 'user' }) => {
+export const registerWithUsername = async ({ firstName, middleName = '', lastName, username, password, role = 'user', address = '', city = '', postalCode = '', phoneNumber = '', googleEmail = '' }) => {
   if (!firstName || !lastName || !username || !password) {
     throw new Error('First name, last name, username and password are required');
   }
@@ -276,7 +276,12 @@ export const registerWithUsername = async ({ firstName, middleName = '', lastNam
       middleName: middleName || null,
       lastName,
       username,
-      email: null,
+      email: googleEmail || null,
+      googleEmail: googleEmail || null,
+      address: address || null,
+      city: city || null,
+      postalCode: postalCode || null,
+      phoneNumber: phoneNumber || null,
       role,
       createdAt: new Date().toISOString()
     };
@@ -370,5 +375,89 @@ export const signOut = async () => {
   } catch (error) {
     console.error('Sign out error:', error);
     throw new Error('Failed to sign out. Please try again.');
+  }
+};
+
+// Notification functions
+export const createNotification = async (recipientId, notificationData) => {
+  try {
+    const notificationsRef = collection(db, 'users', recipientId, 'notifications');
+    const notification = {
+      ...notificationData,
+      read: false,
+      createdAt: new Date().toISOString(),
+      timestamp: new Date().toISOString()
+    };
+    
+    await addDoc(notificationsRef, notification);
+    
+    // Log the notification
+    await addDoc(collection(db, 'logs'), {
+      type: 'NOTIFICATION_CREATED',
+      timestamp: new Date().toISOString(),
+      recipientId,
+      notificationType: notificationData.type,
+      details: notificationData
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('Error creating notification:', error);
+    throw error;
+  }
+};
+
+export const createFollowUpNotification = async (requestId, mechanicId, mechanicName) => {
+  try {
+    // Get all admin users
+    const usersSnapshot = await getDocs(collection(db, 'users'));
+    const admins = usersSnapshot.docs.filter(doc => doc.data().role === 'admin');
+    
+    // Create notification for each admin
+    for (const adminDoc of admins) {
+      await createNotification(adminDoc.id, {
+        type: 'follow_up',
+        title: 'Parts Request Follow-Up',
+        description: `${mechanicName} is requesting a follow-up on their pending parts request`,
+        requestId,
+        mechanicId,
+        mechanicName
+      });
+    }
+    
+    // Update the request with follow-up flag
+    const requestRef = doc(db, 'partRequests', requestId);
+    await updateDoc(requestRef, {
+      followUpRequested: true,
+      followUpRequestedAt: new Date().toISOString()
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('Error creating follow-up notification:', error);
+    throw error;
+  }
+};
+
+export const notifyRequestStatusChange = async (requestId, mechanicId, status, adminNotes = '') => {
+  try {
+    const notification = {
+      type: 'request_status_change',
+      title: `Parts Request ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+      description: status === 'approved' 
+        ? 'Your parts request has been approved and is being processed'
+        : status === 'rejected'
+        ? `Your parts request has been rejected${adminNotes ? ': ' + adminNotes : ''}`
+        : `Your parts request status has been updated to ${status}`,
+      requestId,
+      status,
+      adminNotes
+    };
+    
+    await createNotification(mechanicId, notification);
+    return true;
+  } catch (error) {
+    console.error('Error notifying request status change:', error);
+    throw error;
   }
 };

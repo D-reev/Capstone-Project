@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { collection, getDocs, getDoc, doc, getFirestore, query, orderBy, limit } from 'firebase/firestore';
 import { FileText, Filter, Download, RefreshCw, AlertCircle, Eye, Shield, User, Package, CheckCircle, XCircle } from 'lucide-react';
 import AdminSidebar from '../components/AdminSidebar';
-import TopBar from '../components/TopBar';
+import NavigationBar from '../components/NavigationBar';
 import ProfileModal from '../components/modals/ProfileModal';
 import Loading from '../components/Loading';
 import '../css/AdminLogs.css';
@@ -21,8 +21,6 @@ export default function AdminLogs() {
     fetchLogs();
   }, []);
 
-  // Refresh logs - fetches the latest 100 log entries from the database
-  // This is useful when logs are being created by other users/processes
   const fetchLogs = async () => {
     try {
       setLoading(true);
@@ -35,8 +33,6 @@ export default function AdminLogs() {
           const logData = logDoc.data();
           let userName = 'System';
           let userRole = 'system';
-
-          // Fetch user details if userId exists
           if (logData.userId) {
             try {
               const userDoc = await getDoc(doc(db, 'users', logData.userId));
@@ -49,7 +45,6 @@ export default function AdminLogs() {
               console.error('Error fetching user:', err);
             }
           } else if (logData.details?.mechanicId) {
-            // Try to fetch from mechanicId in details
             try {
               const userDoc = await getDoc(doc(db, 'users', logData.details.mechanicId));
               if (userDoc.exists()) {
@@ -62,7 +57,6 @@ export default function AdminLogs() {
             }
           }
 
-          // Use existing description or generate one
           let description = logData.description || '';
           if (!description) {
             switch (logData.type) {
@@ -193,11 +187,13 @@ export default function AdminLogs() {
       <AdminSidebar sidebarOpen={sidebarOpen} user={user} />
 
       <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
-        <TopBar
+        <NavigationBar
           title="Activity Logs"
-          onToggle={() => setSidebarOpen(!sidebarOpen)}
-          notificationsCount={0}
+          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           onProfileClick={() => setProfileOpen(true)}
+          userRole="admin"
+          userName={user?.displayName || 'Admin'}
+          userEmail={user?.email || ''}
         />
 
         <div className="content-area">

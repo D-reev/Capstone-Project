@@ -1,8 +1,7 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { Modal, Form, Input, InputNumber, Checkbox, List, Typography, Divider, Empty, Spin, message } from 'antd';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { Modal, Form, Input, InputNumber, Checkbox, List, Typography, Divider, Empty, Spin, Button, App } from 'antd';
 import { getFirestore, collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
-import { createPartsRequest } from '../../utils/auth';
 import './CarPartsRequestModal.css';
 
 const { TextArea } = Input;
@@ -15,7 +14,9 @@ export default function CarPartsRequestModal({ car, customer, onSubmit, onClose,
   const [selectedParts, setSelectedParts] = useState([]); // [{ partId, name, price, quantity }]
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const db = getFirestore();
+  const { message: messageApi } = App.useApp();
 
   const isOpen = open ?? true;
 
@@ -35,16 +36,16 @@ export default function CarPartsRequestModal({ car, customer, onSubmit, onClose,
     } catch (err) {
       console.error('Error fetching inventory:', err);
       if (err?.code === 'permission-denied') {
-        message.error('Not authorized to read inventory. Check Firestore rules.');
+        messageApi.error('Not authorized to read inventory. Check Firestore rules.');
       } else if (err?.code === 'failed-precondition') {
-        message.error('Missing Firestore index for this query. Create the suggested index from the console link.');
+        messageApi.error('Missing Firestore index for this query. Create the suggested index from the console link.');
       } else {
-        message.error('Failed to load inventory');
+        messageApi.error('Failed to load inventory');
       }
     } finally {
       setLoading(false);
     }
-  }, [db]);
+  }, [db, messageApi]);
 
   useEffect(() => {
     if (isOpen) fetchInventory();
@@ -62,7 +63,7 @@ export default function CarPartsRequestModal({ car, customer, onSubmit, onClose,
       }
 
       if (quantity > part.quantity) {
-        message.warning(`Only ${part.quantity} in stock for ${part.name}`);
+        messageApi.warning(`Only ${part.quantity} in stock for ${part.name}`);
         return next;
       }
 
@@ -86,69 +87,66 @@ export default function CarPartsRequestModal({ car, customer, onSubmit, onClose,
     [selectedParts]
   );
 
-  const resetState = () => {
+  const resetState = useCallback(() => {
     setSelectedParts([]);
     form.resetFields();
-  };
+  }, [form]);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
+    submittingRef.current = false;
+    setIsSubmitting(false);
     resetState();
     onClose?.();
-  };
+  }, [resetState, onClose]);
 
-  const handleFinish = async (values) => {
+  const handleFinish = useCallback(async (values) => {
+    // Prevent double submission with ref
+    if (submittingRef.current || isSubmitting) {
+      console.log('Already submitting, ignoring duplicate call');
+      return;
+    }
+    
     if (selectedParts.length === 0) {
-      message.error('Please add at least one part to the request');
+      messageApi.error('Please add at least one part to the request');
       return;
     }
     if (!car || !customer || !user) {
-      message.error('Missing required information');
+      messageApi.error('Missing required information');
       return;
     }
 
+    submittingRef.current = true;
     setIsSubmitting(true);
+    
     try {
       const payload = {
-        car: {
-          id: car.id,
-          make: car.make,
-          model: car.model,
-          year: car.year,
-          plateNumber: car.plateNumber,
-        },
-        customer: {
-          id: customer.id,
-          displayName: customer.displayName,
-        },
         parts: selectedParts,
         urgent: !!values.urgent,
         notes: values.notes || '',
       };
 
-      await createPartsRequest(payload, user.uid);
+      console.log('Passing request to parent...', payload);
 
-      // Success alert (toast)
-      message.success({
-        content: (
-          <div>
-            <div><b>Parts request submitted</b></div>
-            <div>Vehicle: {car.year} {car.make} {car.model} • {car.plateNumber}</div>
-            <div>Items: {selectedParts.length} • Total: ₱{totalCost.toLocaleString()}</div>
-          </div>
-        ),
-        duration: 4,
-        className: 'mh-yellow-message'
-      });
+      await onSubmit?.(payload);
+      
+      console.log('Request handled by parent successfully');
 
-      onSubmit?.(payload);
-      handleCancel();
+      messageApi.success(
+        `Parts request submitted! Vehicle: ${car.year} ${car.make} ${car.model} • ${car.plateNumber} • Items: ${selectedParts.length} • Total: ₱${totalCost.toLocaleString()}`,
+        4
+      );
+      
+      submittingRef.current = false;
+      setIsSubmitting(false);
+      resetState();
+      onClose?.();
     } catch (err) {
       console.error('Error submitting request:', err);
-      message.error(err?.message || 'Failed to submit request');
-    } finally {
+      messageApi.error(err?.message || 'Failed to submit request');
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
-  };
+  }, [selectedParts, car, customer, user, messageApi, totalCost, onSubmit, isSubmitting, resetState, onClose]);
 
   return (
     <Modal
@@ -297,8 +295,8 @@ export default function CarPartsRequestModal({ car, customer, onSubmit, onClose,
           </Button>
           <Button 
             type="primary" 
+            htmlType="submit"
             className="carpartsreq-submit-btn"
-            onClick={() => form.submit()}
             loading={isSubmitting}
             disabled={selectedParts.length === 0}
             style={{ height: '40px' }}

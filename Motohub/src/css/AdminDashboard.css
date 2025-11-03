@@ -9,14 +9,14 @@
 
 .dashboard-main {
   flex: 1;
-  margin-left: 240px;
+  margin-left: 280px;
   display: flex;
   flex-direction: column;
-  transition: margin-left 0.3s ease;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .dashboard-main.sidebar-collapsed {
-  margin-left: 0;
+  margin-left: 72px;
 }
 
 .dashboard-content {
