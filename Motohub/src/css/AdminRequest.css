@@ -6,7 +6,7 @@
 .requests-page {
   display: flex;
   min-height: 100vh;
-  background: #F3F4F6;
+  background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 25%, #e0e0e0 50%, #d0d0d0 75%, #c0c0c0 100%);
 }
 
 .requests-main {
@@ -16,6 +16,8 @@
   margin-left: 280px;
   width: calc(100% - 280px);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+  height: 100vh;
 }
 
 .requests-main.sidebar-collapsed {
@@ -302,23 +304,223 @@
   .requests-main {
     margin-left: 0;
     width: 100%;
+    padding-bottom: 100px !important;
   }
 
   .requests-content {
     padding: 1rem;
+    padding-bottom: 100px;
+  }
+
+  .page-header {
+    padding: 1rem;
   }
 
   .page-title {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
+  }
+
+  .page-subtitle {
+    font-size: 0.875rem;
   }
 
   .tabs {
     flex-wrap: wrap;
+    gap: 0.5rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
+  .tab-button {
+    font-size: 0.875rem;
+    padding: 0.625rem 1rem;
+    white-space: nowrap;
+  }
+
+  /* Hide table on mobile */
   .data-table {
-    display: block;
-    overflow-x: auto;
+    display: none !important;
+  }
+
+  /* Mobile card list */
+  .requests-mobile-list {
+    display: block !important;
+  }
+
+  .requests-mobile-card {
+    background: white;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .requests-mobile-card:active {
+    transform: scale(0.98);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .requests-mobile-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+  }
+
+  .requests-mobile-info {
+    flex: 1;
+  }
+
+  .requests-mobile-mechanic {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 0.25rem;
+  }
+
+  .requests-mobile-customer {
+    font-size: 0.875rem;
+    color: #6B7280;
+  }
+
+  .requests-mobile-toggle {
+    color: #9CA3AF;
+    transition: transform 0.2s ease;
+  }
+
+  .requests-mobile-toggle.expanded {
+    transform: rotate(180deg);
+  }
+
+  .requests-mobile-meta {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+  }
+
+  .requests-mobile-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .requests-mobile-badge.vehicle {
+    background: #DBEAFE;
+    color: #1E40AF;
+  }
+
+  .requests-mobile-badge.parts {
+    background: #FEF3C7;
+    color: #D97706;
+  }
+
+  .requests-mobile-badge.status-pending {
+    background: #FEF3C7;
+    color: #D97706;
+  }
+
+  .requests-mobile-badge.status-approved {
+    background: #D1FAE5;
+    color: #059669;
+  }
+
+  .requests-mobile-badge.status-rejected {
+    background: #FEE2E2;
+    color: #991B1B;
+  }
+
+  .requests-mobile-expanded {
+    border-top: 1px solid #E5E7EB;
+    padding-top: 1rem;
+    margin-top: 1rem;
+    animation: slideDown 0.2s ease;
+  }
+
+  .requests-mobile-detail {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #F3F4F6;
+  }
+
+  .requests-mobile-detail:last-child {
+    border-bottom: none;
+  }
+
+  .requests-mobile-detail-label {
+    font-size: 0.875rem;
+    color: #6B7280;
+    font-weight: 500;
+  }
+
+  .requests-mobile-detail-value {
+    font-size: 0.875rem;
+    color: #111827;
+    font-weight: 400;
+  }
+
+  .requests-mobile-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .requests-mobile-actions button {
+    flex: 1;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .requests-mobile-view {
+    background: #DBEAFE;
+    color: #1E40AF;
+  }
+
+  .requests-mobile-view:active {
+    background: #BFDBFE;
+  }
+
+  .requests-mobile-approve {
+    background: #D1FAE5;
+    color: #065F46;
+  }
+
+  .requests-mobile-approve:active {
+    background: #A7F3D0;
+  }
+
+  .requests-mobile-reject {
+    background: #FEE2E2;
+    color: #991B1B;
+  }
+
+  .requests-mobile-reject:active {
+    background: #FECACA;
+  }
+
+  .requests-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .requests-search {
+    width: 100%;
   }
 }
 
@@ -383,4 +585,9 @@
   .section-title {
     font-size: 1rem;
   }
+}
+
+/* Hide mobile list on desktop */
+.requests-mobile-list {
+  display: none;
 }

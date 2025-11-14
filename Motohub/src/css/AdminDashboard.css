@@ -4,7 +4,7 @@
 .dashboard-page {
   display: flex;
   min-height: 100vh;
-  background: #f3f4f6;
+  background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 25%, #e0e0e0 50%, #d0d0d0 75%, #c0c0c0 100%);
 }
 
 .dashboard-main {
@@ -13,6 +13,8 @@
   display: flex;
   flex-direction: column;
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+  height: 100vh;
 }
 
 .dashboard-main.sidebar-collapsed {
@@ -22,7 +24,7 @@
 .dashboard-content {
   flex: 1;
   padding: 24px;
-  background: #f3f4f6;
+  background: transparent;
 }
 
 /* Page Header */
@@ -182,6 +184,118 @@
   overflow-x: auto;
 }
 
+/* Desktop Card List Styling */
+.orders-mobile-list {
+  display: block;
+  padding: 1rem;
+}
+
+.orders-mobile-card {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.orders-mobile-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+  transform: translateY(-2px);
+}
+
+.orders-mobile-card:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.orders-mobile-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.orders-mobile-info {
+  flex: 1;
+}
+
+.orders-mobile-part {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 0.375rem;
+}
+
+.orders-mobile-mechanic {
+  font-size: 0.875rem;
+  color: #6B7280;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.orders-mobile-meta {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.orders-mobile-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.orders-mobile-badge.quantity {
+  background: #DBEAFE;
+  color: #1E40AF;
+}
+
+.orders-mobile-badge.cost {
+  background: #D1FAE5;
+  color: #065F46;
+}
+
+.orders-mobile-badge.status-pending {
+  background: #FEF3C7;
+  color: #D97706;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+}
+
+.orders-mobile-badge.status-approved {
+  background: #D1FAE5;
+  color: #059669;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+}
+
+.orders-mobile-badge.status-completed {
+  background: #DBEAFE;
+  color: #1E40AF;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+}
+
+.orders-mobile-badge.status-rejected {
+  background: #FEE2E2;
+  color: #DC2626;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+}
+
 .orders-table table {
   width: 100%;
   border-collapse: collapse;
@@ -304,7 +418,7 @@
 /* Bottom Row */
 .bottom-row {
   display: grid;
-  grid-template-columns: 1fr 1.5fr 1fr;
+  grid-template-columns: 1fr 1.5fr 3fr;
   gap: 20px;
 }
 
@@ -328,6 +442,7 @@
   justify-content: space-around;
   height: 200px;
   padding: 20px 0;
+  gap: 10px;
 }
 
 .bar-group {
@@ -336,6 +451,7 @@
   align-items: center;
   gap: 8px;
   flex: 1;
+  max-width: 80px;
 }
 
 .bar-stack {
@@ -350,6 +466,8 @@
 .bar-segment {
   width: 100%;
   border-radius: 4px 4px 0 0;
+  min-height: 10px;
+  transition: all 0.3s ease;
 }
 
 .bar-segment:not(:first-child) {
@@ -408,10 +526,12 @@
 @media (max-width: 768px) {
   .dashboard-main {
     margin-left: 0;
+    padding-bottom: 100px;
   }
 
   .dashboard-content {
     padding: 16px;
+    padding-bottom: 100px;
   }
 
   .stats-grid {
@@ -427,21 +547,209 @@
     font-size: 24px;
   }
 
+  /* Make charts stack vertically on mobile */
   .charts-row {
+    grid-template-columns: 1fr !important;
     gap: 12px;
   }
 
+  .chart-card {
+    padding: 16px;
+  }
+
+  /* Make inventory analytics grid responsive */
+  .chart-card > div[style*="grid-template-columns"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1rem !important;
+  }
+
+  /* Make bottom row stack vertically */
   .bottom-row {
+    grid-template-columns: 1fr !important;
     gap: 12px;
   }
 
-  .orders-table {
-    font-size: 12px;
+  /* Show bar chart on mobile, hide donut chart */
+  .donut-chart {
+    display: none;
   }
 
-  .orders-table th,
-  .orders-table td {
+  .bar-chart {
+    display: flex;
+    height: 200px;
+    padding: 1rem 0;
+  }
+
+  .chart-legend {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+
+  /* Responsive tables */
+  .orders-table {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Hide orders table on mobile */
+  .orders-table table {
+    display: none;
+  }
+
+  /* Mobile card list for orders */
+  .orders-mobile-list {
+    display: block !important;
+  }
+
+  .orders-mobile-card {
+    background: white;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .orders-mobile-card:active {
+    transform: scale(0.98);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .orders-mobile-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+  }
+
+  .orders-mobile-info {
+    flex: 1;
+  }
+
+  .orders-mobile-part {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 0.25rem;
+  }
+
+  .orders-mobile-mechanic {
+    font-size: 0.875rem;
+    color: #6B7280;
+  }
+
+  .orders-mobile-toggle {
+    color: #9CA3AF;
+    transition: transform 0.2s ease;
+  }
+
+  .orders-mobile-toggle.expanded {
+    transform: rotate(180deg);
+  }
+
+  .orders-mobile-meta {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+  }
+
+  .orders-mobile-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .orders-mobile-badge.quantity {
+    background: #DBEAFE;
+    color: #1E40AF;
+  }
+
+  .orders-mobile-badge.cost {
+    background: #D1FAE5;
+    color: #065F46;
+  }
+
+  .orders-mobile-badge.status-pending {
+    background: #FEF3C7;
+    color: #D97706;
+  }
+
+  .orders-mobile-badge.status-approved {
+    background: #D1FAE5;
+    color: #059669;
+  }
+
+  .orders-mobile-badge.status-completed {
+    background: #DBEAFE;
+    color: #1E40AF;
+  }
+
+  .orders-mobile-badge.status-rejected {
+    background: #FEE2E2;
+    color: #991B1B;
+  }
+
+  .orders-mobile-expanded {
+    border-top: 1px solid #E5E7EB;
+    padding-top: 1rem;
+    margin-top: 1rem;
+    animation: slideDown 0.2s ease;
+  }
+
+  .orders-mobile-detail {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #F3F4F6;
+  }
+
+  .orders-mobile-detail:last-child {
+    border-bottom: none;
+  }
+
+  .orders-mobile-detail-label {
+    font-size: 0.875rem;
+    color: #6B7280;
+    font-weight: 500;
+  }
+
+  .orders-mobile-detail-value {
+    font-size: 0.875rem;
+    color: #111827;
+    font-weight: 400;
+    text-align: right;
+  }
+
+  .campaigns-table table {
+    font-size: 12px;
+    width: 100%;
+  }
+
+  .campaigns-table th,
+  .campaigns-table td {
     padding: 8px 6px;
+  }
+
+  /* Low stock alerts - make more compact on mobile */
+  .chart-card h3 {
+    font-size: 0.875rem !important;
+  }
+
+  /* Adjust view details buttons */
+  .view-details {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+  }
+
+  .card-header h2 {
+    font-size: 0.95rem;
   }
 }
 
@@ -467,10 +775,74 @@
   }
 
   .chart-card {
-    padding: 16px;
+    padding: 12px;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
   }
 
   .card-header h2 {
-    font-size: 16px;
+    font-size: 0.875rem;
   }
+
+  .view-details {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Stack inventory stats vertically */
+  .chart-card > div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+    padding: 1rem !important;
+  }
+
+  .chart-card > div[style*="grid-template-columns"] > div {
+    padding: 0.75rem;
+    border-bottom: 1px solid #E5E7EB;
+  }
+
+  .chart-card > div[style*="grid-template-columns"] > div:last-child {
+    border-bottom: none;
+  }
+
+  /* Make low stock alerts more compact */
+  .chart-card > div > div[style*="padding: 1rem"] {
+    padding: 0.75rem !important;
+    font-size: 0.875rem;
+  }
+
+  /* Simplify bar chart legend */
+  .chart-legend {
+    grid-template-columns: 1fr;
+  }
+
+  .legend-item {
+    font-size: 0.75rem;
+  }
+
+  /* Adjust bar chart for small screens */
+  .bar-chart {
+    height: 180px;
+    padding: 0.75rem 0;
+  }
+
+  .bar-group {
+    gap: 6px;
+  }
+
+  .bar-stack {
+    max-width: 50px;
+  }
+
+  .bar-label {
+    font-size: 11px;
+  }
+}
+
+/* Hide mobile lists on desktop */
+.orders-mobile-list {
+  display: none;
 }

@@ -21,6 +21,7 @@ import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 
 import { useAuth } from '../context/AuthContext';
+import { useSidebar } from '../context/SidebarContext';
 import UserSidebar from '../components/UserSidebar';
 import NavigationBar from '../components/NavigationBar';
 import ScrollStack, { ScrollStackItem } from '../components/ScrollStack';
@@ -28,9 +29,10 @@ import ScrollStack, { ScrollStackItem } from '../components/ScrollStack';
 import '../css/UserDashboard.css';
 
 function MotohubCustomerDashboardContent() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { sidebarOpen } = useSidebar();
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
   const [vehicles, setVehicles] = useState([]);
+  const [promotions, setPromotions] = useState([]);
   const [stats, setStats] = useState({
     totalVehicles: 0,
     pendingServices: 0,
@@ -45,6 +47,7 @@ function MotohubCustomerDashboardContent() {
     if (user) {
       loadUserData();
     }
+    loadPromotions();
   }, [user]);
 
   const loadUserData = async () => {
@@ -83,6 +86,19 @@ function MotohubCustomerDashboardContent() {
     } catch (error) {
       console.error('Error loading user data:', error);
       messageApi.error('Failed to load dashboard data');
+    }
+  };
+
+  const loadPromotions = async () => {
+    try {
+      const promoRef = collection(db, 'promotions');
+      const snapshot = await getDocs(promoRef);
+      const promoList = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(promo => promo.active !== false);
+      setPromotions(promoList);
+    } catch (error) {
+      console.error('Error loading promotions:', error);
     }
   };
 
@@ -504,19 +520,41 @@ function MotohubCustomerDashboardContent() {
     </div>
   );
 
-  const PromoCard = ({ title, description, discount, validUntil, icon: Icon }) => (
+  const PromoCard = ({ title, description, discount, validUntil, icon: Icon, features, savings }) => (
     <div className="promo-card">
-      <div className="promo-badge">
-        <Tag size={16} />
-        <span>LIMITED OFFER</span>
+      <div className="promo-header">
+        <div className="promo-icon-wrapper">
+          <Icon size={32} className="promo-icon-main" />
+        </div>
+        <div className="promo-badge-container">
+          <div className="promo-badge">
+            <Tag size={14} />
+            <span>LIMITED OFFER</span>
+          </div>
+        </div>
       </div>
-      <div className="promo-icon">
-        <Icon size={32} />
-      </div>
-      <div className="promo-content">
+      
+      <div className="promo-body">
         <h3 className="promo-title">{title}</h3>
         <p className="promo-description">{description}</p>
-        <div className="promo-discount">{discount}</div>
+        
+        {features && features.length > 0 && (
+          <ul className="promo-features">
+            {features.map((feature, index) => (
+              <li key={index} className="promo-feature-item">
+                <span className="promo-feature-check">✓</span>
+                {feature}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      
+      <div className="promo-footer">
+        <div className="promo-discount-section">
+          <div className="promo-discount">{discount}</div>
+          {savings && <div className="promo-savings">Save up to {savings}</div>}
+        </div>
         <div className="promo-validity">
           <Calendar size={14} />
           <span>Valid until {validUntil}</span>
@@ -540,7 +578,6 @@ function MotohubCustomerDashboardContent() {
   return (
     <div className="customer-dashboard-container">
       <UserSidebar
-        sidebarOpen={sidebarOpen}
         user={user}
         className={`customer-sidebar${sidebarOpen ? '' : ' collapsed'}${sidebarMobileOpen ? ' open' : ''}`}
         onCloseMobile={() => setSidebarMobileOpen(false)}
@@ -550,13 +587,6 @@ function MotohubCustomerDashboardContent() {
         <NavigationBar
           title="Dashboard"
           subtitle="Overview of your vehicles and services"
-          onToggleSidebar={() => {
-            if (window.innerWidth <= 768) {
-              setSidebarMobileOpen(!sidebarMobileOpen);
-            } else {
-              setSidebarOpen(!sidebarOpen);
-            }
-          }}
           userRole="customer"
           userName={user?.displayName || 'User'}
           userEmail={user?.email || ''}
@@ -570,35 +600,35 @@ function MotohubCustomerDashboardContent() {
               Current Promotions
             </h3>
             <div className="promo-carousel-container">
-              <Slider {...carouselSettings}>
-                <div>
-                  <PromoCard
-                    icon={Wrench}
-                    title="Engine Tune-Up Special"
-                    description="Complete engine diagnostic and tune-up service for all vehicle types"
-                    discount="20% OFF"
-                    validUntil="Dec 31, 2025"
-                  />
+              {promotions.length > 0 ? (
+                <Slider {...carouselSettings}>
+                  {promotions.map((promo) => {
+                    // Map icon name to component
+                    let IconComponent = Wrench;
+                    if (promo.icon === 'Car') IconComponent = Car;
+                    else if (promo.icon === 'TrendingUp') IconComponent = TrendingUp;
+                    
+                    return (
+                      <div key={promo.id}>
+                        <PromoCard
+                          icon={IconComponent}
+                          title={promo.title}
+                          description={promo.description}
+                          discount={promo.discount}
+                          savings={promo.savings}
+                          validUntil={promo.validUntil}
+                          features={promo.features || []}
+                        />
+                      </div>
+                    );
+                  })}
+                </Slider>
+              ) : (
+                <div className="promo-empty-state">
+                  <Tag size={48} className="promo-empty-icon" />
+                  <p>No promotions available at the moment</p>
                 </div>
-                <div>
-                  <PromoCard
-                    icon={Car}
-                    title="Full Vehicle Inspection"
-                    description="Comprehensive 50-point safety and performance inspection"
-                    discount="15% OFF"
-                    validUntil="Nov 30, 2025"
-                  />
-                </div>
-                <div>
-                  <PromoCard
-                    icon={TrendingUp}
-                    title="Premium Oil Change Package"
-                    description="Includes full synthetic oil, filter replacement, and free tire rotation"
-                    discount="25% OFF"
-                    validUntil="Dec 15, 2025"
-                  />
-                </div>
-              </Slider>
+              )}
             </div>
           </div>
 

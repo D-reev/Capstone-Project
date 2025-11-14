@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useSidebar } from '../context/SidebarContext';
 import { collection, getDocs, getDoc, doc, getFirestore, query, orderBy, limit } from 'firebase/firestore';
-import { FileText, Filter, Download, RefreshCw, AlertCircle, Eye, Shield, User, Package, CheckCircle, XCircle } from 'lucide-react';
+import { FileText, Filter, Download, RefreshCw, AlertCircle, Eye, Shield, User, Package, CheckCircle, XCircle, ChevronDown, Clock } from 'lucide-react';
 import AdminSidebar from '../components/AdminSidebar';
 import NavigationBar from '../components/NavigationBar';
 import ProfileModal from '../components/modals/ProfileModal';
@@ -9,11 +10,12 @@ import Loading from '../components/Loading';
 import '../css/AdminLogs.css';
 
 export default function AdminLogs() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { sidebarOpen } = useSidebar();
   const [profileOpen, setProfileOpen] = useState(false);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('all');
+  const [expandedMobileCards, setExpandedMobileCards] = useState([]);
   const { user } = useAuth();
   const db = getFirestore();
 
@@ -180,16 +182,27 @@ export default function AdminLogs() {
     return log.type === filterType;
   });
 
+  const toggleMobileCard = (logId) => {
+    setExpandedMobileCards(prev =>
+      prev.includes(logId)
+        ? prev.filter(id => id !== logId)
+        : [...prev, logId]
+    );
+  };
+
   const logTypes = ['all', ...new Set(logs.map(log => log.type))];
+
+  if (loading) {
+    return <Loading text="Loading activity logs" />;
+  }
 
   return (
     <div className="user-management-bg logs-page">
-      <AdminSidebar sidebarOpen={sidebarOpen} user={user} />
+      <AdminSidebar />
 
       <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
         <NavigationBar
           title="Activity Logs"
-          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           onProfileClick={() => setProfileOpen(true)}
           userRole="admin"
           userName={user?.displayName || 'Admin'}
@@ -229,91 +242,295 @@ export default function AdminLogs() {
           </div>
 
           <div className="logs-container">
-            {loading ? (
-              <Loading text="Loading logs" />
-            ) : (
-              <>
-                <div className="logs-stats">
-                  <div className="stat-item">
-                    <span className="stat-label">Total Logs</span>
-                    <span className="stat-value">{filteredLogs.length}</span>
-                  </div>
-                  <div className="stat-item">
-                    <span className="stat-label">Page Views</span>
-                    <span className="stat-value">
-                      {logs.filter(l => l.type === 'PAGE_VIEW').length}
-                    </span>
-                  </div>
-                  <div className="stat-item">
-                    <span className="stat-label">Unauthorized Attempts</span>
-                    <span className="stat-value warning">
-                      {logs.filter(l => l.type === 'UNAUTHORIZED_ACCESS_ATTEMPT').length}
-                    </span>
-                  </div>
-                </div>
+            <div className="logs-stats">
+              <div className="stat-item">
+                <span className="stat-label">Total Logs</span>
+                <span className="stat-value">{filteredLogs.length}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Page Views</span>
+                <span className="stat-value">
+                  {logs.filter(l => l.type === 'PAGE_VIEW').length}
+                </span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Unauthorized Attempts</span>
+                <span className="stat-value warning">
+                  {logs.filter(l => l.type === 'UNAUTHORIZED_ACCESS_ATTEMPT').length}
+                </span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Parts Requests</span>
+                <span className="stat-value">
+                  {logs.filter(l => l.type?.includes('PARTS_REQUEST')).length}
+                </span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">User Actions</span>
+                <span className="stat-value">
+                  {logs.filter(l => l.type?.includes('USER_')).length}
+                </span>
+              </div>
+            </div>
 
-                <div className="logs-table-container">
-                  <table className="logs-table">
-                    <thead>
-                      <tr>
-                        <th>Type</th>
-                        <th>User</th>
-                        <th>Description</th>
-                        <th>Timestamp</th>
+            <div className="logs-table-container">
+              <table className="logs-table">
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>User</th>
+                    <th>Description</th>
+                    <th>IP Address</th>
+                    <th>Timestamp</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredLogs.length > 0 ? (
+                    filteredLogs.map(log => (
+                      <tr key={log.id} className="log-row">
+                        <td>
+                          <div className={`log-type-badge ${getLogTypeClass(log.type)}`}>
+                            {getLogIcon(log.type)}
+                            <span>{log.type?.replace(/_/g, ' ') || 'Unknown'}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="user-info">
+                            <div className="user-avatar">
+                              {log.userName?.charAt(0).toUpperCase() || 'U'}
+                            </div>
+                            <div>
+                              <div className="user-name">{log.userName || 'Unknown User'}</div>
+                              <div className="user-role">{log.userRole || 'N/A'}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="log-description">{log.description}</div>
+                          {log.details && Object.keys(log.details).length > 0 && (
+                            <details className="log-details-expandable">
+                              <summary>View details</summary>
+                              <div className="log-details-content">
+                                {log.details.page && (
+                                  <div className="detail-row">
+                                    <span className="detail-label">Page:</span>
+                                    <span className="detail-value">{log.details.page}</span>
+                                  </div>
+                                )}
+                                {log.details.parts && Array.isArray(log.details.parts) && (
+                                  <div className="detail-row">
+                                    <span className="detail-label">Parts:</span>
+                                    <span className="detail-value">{log.details.parts.length} item(s)</span>
+                                  </div>
+                                )}
+                                {log.details.totalAmount !== undefined && (
+                                  <div className="detail-row">
+                                    <span className="detail-label">Amount:</span>
+                                    <span className="detail-value">₱{log.details.totalAmount.toFixed(2)}</span>
+                                  </div>
+                                )}
+                                {log.details.mechanic && (
+                                  <div className="detail-row">
+                                    <span className="detail-label">Mechanic:</span>
+                                    <span className="detail-value">{log.details.mechanic}</span>
+                                  </div>
+                                )}
+                                {log.details.mechanicId && (
+                                  <div className="detail-row">
+                                    <span className="detail-label">Mechanic ID:</span>
+                                    <span className="detail-value">{log.details.mechanicId}</span>
+                                  </div>
+                                )}
+                                {log.details.status && (
+                                  <div className="detail-row">
+                                    <span className="detail-label">Status:</span>
+                                    <span className="detail-value">{log.details.status}</span>
+                                  </div>
+                                )}
+                                {log.details.reason && (
+                                  <div className="detail-row">
+                                    <span className="detail-label">Reason:</span>
+                                    <span className="detail-value">{log.details.reason}</span>
+                                  </div>
+                                )}
+                                {log.details.userAgent && (
+                                  <div className="detail-row">
+                                    <span className="detail-label">Browser:</span>
+                                    <span className="detail-value">{log.details.userAgent.substring(0, 50)}...</span>
+                                  </div>
+                                )}
+                              </div>
+                            </details>
+                          )}
+                        </td>
+                        <td>
+                          <div className="log-ip">
+                            {log.ipAddress || log.details?.ipAddress || 'N/A'}
+                          </div>
+                        </td>
+                        <td>
+                          <div className="log-timestamp">
+                            <div className="timestamp-date">
+                              {new Date(log.timestamp).toLocaleDateString('en-US', { 
+                                month: 'short', 
+                                day: 'numeric', 
+                                year: 'numeric' 
+                              })}
+                            </div>
+                            <div className="timestamp-time">
+                              {new Date(log.timestamp).toLocaleTimeString('en-US', { 
+                                hour: '2-digit', 
+                                minute: '2-digit',
+                                second: '2-digit'
+                              })}
+                            </div>
+                          </div>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {filteredLogs.length > 0 ? (
-                        filteredLogs.map(log => (
-                          <tr key={log.id} className="log-row">
-                            <td>
-                              <div className={`log-type-badge ${getLogTypeClass(log.type)}`}>
-                                {getLogIcon(log.type)}
-                                <span>{log.type?.replace(/_/g, ' ') || 'Unknown'}</span>
-                              </div>
-                            </td>
-                            <td>
-                              <div className="user-info">
-                                <div className="user-avatar">
-                                  {log.userName?.charAt(0).toUpperCase() || 'U'}
-                                </div>
-                                <div>
-                                  <div className="user-name">{log.userName || 'Unknown User'}</div>
-                                  <div className="user-role">{log.userRole || 'N/A'}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td>
-                              <div className="log-description">{log.description}</div>
-                              {log.details && (
-                                <details className="log-details-expandable">
-                                  <summary>View details</summary>
-                                  <pre className="log-details-content">
-                                    {JSON.stringify(log.details, null, 2)}
-                                  </pre>
-                                </details>
-                              )}
-                            </td>
-                            <td>
-                              <div className="log-timestamp">
-                                {new Date(log.timestamp).toLocaleString()}
-                              </div>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={4} className="no-logs">
-                            <FileText size={48} />
-                            <p>No logs found</p>
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="no-logs">
+                        <FileText size={48} />
+                        <p>No logs found</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+
+              {/* Mobile Card List */}
+              <div className="logs-mobile-list">
+                {filteredLogs.length > 0 ? (
+                  filteredLogs.map(log => {
+                    const isExpanded = expandedMobileCards.includes(log.id);
+                    const getTypeClass = () => {
+                      if (log.type?.includes('PAGE_VIEW')) return 'type-page-view';
+                      if (log.type?.includes('UNAUTHORIZED')) return 'type-unauthorized';
+                      if (log.type?.includes('PARTS_REQUEST')) return 'type-parts-request';
+                      if (log.type?.includes('USER_')) return 'type-user';
+                      if (log.type?.includes('INVENTORY')) return 'type-inventory';
+                      return 'type-page-view';
+                    };
+                    
+                    return (
+                      <div key={log.id} className="logs-mobile-card">
+                        <div 
+                          className="logs-mobile-card-header"
+                          onClick={() => toggleMobileCard(log.id)}
+                        >
+                          <div className="logs-mobile-info">
+                            <div className="logs-mobile-user">
+                              {log.userName || 'Unknown User'}
+                            </div>
+                            <div className="logs-mobile-description">
+                              {log.description}
+                            </div>
+                          </div>
+                          <ChevronDown 
+                            size={20} 
+                            className={`logs-mobile-toggle ${isExpanded ? 'expanded' : ''}`}
+                          />
+                        </div>
+
+                        <div className="logs-mobile-meta">
+                          <span className={`logs-mobile-badge ${getTypeClass()}`}>
+                            {getLogIcon(log.type)}
+                            {log.type?.replace(/_/g, ' ') || 'Unknown'}
+                          </span>
+                          <span className="logs-mobile-badge role">
+                            {log.userRole || 'N/A'}
+                          </span>
+                        </div>
+
+                        {isExpanded && (
+                          <div className="logs-mobile-expanded">
+                            <div className="logs-mobile-detail">
+                              <span className="logs-mobile-detail-label">IP Address</span>
+                              <span className="logs-mobile-detail-value">
+                                {log.ipAddress || log.details?.ipAddress || 'N/A'}
+                              </span>
+                            </div>
+                            <div className="logs-mobile-detail">
+                              <span className="logs-mobile-detail-label">Date</span>
+                              <span className="logs-mobile-detail-value">
+                                {new Date(log.timestamp).toLocaleDateString('en-US', { 
+                                  month: 'short', 
+                                  day: 'numeric', 
+                                  year: 'numeric' 
+                                })}
+                              </span>
+                            </div>
+                            <div className="logs-mobile-detail">
+                              <span className="logs-mobile-detail-label">Time</span>
+                              <span className="logs-mobile-detail-value">
+                                {new Date(log.timestamp).toLocaleTimeString('en-US', { 
+                                  hour: '2-digit', 
+                                  minute: '2-digit',
+                                  second: '2-digit'
+                                })}
+                              </span>
+                            </div>
+                            
+                            {/* Additional Details */}
+                            {log.details && Object.keys(log.details).length > 0 && (
+                              <>
+                                {log.details.page && (
+                                  <div className="logs-mobile-detail">
+                                    <span className="logs-mobile-detail-label">Page</span>
+                                    <span className="logs-mobile-detail-value">{log.details.page}</span>
+                                  </div>
+                                )}
+                                {log.details.parts && Array.isArray(log.details.parts) && (
+                                  <div className="logs-mobile-detail">
+                                    <span className="logs-mobile-detail-label">Parts</span>
+                                    <span className="logs-mobile-detail-value">{log.details.parts.length} item(s)</span>
+                                  </div>
+                                )}
+                                {log.details.totalAmount !== undefined && (
+                                  <div className="logs-mobile-detail">
+                                    <span className="logs-mobile-detail-label">Amount</span>
+                                    <span className="logs-mobile-detail-value">₱{log.details.totalAmount.toFixed(2)}</span>
+                                  </div>
+                                )}
+                                {log.details.mechanic && (
+                                  <div className="logs-mobile-detail">
+                                    <span className="logs-mobile-detail-label">Mechanic</span>
+                                    <span className="logs-mobile-detail-value">{log.details.mechanic}</span>
+                                  </div>
+                                )}
+                                {log.details.status && (
+                                  <div className="logs-mobile-detail">
+                                    <span className="logs-mobile-detail-label">Status</span>
+                                    <span className="logs-mobile-detail-value">{log.details.status}</span>
+                                  </div>
+                                )}
+                                {log.details.reason && (
+                                  <div className="logs-mobile-detail">
+                                    <span className="logs-mobile-detail-label">Reason</span>
+                                    <span className="logs-mobile-detail-value">{log.details.reason}</span>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div style={{ 
+                    padding: '2rem', 
+                    textAlign: 'center', 
+                    color: '#6B7280',
+                    fontSize: '0.875rem'
+                  }}>
+                    <FileText size={48} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
+                    <p>No logs found</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

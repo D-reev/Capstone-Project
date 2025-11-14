@@ -37,6 +37,8 @@
   display: flex;
   flex-direction: column;
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+  height: 100vh;
 }
 
 .logs-page .main-content.sidebar-collapsed {
@@ -409,15 +411,62 @@
   font-size: 0.8125rem;
   overflow-x: auto;
   color: var(--text-primary);
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.detail-value {
+  color: var(--text-primary);
+  font-size: 0.875rem;
   font-family: 'Courier New', monospace;
+  text-align: right;
+}
+
+/* Log IP Address */
+.log-ip {
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-family: 'Courier New', monospace;
+  font-weight: 500;
+  padding: 0.375rem 0.75rem;
+  background: var(--secondary-bg);
+  border-radius: var(--radius);
+  display: inline-block;
+  border: 1px solid var(--border-light);
 }
 
 /* Log Timestamp */
 .log-timestamp {
-  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.timestamp-date {
+  color: var(--text-primary);
   font-size: 0.875rem;
-  white-space: nowrap;
-  font-weight: 500;
+  font-weight: 600;
+}
+
+.timestamp-time {
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-family: 'Courier New', monospace;
 }
 
 /* No Logs State */
@@ -472,42 +521,225 @@
 }
 
 @media (max-width: 768px) {
+  .logs-page .main-content {
+    margin-left: 0;
+    padding-bottom: 100px !important;
+  }
+
   .logs-page .content-area {
     padding: 1rem;
+    padding-bottom: 100px;
+  }
+
+  .logs-header {
+    padding: 1rem;
+    flex-direction: column;
+    gap: 1rem;
   }
 
   .logs-title {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
   }
 
   .logs-subtitle {
     font-size: 0.875rem;
   }
 
-  .logs-table {
-    min-width: 650px;
+  .logs-header-actions {
+    flex-direction: column;
+    gap: 0.75rem;
   }
 
-  .logs-table th,
-  .logs-table td {
+  .logs-action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .logs-filters {
     padding: 1rem;
   }
 
   .filter-group {
     flex-direction: column;
     align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .filter-label {
+    font-size: 0.875rem;
   }
 
   .filter-buttons {
     width: 100%;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 
   .filter-btn {
-    flex: 1;
+    flex: 1 1 auto;
+    font-size: 0.7rem;
+    padding: 0.5rem 0.5rem;
+    min-width: fit-content;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
   }
 
   .logs-stats {
     grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .stat-card {
+    padding: 1rem;
+  }
+
+  .logs-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Hide table on mobile */
+  .logs-table {
+    display: none !important;
+  }
+
+  /* Mobile card list */
+  .logs-mobile-list {
+    display: block !important;
+  }
+
+  .logs-mobile-card {
+    background: white;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .logs-mobile-card:active {
+    transform: scale(0.98);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .logs-mobile-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+  }
+
+  .logs-mobile-info {
+    flex: 1;
+  }
+
+  .logs-mobile-user {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 0.25rem;
+  }
+
+  .logs-mobile-description {
+    font-size: 0.875rem;
+    color: #6B7280;
+  }
+
+  .logs-mobile-toggle {
+    color: #9CA3AF;
+    transition: transform 0.2s ease;
+  }
+
+  .logs-mobile-toggle.expanded {
+    transform: rotate(180deg);
+  }
+
+  .logs-mobile-meta {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+  }
+
+  .logs-mobile-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .logs-mobile-badge.type-page-view {
+    background: #DBEAFE;
+    color: #1E40AF;
+  }
+
+  .logs-mobile-badge.type-unauthorized {
+    background: #FEE2E2;
+    color: #991B1B;
+  }
+
+  .logs-mobile-badge.type-parts-request {
+    background: #FEF3C7;
+    color: #D97706;
+  }
+
+  .logs-mobile-badge.type-user {
+    background: #E0E7FF;
+    color: #4F46E5;
+  }
+
+  .logs-mobile-badge.type-inventory {
+    background: #D1FAE5;
+    color: #065F46;
+  }
+
+  .logs-mobile-badge.role {
+    background: #F3F4F6;
+    color: #374151;
+  }
+
+  .logs-mobile-expanded {
+    border-top: 1px solid #E5E7EB;
+    padding-top: 1rem;
+    margin-top: 1rem;
+    animation: slideDown 0.2s ease;
+  }
+
+  .logs-mobile-detail {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #F3F4F6;
+  }
+
+  .logs-mobile-detail:last-child {
+    border-bottom: none;
+  }
+
+  .logs-mobile-detail-label {
+    font-size: 0.875rem;
+    color: #6B7280;
+    font-weight: 500;
+  }
+
+  .logs-mobile-detail-value {
+    font-size: 0.875rem;
+    color: #111827;
+    font-weight: 400;
+    text-align: right;
+    max-width: 60%;
+    word-break: break-word;
+  }
+
+  .logs-table th,
+  .logs-table td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.875rem;
   }
 }
 
@@ -577,4 +809,9 @@
   .filter-btn {
     flex: 1;
   }
+}
+
+/* Hide mobile list on desktop */
+.logs-mobile-list {
+  display: none;
 }

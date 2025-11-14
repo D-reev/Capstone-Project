@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useSidebar } from '../context/SidebarContext';
 import { getUserProfile, updateUserProfile } from '../utils/auth';
 import { User, Save, RotateCcw, Edit2, Lock } from 'lucide-react';
 import UserSidebar from '../components/UserSidebar';
@@ -9,10 +10,10 @@ import Loading from '../components/Loading';
 
 export default function ProfileSection() {
   const { user } = useAuth();
+  const { sidebarOpen } = useSidebar();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
   const [profile, setProfile] = useState({
     firstName: '',
@@ -120,7 +121,6 @@ export default function ProfileSection() {
   return (
     <div className="profile-dashboard-container">
       <UserSidebar 
-        sidebarOpen={sidebarOpen}
         user={user}
         className={`customer-sidebar${sidebarOpen ? '' : ' collapsed'}${sidebarMobileOpen ? ' open' : ''}`}
         onCloseMobile={() => setSidebarMobileOpen(false)}
@@ -129,13 +129,6 @@ export default function ProfileSection() {
       <div className={`profile-main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
         <NavigationBar
           title="Profile"
-          onToggleSidebar={() => {
-            if (window.innerWidth <= 768) {
-              setSidebarMobileOpen(!sidebarMobileOpen);
-            } else {
-              setSidebarOpen(!sidebarOpen);
-            }
-          }}
           userRole="customer"
           userName={user?.displayName || 'User'}
           userEmail={user?.email || ''}
@@ -150,12 +143,6 @@ export default function ProfileSection() {
                 Manage your personal information and contact details
               </p>
             </div>
-            {!editMode && (
-              <button onClick={() => setEditMode(true)} className="edit-profile-btn">
-                <Edit2 size={18} />
-                Edit Profile
-              </button>
-            )}
           </div>
 
           {/* Alert Messages */}
@@ -185,133 +172,146 @@ export default function ProfileSection() {
             </div>
           )}
 
-          {/* Profile Form */}
-          <div className="profile-form-container">
-            <form onSubmit={handleSave} className="profile-form">
-              {/* Name Fields */}
-              <div className="form-row">
-                <div className="form-group">
-                  <label>First Name *</label>
+          {/* Profile Cards Grid */}
+          <div className="profile-cards-grid">
+            {/* Profile Card */}
+            <div className="profile-card profile-info-card">
+              <div className="profile-card-header">
+                <h3 className="profile-card-title">My profile</h3>
+                <span className="profile-card-subtitle">Last seen: 07 Aug 2024 05:24AM</span>
+              </div>
+              
+              <div className="profile-avatar-section">
+                <div className="profile-avatar-large">
+                  {user?.photoURL && user.photoURL.trim() !== '' ? (
+                    <img src={user.photoURL} alt={user?.displayName || 'User'} className="profile-avatar-img" />
+                  ) : (
+                    <User size={64} className="profile-avatar-icon" />
+                  )}
+                </div>
+                <div className="profile-info-text">
+                  <h2 className="profile-name">{profile.firstName} {profile.lastName}</h2>
+                  <p className="profile-contact">+1 {profile.phoneNumber || '(XXX) XXX-XXXX'}</p>
+                  <p className="profile-email">{profile.googleEmail || user?.email || 'email@example.com'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Account Details Cards */}
+            <div className="profile-card account-details-card">
+              <div className="account-section-header">
+                <h3 className="account-section-title">Account Details</h3>
+                {!editMode && (
+                  <button onClick={() => setEditMode(true)} className="edit-btn-small">
+                    Edit
+                  </button>
+                )}
+              </div>
+
+              <form onSubmit={handleSave} className="account-details-form">
+                {/* Name Fields */}
+                <div className="form-group-modern">
+                  <label>First Name</label>
                   <input
                     type="text"
-                    placeholder="Enter first name"
+                    placeholder="Scani"
                     value={profile.firstName}
                     onChange={handleChange('firstName')}
                     disabled={!editMode}
                     required
-                    className={!editMode ? 'disabled' : ''}
                   />
                 </div>
-                <div className="form-group">
-                  <label>Last Name *</label>
+
+                <div className="form-group-modern">
+                  <label>Middle Name</label>
                   <input
                     type="text"
-                    placeholder="Enter last name"
+                    placeholder="Middle name (optional)"
+                    value={profile.middleName}
+                    onChange={handleChange('middleName')}
+                    disabled={!editMode}
+                  />
+                </div>
+
+                <div className="form-group-modern">
+                  <label>Last Name</label>
+                  <input
+                    type="text"
+                    placeholder="Raheman"
                     value={profile.lastName}
                     onChange={handleChange('lastName')}
                     disabled={!editMode}
                     required
-                    className={!editMode ? 'disabled' : ''}
                   />
                 </div>
-              </div>
 
-              <div className="form-group">
-                <label>Middle Name</label>
-                <input
-                  type="text"
-                  placeholder="Enter middle name (optional)"
-                  value={profile.middleName}
-                  onChange={handleChange('middleName')}
-                  disabled={!editMode}
-                  className={!editMode ? 'disabled' : ''}
-                />
-              </div>
+                <div className="form-group-modern">
+                  <label>Phone Number</label>
+                  <input
+                    type="tel"
+                    placeholder="+1 (XXX) XXX-XXXX"
+                    value={profile.phoneNumber}
+                    onChange={handleChange('phoneNumber')}
+                    disabled={!editMode}
+                    required
+                  />
+                </div>
 
-              {/* Address Fields */}
-              <div className="form-group">
-                <label>Address *</label>
-                <input
-                  type="text"
-                  placeholder="Street address, building, unit number"
-                  value={profile.address}
-                  onChange={handleChange('address')}
-                  disabled={!editMode}
-                  required
-                  className={!editMode ? 'disabled' : ''}
-                />
-              </div>
+                <div className="form-group-modern">
+                  <label>Email</label>
+                  <input
+                    type="email"
+                    value={profile.googleEmail || user?.email}
+                    disabled={true}
+                    className="disabled-input"
+                  />
+                </div>
 
-              <div className="form-row">
-                <div className="form-group">
+                <div className="form-group-modern">
+                  <label>Address</label>
+                  <input
+                    type="text"
+                    placeholder="Street address"
+                    value={profile.address}
+                    onChange={handleChange('address')}
+                    disabled={!editMode}
+                  />
+                </div>
+
+                <div className="form-group-modern">
                   <label>City</label>
                   <input
                     type="text"
-                    placeholder="Enter city"
+                    placeholder="City"
                     value={profile.city}
                     onChange={handleChange('city')}
                     disabled={!editMode}
-                    className={!editMode ? 'disabled' : ''}
                   />
                 </div>
-                <div className="form-group">
+
+                <div className="form-group-modern">
                   <label>Postal Code</label>
                   <input
                     type="text"
-                    placeholder="Enter postal code"
+                    placeholder="Postal code"
                     value={profile.postalCode}
                     onChange={handleChange('postalCode')}
                     disabled={!editMode}
-                    className={!editMode ? 'disabled' : ''}
                   />
                 </div>
-              </div>
 
-              {/* Contact Fields */}
-              <div className="form-group">
-                <label>Mobile Number *</label>
-                <input
-                  type="tel"
-                  placeholder="Enter mobile number"
-                  value={profile.phoneNumber}
-                  onChange={handleChange('phoneNumber')}
-                  disabled={!editMode}
-                  required
-                  className={!editMode ? 'disabled' : ''}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="label-with-icon">
-                  Google Email (Gmail)
-                  <Lock size={14} className="lock-icon" />
-                </label>
-                <input
-                  type="email"
-                  placeholder="your.email@gmail.com"
-                  value={profile.googleEmail}
-                  disabled={true}
-                  className="email-locked"
-                />
-                <p className="field-helper-text">
-                  Email cannot be changed for security reasons
-                </p>
-              </div>
-
-              {/* Action Buttons */}
-              {editMode && (
-                <div className="form-actions">
-                  <button type="submit" className="save-btn" disabled={saving}>
-                    <Save size={18} />
-                    {saving ? 'Saving…' : 'Save Profile'}
-                  </button>
-                  <button type="button" className="reset-btn" onClick={handleReset} disabled={saving}>
-                    <RotateCcw size={16} />
-                    Reset
-                  </button>
-                </div>
-              )}
-            </form>
+                {editMode && (
+                  <div className="form-actions-modern">
+                    <button type="submit" className="save-btn-modern" disabled={saving}>
+                      {saving ? 'Saving...' : 'Save'}
+                    </button>
+                    <button type="button" className="cancel-btn-modern" onClick={() => setEditMode(false)} disabled={saving}>
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </form>
+            </div>
           </div>
         </div>
       </div>

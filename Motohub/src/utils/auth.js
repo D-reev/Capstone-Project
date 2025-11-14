@@ -40,9 +40,11 @@ export const createUserProfile = async (user, role = 'user') => {
       return role;
     }
     
-    // Update last login time for existing users
+    // Update last login time and photoURL for existing users (Google photoURL can change)
     await setDoc(userRef, {
-      lastLogin: new Date().toISOString()
+      lastLogin: new Date().toISOString(),
+      photoURL: user.photoURL || docSnap.data().photoURL || '',
+      displayName: user.displayName || docSnap.data().displayName || ''
     }, { merge: true });
     
     return docSnap.data().role;

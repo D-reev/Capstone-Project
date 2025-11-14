@@ -1,7 +1,7 @@
 /* Inventory Page Styles - Matching UserManagement Design */
 
 .inventory-page {
-  background: #F3F4F6;
+  background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 25%, #e0e0e0 50%, #d0d0d0 75%, #c0c0c0 100%);
   min-height: 100vh;
   width: 100%;
   display: flex;
@@ -11,10 +11,12 @@
   margin-left: 280px;
   width: calc(100% - 280px);
   flex: 1;
-  background: #F3F4F6;
+  background: transparent;
   display: flex;
   flex-direction: column;
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+  height: 100vh;
 }
 
 .inventory-page .main-content.sidebar-collapsed {
@@ -178,18 +180,205 @@
   .inventory-page .main-content {
     margin-left: 0;
     width: 100%;
+    padding-bottom: 100px !important;
   }
 
   .inventory-container {
     padding: 1rem;
+    padding-bottom: 100px;
   }
 
   .inventory-table-header {
-    padding: 1.5rem;
+    padding: 1rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
   }
 
   .inventory-table-title {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
+  }
+
+  .inventory-table-subtitle {
+    font-size: 0.875rem;
+  }
+
+  .inventory-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .search-input,
+  .add-part-btn,
+  .restock-btn {
+    width: 100%;
+  }
+
+  /* Hide table on mobile */
+  .inventory-data-table {
+    display: none !important;
+  }
+
+  /* Mobile card list */
+  .inventory-mobile-list {
+    display: block !important;
+  }
+
+  .inventory-mobile-card {
+    background: white;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .inventory-mobile-card:active {
+    transform: scale(0.98);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .inventory-mobile-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+  }
+
+  .inventory-mobile-info {
+    flex: 1;
+  }
+
+  .inventory-mobile-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 0.25rem;
+  }
+
+  .inventory-mobile-brand {
+    font-size: 0.875rem;
+    color: #6B7280;
+  }
+
+  .inventory-mobile-toggle {
+    color: #9CA3AF;
+    transition: transform 0.2s ease;
+  }
+
+  .inventory-mobile-toggle.expanded {
+    transform: rotate(180deg);
+  }
+
+  .inventory-mobile-meta {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+  }
+
+  .inventory-mobile-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .inventory-mobile-badge.quantity {
+    background: #DBEAFE;
+    color: #1E40AF;
+  }
+
+  .inventory-mobile-badge.quantity.low {
+    background: #FEE2E2;
+    color: #991B1B;
+  }
+
+  .inventory-mobile-badge.price {
+    background: #D1FAE5;
+    color: #065F46;
+  }
+
+  .inventory-mobile-expanded {
+    border-top: 1px solid #E5E7EB;
+    padding-top: 1rem;
+    margin-top: 1rem;
+    animation: slideDown 0.2s ease;
+  }
+
+  .inventory-mobile-detail {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #F3F4F6;
+  }
+
+  .inventory-mobile-detail:last-child {
+    border-bottom: none;
+  }
+
+  .inventory-mobile-detail-label {
+    font-size: 0.875rem;
+    color: #6B7280;
+    font-weight: 500;
+  }
+
+  .inventory-mobile-detail-value {
+    font-size: 0.875rem;
+    color: #111827;
+    font-weight: 400;
+  }
+
+  .inventory-mobile-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .inventory-mobile-actions button {
+    flex: 1;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .inventory-mobile-edit {
+    background: #DBEAFE;
+    color: #1E40AF;
+  }
+
+  .inventory-mobile-edit:active {
+    background: #BFDBFE;
+  }
+
+  .inventory-mobile-delete {
+    background: #FEE2E2;
+    color: #991B1B;
+  }
+
+  .inventory-mobile-delete:active {
+    background: #FECACA;
+  }
+
+  .inventory-mobile-restock {
+    background: #D1FAE5;
+    color: #065F46;
+  }
+
+  .inventory-mobile-restock:active {
+    background: #A7F3D0;
   }
 
   .inventory-expanded-grid {
@@ -198,13 +387,17 @@
   }
 
   .inventory-expanded-info {
-    padding: 1.5rem;
-  }
-
-  .inventory-data-table .ant-table-thead > tr > th,
-  .inventory-data-table .ant-table-tbody > tr > td {
     padding: 1rem;
   }
+
+  .ant-table {
+    font-size: 0.875rem;
+  }
+}
+
+/* Hide mobile list on desktop */
+.inventory-mobile-list {
+  display: none;
 }
 
 @media (max-width: 480px) {

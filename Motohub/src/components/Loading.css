@@ -1,3 +1,4 @@
+/* From Uiverse.io by aadium */
 .loading-container {
   position: fixed;
   inset: 0;
@@ -6,46 +7,57 @@
   gap: 12px;
   align-items: center;
   justify-content: center;
-  background: rgba(255,255,255,0.0); /* adjust backdrop if you want dimming */
+  background: rgba(255,255,255,0.0);
   z-index: 9999;
   pointer-events: none;
   color: var(--text-color, #222);
 }
 
-.loading-box {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  justify-content: center;
+.loader {
+  overflow: hidden;
+  position: relative;
 }
 
-.loading-box div {
-  display: inline-block;
-  margin: 2px;
-  font-size: 28px;
-  animation: obrot 1.6s linear infinite;
+.wheel {
+  fill: rgb(128, 128, 128);
+  font-size: 100px;
+  width: 100px;
+  height: 100px;
+  border-radius: 6em;
+  text-align: center;
+  animation: rolling 1s linear infinite;
 }
 
-.loading-text {
-  font-size: 14px;
-  color: var(--muted, #666);
-  pointer-events: none;
+#rim {
+  fill: rgb(126, 126, 126);
 }
 
-/* reuse your obrot keyframes (slightly faster) */
-@keyframes obrot {
-  0%   { transform: rotateX(0); }
-  12.5%{ transform: rotateX(90deg); }
-  25%  { transform: rotateX(180deg); }
-  37.5%{ transform: rotateX(270deg); }
-  50%  { transform: rotateX(360deg); }
-  100% { transform: rotateX(360deg); }
+#tire {
+  fill: rgb(55, 55, 55);
 }
 
-.loading-box div:nth-child(1){ animation-delay: 0s; }
-.loading-box div:nth-child(2){ animation-delay: 0.08s; }
-.loading-box div:nth-child(3){ animation-delay: 0.16s; }
-.loading-box div:nth-child(4){ animation-delay: 0.24s; }
-.loading-box div:nth-child(5){ animation-delay: 0.32s; }
-.loading-box div:nth-child(6){ animation-delay: 0.40s; }
-.loading-box div:nth-child(7){ animation-delay: 0.48s; }
+.road {
+  position: absolute;
+  margin-top: -4px;
+  width: 100%;
+  height: 10px;
+  border-radius: 5em;
+  background-color: rgb(55, 55, 55);
+  animation: road-move 2s linear infinite;
+}
+
+@keyframes rolling {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes road-move {
+  from {
+    transform: translateX(-140%);
+  }
+
+  to {
+    transform: translateX(100%);
+  }
+}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useSidebar } from '../context/SidebarContext';
 import { getFirestore, collection, query, where, getDocs, orderBy, doc, getDoc } from 'firebase/firestore';
 import { createFollowUpNotification } from '../utils/auth';
 import { App } from 'antd';
@@ -22,8 +23,8 @@ import '../css/MechanicINVRequest.css';
 
 export default function MechanicINVRequest() {
   const { user } = useAuth();
+  const { sidebarOpen } = useSidebar();
   const { message: messageApi } = App.useApp();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -173,11 +174,10 @@ export default function MechanicINVRequest() {
   if (loading) {
     return (
       <div className="dashboard-container mechanic-requests-page">
-        <MechanicSidebar sidebarOpen={sidebarOpen} />
+        <MechanicSidebar />
         <div className="main-content">
           <NavigationBar
             title="My Requests"
-            onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
             userRole="mechanic"
             userName={user?.displayName || 'Mechanic'}
             userEmail={user?.email || ''}
@@ -193,12 +193,11 @@ export default function MechanicINVRequest() {
 
   return (
     <div className="user-management-bg mechanic-requests-page">
-      <MechanicSidebar sidebarOpen={sidebarOpen} />
+      <MechanicSidebar />
 
       <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
         <NavigationBar
           title="My Requests"
-          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           userRole="mechanic"
           userName={user?.displayName || 'Mechanic'}
           userEmail={user?.email || ''}

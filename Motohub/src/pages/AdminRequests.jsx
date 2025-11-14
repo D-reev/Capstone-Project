@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useSidebar } from '../context/SidebarContext';
 import { getFirestore, collection, getDocs, updateDoc, doc, query, orderBy, getDoc, runTransaction } from 'firebase/firestore';
-import { SearchOutlined, FilterOutlined, InfoCircleOutlined, MoreOutlined, PlusOutlined } from '@ant-design/icons';
+import { SearchOutlined, FilterOutlined, InfoCircleOutlined, MoreOutlined, PlusOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Input, Button, Avatar, Dropdown, Menu, Modal, message, App, ConfigProvider } from 'antd';
+import { ChevronDown, Car, Package } from 'lucide-react';
 import AdminSidebar from '../components/AdminSidebar';
 import NavigationBar from '../components/NavigationBar';
 import ProfileModal from '../components/modals/ProfileModal';
@@ -13,7 +15,7 @@ import '../css/AdminRequest.css';
 
 function AdminRequestsContent() {
   const { message: messageApi } = App.useApp();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { sidebarOpen } = useSidebar();
   const [profileOpen, setProfileOpen] = useState(false);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,6 +23,7 @@ function AdminRequestsContent() {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [expandedMobileCards, setExpandedMobileCards] = useState([]);
   const { user } = useAuth();
   const db = getFirestore();
 
@@ -184,6 +187,14 @@ function AdminRequestsContent() {
     setDetailsModalOpen(true);
   };
 
+  const toggleMobileCard = (requestId) => {
+    setExpandedMobileCards(prev =>
+      prev.includes(requestId)
+        ? prev.filter(id => id !== requestId)
+        : [...prev, requestId]
+    );
+  };
+
   const formatDate = (timestamp) => {
     if (!timestamp) return 'N/A';
     const date = timestamp?.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -227,12 +238,11 @@ function AdminRequestsContent() {
 
   return (
     <div className="requests-page">
-      <AdminSidebar sidebarOpen={sidebarOpen} user={user} />
+      <AdminSidebar />
 
       <div className={`requests-main ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
         <NavigationBar
           title="Parts Requests Management"
-          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           onProfileClick={() => setProfileOpen(true)}
           userRole="admin"
           userName={user?.displayName || 'Admin'}
@@ -336,6 +346,121 @@ function AdminRequestsContent() {
                 )}
               </tbody>
             </table>
+
+            {/* Mobile Card List */}
+            <div className="requests-mobile-list">
+              {filteredRequests.length > 0 ? (
+                filteredRequests.map(request => {
+                  const isExpanded = expandedMobileCards.includes(request.id);
+                  const vehicleInfo = request.carDetails ? 
+                    `${request.carDetails.year || ''} ${request.carDetails.make || ''} ${request.carDetails.model || ''}`.trim() || request.carDetails.plateNumber || 'N/A'
+                    : 'N/A';
+                  
+                  return (
+                    <div key={request.id} className="requests-mobile-card">
+                      <div 
+                        className="requests-mobile-card-header"
+                        onClick={() => toggleMobileCard(request.id)}
+                      >
+                        <div className="requests-mobile-info">
+                          <div className="requests-mobile-mechanic">
+                            {request.mechanicName || 'Unknown Mechanic'}
+                          </div>
+                          <div className="requests-mobile-customer">
+                            Customer: {request.customerName || 'N/A'}
+                          </div>
+                        </div>
+                        <ChevronDown 
+                          size={20} 
+                          className={`requests-mobile-toggle ${isExpanded ? 'expanded' : ''}`}
+                        />
+                      </div>
+
+                      <div className="requests-mobile-meta">
+                        <span className="requests-mobile-badge vehicle">
+                          <Car size={14} />
+                          {vehicleInfo}
+                        </span>
+                        <span className="requests-mobile-badge parts">
+                          <Package size={14} />
+                          {request.parts?.length || 0} parts
+                        </span>
+                        <span className={`requests-mobile-badge status-${request.status || 'pending'}`}>
+                          {(request.status || 'pending').charAt(0).toUpperCase() + (request.status || 'pending').slice(1)}
+                        </span>
+                      </div>
+
+                      {isExpanded && (
+                        <div className="requests-mobile-expanded">
+                          <div className="requests-mobile-detail">
+                            <span className="requests-mobile-detail-label">Request Date</span>
+                            <span className="requests-mobile-detail-value">{formatDate(request.createdAt)}</span>
+                          </div>
+                          {request.carDetails?.plateNumber && (
+                            <div className="requests-mobile-detail">
+                              <span className="requests-mobile-detail-label">Plate Number</span>
+                              <span className="requests-mobile-detail-value">{request.carDetails.plateNumber}</span>
+                            </div>
+                          )}
+                          {request.notes && (
+                            <div className="requests-mobile-detail">
+                              <span className="requests-mobile-detail-label">Notes</span>
+                              <span className="requests-mobile-detail-value">{request.notes}</span>
+                            </div>
+                          )}
+
+                          <div className="requests-mobile-actions">
+                            <button 
+                              className="requests-mobile-view"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRowClick(request);
+                              }}
+                            >
+                              <InfoCircleOutlined />
+                              View Details
+                            </button>
+                            {request.status === 'pending' && (
+                              <>
+                                <button 
+                                  className="requests-mobile-approve"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleApprove(request.id);
+                                  }}
+                                >
+                                  <CheckOutlined />
+                                  Approve
+                                </button>
+                                <button 
+                                  className="requests-mobile-reject"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleReject(request.id);
+                                  }}
+                                >
+                                  <CloseOutlined />
+                                  Reject
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <div style={{ 
+                  padding: '2rem', 
+                  textAlign: 'center', 
+                  color: '#6B7280',
+                  fontSize: '0.875rem'
+                }}>
+                  {loading ? 'Loading requests...' : searchTerm ? 'No requests match your search' : requests.length === 0 ? 'No parts requests found in database' : 'No requests found'}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

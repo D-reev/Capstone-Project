@@ -1,18 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useSidebar } from '../context/SidebarContext';
 import { getFirestore, collection, getDocs, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
-import { Wrench, Calendar, Clock, Car } from 'lucide-react';
-import { message } from 'antd';
+import { Wrench, Calendar, Clock, Car, ChevronDown, ChevronUp, Star } from 'lucide-react';
+import { message, Rate, Input, Button } from 'antd';
 import UserSidebar from '../components/UserSidebar';
 import NavigationBar from '../components/NavigationBar';
 import ProfileModal from '../components/modals/ProfileModal';
 import '../css/ServiceHistory.css';
 
+const { TextArea } = Input;
+
 function ServiceHistory() {
   const [serviceHistory, setServiceHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [expandedRows, setExpandedRows] = useState([]);
+  const [ratingService, setRatingService] = useState(null);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const { sidebarOpen } = useSidebar();
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
   const { user } = useAuth();
   const db = getFirestore();
@@ -58,8 +66,15 @@ function ServiceHistory() {
     }
   };
 
-  const handleRatingSubmit = async (service, rating) => {
+  const handleRatingSubmit = async (service) => {
+    if (rating === 0) {
+      message.warning('Please select a rating before submitting');
+      return;
+    }
+
     try {
+      setSubmitting(true);
+
       if (!service.mechanicId) {
         message.error('Mechanic information not available');
         return;
@@ -69,6 +84,7 @@ function ServiceHistory() {
       const serviceRef = doc(db, `users/${user.uid}/cars/${service.carId}/serviceHistory/${service.id}`);
       await updateDoc(serviceRef, {
         rating: rating,
+        comment: comment,
         ratedAt: new Date().toISOString()
       });
 
@@ -99,14 +115,29 @@ function ServiceHistory() {
       }
 
       message.success('Thank you for your rating!');
+      setRating(0);
+      setComment('');
+      setRatingService(null);
       
       // Refresh the service history
       fetchServiceHistory();
     } catch (error) {
       console.error('Error submitting rating:', error);
       message.error('Failed to submit rating. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
+
+  const toggleRow = (serviceId) => {
+    setExpandedRows(prev => 
+      prev.includes(serviceId) 
+        ? prev.filter(id => id !== serviceId)
+        : [...prev, serviceId]
+    );
+  };
+
+  const isRowExpanded = (serviceId) => expandedRows.includes(serviceId);
 
   const ServiceHistoryCard = ({ service }) => (
     <div className="service-history-card">
@@ -210,7 +241,6 @@ function ServiceHistory() {
   return (
     <div className="service-history-container">
       <UserSidebar 
-        sidebarOpen={sidebarOpen}
         user={user}
         className={`customer-sidebar${sidebarOpen ? '' : ' collapsed'}${sidebarMobileOpen ? ' open' : ''}`}
         onCloseMobile={() => setSidebarMobileOpen(false)}
@@ -219,13 +249,6 @@ function ServiceHistory() {
       <div className={`service-history-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
         <NavigationBar
           title="Service History"
-          onToggleSidebar={() => {
-            if (window.innerWidth <= 768) {
-              setSidebarMobileOpen(!sidebarMobileOpen);
-            } else {
-              setSidebarOpen(!sidebarOpen);
-            }
-          }}
           userRole="customer"
           userName={user?.displayName || 'User'}
           userEmail={user?.email || ''}
@@ -243,14 +266,264 @@ function ServiceHistory() {
               <p>Loading service history...</p>
             </div>
           ) : (
-            <div className="service-history-grid">
+            <div className="service-history-table-container">
               {serviceHistory.length > 0 ? (
-                serviceHistory.map(service => (
-                  <ServiceHistoryCard 
-                    key={service.id} 
-                    service={service}
-                  />
-                ))
+                <>
+                  {/* Desktop Table View */}
+                  <table className="service-history-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Vehicle</th>
+                        <th>Mechanic</th>
+                        <th>Status</th>
+                        <th>Rating</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {serviceHistory.map(service => (
+                        <React.Fragment key={service.id}>
+                          <tr 
+                            className={`table-row ${isRowExpanded(service.id) ? 'expanded' : ''}`}
+                            onClick={() => toggleRow(service.id)}
+                          >
+                            <td>
+                              <div className="table-cell-content">
+                                <Calendar size={16} />
+                                {new Date(service.timestamp).toLocaleDateString('en-US', { 
+                                  year: 'numeric', 
+                                  month: 'short', 
+                                  day: 'numeric' 
+                                })}
+                              </div>
+                            </td>
+                            <td>
+                              <div className="table-cell-content">
+                                <Car size={16} />
+                                <div>
+                                  <div className="vehicle-name">{service.vehicle || 'Vehicle'}</div>
+                                  <div className="plate-number">{service.plateNumber}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                              <div className="table-cell-content">
+                                <Wrench size={16} />
+                                {service.mechanicName || 'Unknown'}
+                              </div>
+                            </td>
+                            <td>
+                              <span className={`status-badge ${service.status.toLowerCase()}`}>
+                                {service.status}
+                              </span>
+                            </td>
+                            <td>
+                              {service.rating ? (
+                                <div className="rating-display">
+                                  <Rate value={service.rating} disabled style={{ fontSize: '16px' }} />
+                                </div>
+                              ) : (
+                                service.status.toLowerCase() === 'completed' && (
+                                  <button 
+                                    className="rate-btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setRatingService(service);
+                                      setRating(0);
+                                      setComment('');
+                                    }}
+                                  >
+                                    Rate Service
+                                  </button>
+                                )
+                              )}
+                            </td>
+                            <td>
+                              <button className="expand-btn">
+                                {isRowExpanded(service.id) ? (
+                                  <ChevronUp size={20} />
+                                ) : (
+                                  <ChevronDown size={20} />
+                                )}
+                              </button>
+                            </td>
+                          </tr>
+                          {isRowExpanded(service.id) && (
+                            <tr className="expanded-row">
+                              <td colSpan="6">
+                                <div className="expanded-content">
+                                  <div className="expanded-grid">
+                                    <div className="expanded-section">
+                                      <h5>Diagnosis</h5>
+                                      <p>{service.diagnosis}</p>
+                                    </div>
+
+                                    <div className="expanded-section">
+                                      <h5>Work Performed</h5>
+                                      <p>{service.workPerformed}</p>
+                                    </div>
+
+                                    {service.partsUsed && (
+                                      <div className="expanded-section">
+                                        <h5>Parts Used</h5>
+                                        <p>{service.partsUsed}</p>
+                                      </div>
+                                    )}
+
+                                    {service.recommendations && (
+                                      <div className="expanded-section">
+                                        <h5>Recommendations</h5>
+                                        <p>{service.recommendations}</p>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {service.nextServiceDate && (
+                                    <div className="next-service-info">
+                                      <Clock size={18} />
+                                      <span>
+                                        Next Service: {new Date(service.nextServiceDate).toLocaleDateString('en-US', { 
+                                          year: 'numeric', 
+                                          month: 'long', 
+                                          day: 'numeric' 
+                                        })}
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {service.rating && service.comment && (
+                                    <div className="service-feedback">
+                                      <h5>Your Feedback</h5>
+                                      <p>{service.comment}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {/* Mobile List View */}
+                  <div className="service-history-mobile-list">
+                    {serviceHistory.map(service => {
+                      const isExpanded = isRowExpanded(service.id);
+                      
+                      return (
+                        <div key={service.id} className="service-mobile-card">
+                          <div 
+                            className="service-mobile-header"
+                            onClick={() => toggleRow(service.id)}
+                          >
+                            <div className="service-mobile-info">
+                              <div className="service-mobile-vehicle">{service.vehicle || 'Vehicle'}</div>
+                              <div className="service-mobile-plate">{service.plateNumber}</div>
+                            </div>
+                            <ChevronDown 
+                              size={20} 
+                              className={`service-mobile-toggle ${isExpanded ? 'expanded' : ''}`}
+                            />
+                          </div>
+
+                          <div className="service-mobile-meta">
+                            <span className={`service-mobile-badge status ${service.status.toLowerCase()}`}>
+                              {service.status}
+                            </span>
+                            <span className="service-mobile-badge date">
+                              <Calendar size={14} />
+                              {new Date(service.timestamp).toLocaleDateString('en-US', { 
+                                month: 'short', 
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </span>
+                          </div>
+
+                          {isExpanded && (
+                            <div className="service-mobile-expanded">
+                              <div className="service-mobile-detail">
+                                <span className="service-mobile-label">Mechanic</span>
+                                <span className="service-mobile-value">{service.mechanicName || 'Unknown'}</span>
+                              </div>
+
+                              <div className="service-mobile-section">
+                                <h5>Diagnosis</h5>
+                                <p>{service.diagnosis}</p>
+                              </div>
+
+                              <div className="service-mobile-section">
+                                <h5>Work Performed</h5>
+                                <p>{service.workPerformed}</p>
+                              </div>
+
+                              {service.partsUsed && (
+                                <div className="service-mobile-section">
+                                  <h5>Parts Used</h5>
+                                  <p>{service.partsUsed}</p>
+                                </div>
+                              )}
+
+                              {service.recommendations && (
+                                <div className="service-mobile-section">
+                                  <h5>Recommendations</h5>
+                                  <p>{service.recommendations}</p>
+                                </div>
+                              )}
+
+                              {service.nextServiceDate && (
+                                <div className="service-mobile-next">
+                                  <Clock size={16} />
+                                  <span>
+                                    Next Service: {new Date(service.nextServiceDate).toLocaleDateString('en-US', { 
+                                      year: 'numeric', 
+                                      month: 'long', 
+                                      day: 'numeric' 
+                                    })}
+                                  </span>
+                                </div>
+                              )}
+
+                              {service.rating && service.comment && (
+                                <div className="service-mobile-feedback">
+                                  <h5>Your Feedback</h5>
+                                  <p>{service.comment}</p>
+                                </div>
+                              )}
+
+                              {/* Rating Section for Mobile */}
+                              {service.status.toLowerCase() === 'completed' && (
+                                <div className="service-mobile-rating">
+                                  {service.rating ? (
+                                    <div className="rating-display-mobile">
+                                      <span>Your Rating:</span>
+                                      <Rate value={service.rating} disabled style={{ fontSize: '18px' }} />
+                                    </div>
+                                  ) : (
+                                    <button 
+                                      className="rate-btn-mobile"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setRatingService(service);
+                                        setRating(0);
+                                        setComment('');
+                                      }}
+                                    >
+                                      <Star size={18} />
+                                      Rate This Service
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
               ) : (
                 <div className="no-history">
                   <Wrench size={48} />
@@ -266,6 +539,103 @@ function ServiceHistory() {
       </div>
 
       <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} user={user} />
+
+      {/* Rating Modal */}
+      {ratingService && (
+        <div className="rating-modal-overlay" onClick={() => setRatingService(null)}>
+          <div className="rating-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="rating-modal-header">
+              <h3>Rate Your Service</h3>
+              <button 
+                className="close-modal-btn"
+                onClick={() => setRatingService(null)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="service-info-card">
+              <div className="info-row">
+                <span className="info-label">Vehicle:</span>
+                <span className="info-value">{ratingService.vehicle}</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Plate Number:</span>
+                <span className="info-value">{ratingService.plateNumber}</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Mechanic:</span>
+                <span className="info-value">{ratingService.mechanicName}</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Date:</span>
+                <span className="info-value">
+                  {new Date(ratingService.timestamp).toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </span>
+              </div>
+            </div>
+
+            <div className="rating-section">
+              <h4>How would you rate this service?</h4>
+              <Rate 
+                value={rating} 
+                onChange={setRating}
+                style={{ fontSize: '2.5rem' }}
+              />
+              {rating > 0 && (
+                <p className="rating-label">
+                  {rating === 1 && 'Poor'}
+                  {rating === 2 && 'Fair'}
+                  {rating === 3 && 'Good'}
+                  {rating === 4 && 'Very Good'}
+                  {rating === 5 && 'Excellent'}
+                </p>
+              )}
+            </div>
+
+            <div className="comment-section">
+              <h4>Share your experience (optional)</h4>
+              <TextArea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Tell us about your service experience..."
+                rows={4}
+                maxLength={500}
+                showCount
+              />
+            </div>
+
+            <div className="modal-actions">
+              <button 
+                className="cancel-btn"
+                onClick={() => setRatingService(null)}
+              >
+                Cancel
+              </button>
+              <Button
+                type="primary"
+                size="large"
+                loading={submitting}
+                disabled={rating === 0}
+                onClick={() => handleRatingSubmit(ratingService)}
+                style={{
+                  background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                  border: 'none',
+                  fontWeight: 700,
+                  height: '45px',
+                  borderRadius: '8px'
+                }}
+              >
+                Submit Rating
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

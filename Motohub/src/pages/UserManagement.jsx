@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useSidebar } from '../context/SidebarContext';
 import Loading from '../components/Loading';
 import { getFirestore, collection, getDocs, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { SearchOutlined, UserAddOutlined, EditOutlined, DeleteOutlined, FilterOutlined } from '@ant-design/icons';
+import { ChevronDown, Mail, Phone, MapPin } from 'lucide-react';
 import { Table, Tag, Input, Button, Space, Avatar, ConfigProvider, Select } from 'antd';
 import AdminSidebar from '../components/AdminSidebar';
 import EditUserModal from '../components/modals/EditUserModal';
@@ -16,13 +18,14 @@ import '../css/UserManagement.css';
 const { Option } = Select;
 
 export default function UserManagement() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { sidebarOpen } = useSidebar();
   const [profileOpen, setProfileOpen] = useState(false);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [expandedRowKeys, setExpandedRowKeys] = useState([]);
+  const [expandedMobileCards, setExpandedMobileCards] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -161,6 +164,14 @@ export default function UserManagement() {
     // Toggle expansion on row click
     const isExpanded = expandedRowKeys.includes(record.id);
     setExpandedRowKeys(isExpanded ? [] : [record.id]);
+  };
+
+  const toggleMobileCard = (userId) => {
+    setExpandedMobileCards(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
   };
 
   // Expanded row render - More Info section
@@ -327,12 +338,11 @@ export default function UserManagement() {
       }}
     >
       <div className="user-management-page">
-        <AdminSidebar sidebarOpen={sidebarOpen} user={user} />
+        <AdminSidebar />
 
         <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
           <NavigationBar
             title="User Management"
-            onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
             onProfileClick={() => setProfileOpen(true)}
             userRole="admin"
             userName={user?.displayName || 'Admin'}
@@ -422,6 +432,102 @@ export default function UserManagement() {
                   }}
                   className="user-data-table"
                 />
+
+                {/* Mobile Card List */}
+                <div className="user-mobile-list">
+                  {filteredUsers.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: '#6B7280' }}>
+                      {searchTerm ? 'No users found matching your search.' : 'No users available.'}
+                    </div>
+                  ) : (
+                    filteredUsers.map((userItem) => {
+                      const isExpanded = expandedMobileCards.includes(userItem.id);
+                      return (
+                        <div 
+                          key={userItem.id} 
+                          className="user-mobile-card"
+                        >
+                          <div 
+                            className="user-mobile-card-header"
+                            onClick={() => toggleMobileCard(userItem.id)}
+                          >
+                            <div className="user-mobile-info">
+                              <div className="user-mobile-name">{userItem.displayName || userItem.name || 'No Name'}</div>
+                              <div className="user-mobile-email">
+                                <Mail style={{ fontSize: 12 }} />
+                                {userItem.email || 'No email'}
+                              </div>
+                            </div>
+                            <ChevronDown 
+                              className={`user-mobile-toggle ${isExpanded ? 'expanded' : ''}`}
+                              style={{ fontSize: 20 }}
+                            />
+                          </div>
+
+                          <div className="user-mobile-meta">
+                            <span className="user-mobile-badge role">
+                              {userItem.role ? userItem.role.charAt(0).toUpperCase() + userItem.role.slice(1) : 'N/A'}
+                            </span>
+                            <span className={`user-mobile-badge status-${userItem.status === 'active' ? 'active' : 'inactive'}`}>
+                              {userItem.status ? userItem.status.charAt(0).toUpperCase() + userItem.status.slice(1) : 'Active'}
+                            </span>
+                          </div>
+
+                          {isExpanded && (
+                            <div className="user-mobile-expanded">
+                              <div className="user-mobile-detail">
+                                <span className="user-mobile-detail-label">Phone</span>
+                                <span className="user-mobile-detail-value">{userItem.phoneNumber || userItem.number || 'Not provided'}</span>
+                              </div>
+                              <div className="user-mobile-detail">
+                                <span className="user-mobile-detail-label">Address</span>
+                                <span className="user-mobile-detail-value">
+                                  {userItem.address ? 
+                                    `${userItem.address}${userItem.city ? `, ${userItem.city}` : ''}${userItem.postalCode ? ` ${userItem.postalCode}` : ''}` 
+                                    : 'Not provided'
+                                  }
+                                </span>
+                              </div>
+                              <div className="user-mobile-detail">
+                                <span className="user-mobile-detail-label">Created</span>
+                                <span className="user-mobile-detail-value">{formatDate(userItem.createdAt)}</span>
+                              </div>
+                              <div className="user-mobile-detail">
+                                <span className="user-mobile-detail-label">Last Updated</span>
+                                <span className="user-mobile-detail-value">{formatDate(userItem.updatedAt)}</span>
+                              </div>
+
+                              <div className="user-mobile-actions">
+                                <button
+                                  className="user-mobile-edit"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedUser(userItem);
+                                    setIsEditModalOpen(true);
+                                  }}
+                                >
+                                  <EditOutlined />
+                                  Edit
+                                </button>
+                                <button
+                                  className="user-mobile-delete"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setUserToDelete(userItem);
+                                    setIsDeleteModalOpen(true);
+                                  }}
+                                >
+                                  <DeleteOutlined />
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               </div>
             </div>
           </div>

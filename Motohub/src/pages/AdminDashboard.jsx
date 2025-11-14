@@ -1,19 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useSidebar } from '../context/SidebarContext';
+import { useNavigate } from 'react-router-dom';
 import Loading from '../components/Loading';
 import { getFirestore, collection, getDocs, query, where } from 'firebase/firestore';
-import { TrendingUp, TrendingDown, Package, Wrench, Car, Users } from 'lucide-react';
+import { TrendingUp, TrendingDown, Package, Wrench, Car, Users, ChevronDown, Clock, DollarSign, X } from 'lucide-react';
 import AdminSidebar from '../components/AdminSidebar';
 import NavigationBar from '../components/NavigationBar';
 import ProfileModal from '../components/modals/ProfileModal';
 import '../css/AdminDashboard.css';
 
 export default function AdminDashboard() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { sidebarOpen } = useSidebar();
   const [profileOpen, setProfileOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const navigate = useNavigate();
   const db = getFirestore();
+  const [selectedRequest, setSelectedRequest] = useState(null);
 
   const [stats, setStats] = useState({
     totalServices: 0,
@@ -34,6 +38,7 @@ export default function AdminDashboard() {
   const [recentRequests, setRecentRequests] = useState([]);
   const [topMechanics, setTopMechanics] = useState([]);
   const [lowStockItems, setLowStockItems] = useState([]);
+  const [expandedMobileCards, setExpandedMobileCards] = useState([]);
   const [mechanicRatings, setMechanicRatings] = useState({});
   const [inventoryStats, setInventoryStats] = useState({
     totalValue: 0,
@@ -223,7 +228,7 @@ export default function AdminDashboard() {
           const bTime = b.createdAt?.toDate?.() || new Date(0);
           return bTime - aTime;
         })
-        .slice(0, 5)
+        .slice(0, 3)
         .map((req, idx) => ({
           id: req.id,
           image: null,
@@ -299,6 +304,14 @@ export default function AdminDashboard() {
     });
   };
 
+  const toggleMobileCard = (requestId) => {
+    setExpandedMobileCards(prev =>
+      prev.includes(requestId)
+        ? prev.filter(id => id !== requestId)
+        : [...prev, requestId]
+    );
+  };
+
   const StarRating = ({ rating, totalRatings }) => {
     const numericRating = typeof rating === 'number' ? rating : parseFloat(rating) || 0;
     const fullStars = Math.floor(numericRating);
@@ -346,12 +359,11 @@ export default function AdminDashboard() {
 
   return (
     <div className="dashboard-page">
-      <AdminSidebar sidebarOpen={sidebarOpen} user={user} />
+      <AdminSidebar />
       
       <div className={`dashboard-main ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
         <NavigationBar
           title="Dashboard"
-          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           onProfileClick={() => setProfileOpen(true)}
           userRole="admin"
           userName={user?.displayName || 'Admin'}
@@ -474,7 +486,7 @@ export default function AdminDashboard() {
                     Real-time inventory status and alerts
                   </p>
                 </div>
-                <button className="view-details" onClick={() => window.location.href = '#/inventory'}>
+                <button className="view-details" onClick={() => navigate('/admindashboard/inventory')}>
                   View Inventory
                 </button>
               </div>
@@ -572,51 +584,6 @@ export default function AdminDashboard() {
                 )}
               </div>
             </div>
-
-            <div className="chart-card acquisition-card">
-              <div className="card-header">
-                <h2>Service Overview</h2>
-              </div>
-              <div className="acquisition-chart">
-                <svg viewBox="0 0 300 200" className="area-chart">
-                  <line x1="0" y1="40" x2="300" y2="40" stroke="#e5e7eb" strokeWidth="1" />
-                  <line x1="0" y1="80" x2="300" y2="80" stroke="#e5e7eb" strokeWidth="1" />
-                  <line x1="0" y1="120" x2="300" y2="120" stroke="#e5e7eb" strokeWidth="1" />
-                  <line x1="0" y1="160" x2="300" y2="160" stroke="#e5e7eb" strokeWidth="1" />
-                  <polyline points="0,100 50,90 100,95 150,85 200,80 250,75 300,70" fill="none" stroke="#8b5cf6" strokeWidth="2" />
-                  <polyline points="0,100 50,90 100,95 150,85 200,80 250,75 300,70 300,200 0,200" fill="url(#gradientPurple)" opacity="0.4" />
-                  <polyline points="0,140 50,135 100,130 150,120 200,110 250,100 300,90" fill="none" stroke="#ec4899" strokeWidth="2" />
-                  <polyline points="0,140 50,135 100,130 150,120 200,110 250,100 300,90 300,200 0,200" fill="url(#gradientPink)" opacity="0.4" />
-                  <defs>
-                    <linearGradient id="gradientPurple" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="#8b5cf6" />
-                      <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
-                    </linearGradient>
-                    <linearGradient id="gradientPink" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="#ec4899" />
-                      <stop offset="100%" stopColor="#ec4899" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-                <div className="chart-legend">
-                  <div className="legend-item">
-                    <div className="legend-color" style={{ background: '#ec4899' }}></div>
-                    <span>Completed</span>
-                  </div>
-                  <div className="legend-item">
-                    <div className="legend-color" style={{ background: '#8b5cf6' }}></div>
-                    <span>In Progress</span>
-                  </div>
-                </div>
-                <div className="chart-labels">
-                  <span>Mon</span>
-                  <span>Tue</span>
-                  <span>Wed</span>
-                  <span>Thu</span>
-                  <span>Fri</span>
-                </div>
-              </div>
-            </div>
           </div>
 
           <div className="bottom-row">
@@ -630,24 +597,38 @@ export default function AdminDashboard() {
                   <circle cx="100" cy="100" r="70" fill="none" stroke="#ec4899" strokeWidth="30" strokeDasharray="110 439" strokeDashoffset="-200" transform="rotate(-90 100 100)" />
                   <circle cx="100" cy="100" r="70" fill="none" stroke="#f59e0b" strokeWidth="30" strokeDasharray="80 439" strokeDashoffset="-310" transform="rotate(-90 100 100)" />
                   <circle cx="100" cy="100" r="70" fill="none" stroke="#10b981" strokeWidth="30" strokeDasharray="49 439" strokeDashoffset="-390" transform="rotate(-90 100 100)" />
+                  <text x="100" y="95" textAnchor="middle" fontSize="24" fontWeight="700" fill="#111827">439</text>
+                  <text x="100" y="115" textAnchor="middle" fontSize="12" fill="#6B7280">Total Services</text>
                 </svg>
               </div>
               <div className="chart-legend" style={{marginTop: '20px'}}>
                 <div className="legend-item">
                   <div className="legend-color" style={{ background: '#3b82f6' }}></div>
-                  <span>Engine Repair</span>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 600 }}>Engine Repair</span>
+                    <span style={{ fontSize: '0.75rem', color: '#6B7280' }}>200 services (45.6%)</span>
+                  </div>
                 </div>
                 <div className="legend-item">
                   <div className="legend-color" style={{ background: '#ec4899' }}></div>
-                  <span>Brake Service</span>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 600 }}>Brake Service</span>
+                    <span style={{ fontSize: '0.75rem', color: '#6B7280' }}>110 services (25.1%)</span>
+                  </div>
                 </div>
                 <div className="legend-item">
                   <div className="legend-color" style={{ background: '#f59e0b' }}></div>
-                  <span>Oil Change</span>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 600 }}>Oil Change</span>
+                    <span style={{ fontSize: '0.75rem', color: '#6B7280' }}>80 services (18.2%)</span>
+                  </div>
                 </div>
                 <div className="legend-item">
                   <div className="legend-color" style={{ background: '#10b981' }}></div>
-                  <span>Diagnostics</span>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 600 }}>Diagnostics</span>
+                    <span style={{ fontSize: '0.75rem', color: '#6B7280' }}>49 services (11.2%)</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -659,35 +640,53 @@ export default function AdminDashboard() {
               <div className="bar-chart">
                 <div className="bar-group">
                   <div className="bar-stack">
-                    <div className="bar-segment" style={{ height: '40%', background: '#3b82f6' }}></div>
-                    <div className="bar-segment" style={{ height: '30%', background: '#ec4899' }}></div>
-                    <div className="bar-segment" style={{ height: '20%', background: '#f59e0b' }}></div>
+                    <div className="bar-segment" style={{ height: '40%', background: '#3b82f6' }} title="Engine: 40"></div>
+                    <div className="bar-segment" style={{ height: '30%', background: '#ec4899' }} title="Brake: 30"></div>
+                    <div className="bar-segment" style={{ height: '20%', background: '#f59e0b' }} title="Oil: 20"></div>
                   </div>
                   <span className="bar-label">Jan</span>
+                  <span className="bar-total">90</span>
                 </div>
                 <div className="bar-group">
                   <div className="bar-stack">
-                    <div className="bar-segment" style={{ height: '50%', background: '#3b82f6' }}></div>
-                    <div className="bar-segment" style={{ height: '25%', background: '#ec4899' }}></div>
-                    <div className="bar-segment" style={{ height: '15%', background: '#f59e0b' }}></div>
+                    <div className="bar-segment" style={{ height: '50%', background: '#3b82f6' }} title="Engine: 50"></div>
+                    <div className="bar-segment" style={{ height: '25%', background: '#ec4899' }} title="Brake: 25"></div>
+                    <div className="bar-segment" style={{ height: '15%', background: '#f59e0b' }} title="Oil: 15"></div>
                   </div>
                   <span className="bar-label">Feb</span>
+                  <span className="bar-total">90</span>
                 </div>
                 <div className="bar-group">
                   <div className="bar-stack">
-                    <div className="bar-segment" style={{ height: '60%', background: '#3b82f6' }}></div>
-                    <div className="bar-segment" style={{ height: '20%', background: '#ec4899' }}></div>
-                    <div className="bar-segment" style={{ height: '12%', background: '#f59e0b' }}></div>
+                    <div className="bar-segment" style={{ height: '60%', background: '#3b82f6' }} title="Engine: 60"></div>
+                    <div className="bar-segment" style={{ height: '20%', background: '#ec4899' }} title="Brake: 20"></div>
+                    <div className="bar-segment" style={{ height: '12%', background: '#f59e0b' }} title="Oil: 12"></div>
                   </div>
                   <span className="bar-label">Mar</span>
+                  <span className="bar-total">92</span>
                 </div>
                 <div className="bar-group">
                   <div className="bar-stack">
-                    <div className="bar-segment" style={{ height: '55%', background: '#3b82f6' }}></div>
-                    <div className="bar-segment" style={{ height: '28%', background: '#ec4899' }}></div>
-                    <div className="bar-segment" style={{ height: '10%', background: '#f59e0b' }}></div>
+                    <div className="bar-segment" style={{ height: '55%', background: '#3b82f6' }} title="Engine: 55"></div>
+                    <div className="bar-segment" style={{ height: '28%', background: '#ec4899' }} title="Brake: 28"></div>
+                    <div className="bar-segment" style={{ height: '10%', background: '#f59e0b' }} title="Oil: 10"></div>
                   </div>
                   <span className="bar-label">Apr</span>
+                  <span className="bar-total">93</span>
+                </div>
+              </div>
+              <div className="chart-legend" style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <div className="legend-item" style={{ fontSize: '0.75rem' }}>
+                  <div className="legend-color" style={{ background: '#3b82f6', width: '12px', height: '12px' }}></div>
+                  <span>Engine Repair</span>
+                </div>
+                <div className="legend-item" style={{ fontSize: '0.75rem' }}>
+                  <div className="legend-color" style={{ background: '#ec4899', width: '12px', height: '12px' }}></div>
+                  <span>Brake Service</span>
+                </div>
+                <div className="legend-item" style={{ fontSize: '0.75rem' }}>
+                  <div className="legend-color" style={{ background: '#f59e0b', width: '12px', height: '12px' }}></div>
+                  <span>Oil Change</span>
                 </div>
               </div>
             </div>
@@ -695,7 +694,7 @@ export default function AdminDashboard() {
             <div className="chart-card campaigns-card">
               <div className="card-header">
                 <h2>Top Performing Mechanics</h2>
-                <button className="view-details">Details</button>
+                <button className="view-details" onClick={() => navigate('/admindashboard/users')}>Details</button>
               </div>
               <div className="campaigns-table">
                 <table>
@@ -738,95 +737,125 @@ export default function AdminDashboard() {
           </div>
 
           <div className="bottom-row" style={{ marginTop: '2rem' }}>
-            <div className="chart-card orders-card">
+            <div className="chart-card orders-card" style={{ gridColumn: 'span 2' }}>
               <div className="card-header">
                 <h2>Recent Part Requests</h2>
-                <button className="view-details">View All</button>
+                <button className="view-details" onClick={() => navigate('/admindashboard/adminrequest')}>View All</button>
               </div>
               <div className="orders-table">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Icon</th>
-                      <th>Part Name</th>
-                      <th>Request ID</th>
-                      <th>Quantity</th>
-                      <th>Total Cost</th>
-                      <th>Request Time</th>
-                      <th>Mechanic</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentRequests.map((request, index) => (
-                      <tr key={request.id}>
-                        <td>{index + 1}</td>
-                        <td>
-                          <div className="product-image">
-                            <div className="image-placeholder">
-                              <Wrench size={20} />
+                {/* Card List */}
+                <div className="orders-mobile-list" style={{ display: 'block' }}>
+                  {recentRequests.length > 0 ? (
+                    recentRequests.map(request => (
+                      <div 
+                        key={request.id} 
+                        className="orders-mobile-card"
+                        onClick={() => setSelectedRequest(request)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <div className="orders-mobile-card-header">
+                          <div className="orders-mobile-info">
+                            <div className="orders-mobile-part">
+                              {request.partName}
+                            </div>
+                            <div className="orders-mobile-mechanic">
+                              Mechanic: {request.mechanic}
                             </div>
                           </div>
-                        </td>
-                        <td>{request.partName}</td>
-                        <td>{request.requestId}</td>
-                        <td>{request.quantity}</td>
-                        <td>{request.totalCost}</td>
-                        <td>{formatTime(request.requestTime)}</td>
-                        <td>{request.mechanic}</td>
-                        <td>
-                          <span className={`status-badge ${request.status}`}>
+                        </div>
+
+                        <div className="orders-mobile-meta">
+                          <span className="orders-mobile-badge quantity">
+                            <Package size={14} />
+                            {request.quantity} items
+                          </span>
+                          <span className="orders-mobile-badge cost">
+                            <DollarSign size={14} />
+                            {request.totalCost}
+                          </span>
+                          <span className={`orders-mobile-badge status-${request.status}`}>
                             {request.status}
                           </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ 
+                      padding: '2rem', 
+                      textAlign: 'center', 
+                      color: '#6B7280',
+                      fontSize: '0.875rem'
+                    }}>
+                      <Wrench size={48} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
+                      <p>No recent part requests</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
             <div className="chart-card">
               <div className="card-header">
                 <h2>Top Categories</h2>
+                <span style={{ fontSize: '0.75rem', color: '#6B7280', fontWeight: 400 }}>
+                  {inventoryStats.topCategories.reduce((sum, cat) => sum + cat.count, 0)} total parts
+                </span>
               </div>
-              <div style={{ padding: '1.5rem' }}>
-                {inventoryStats.topCategories.map((cat, index) => {
-                  const colors = ['#3b82f6', '#ec4899', '#f59e0b', '#10b981', '#8b5cf6'];
-                  const color = colors[index % colors.length];
-                  const maxCount = inventoryStats.topCategories[0]?.count || 1;
-                  const percentage = (cat.count / maxCount) * 100;
-                  
-                  return (
-                    <div key={cat.name} style={{ marginBottom: '1.5rem' }}>
-                      <div style={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        marginBottom: '0.5rem',
-                        fontSize: '0.875rem'
-                      }}>
-                        <span style={{ fontWeight: 600, color: '#374151' }}>{cat.name}</span>
-                        <span style={{ color: '#6B7280' }}>{cat.count} parts</span>
-                      </div>
-                      <div style={{
-                        width: '100%',
-                        height: '8px',
-                        background: '#E5E7EB',
-                        borderRadius: '4px',
-                        overflow: 'hidden'
-                      }}>
+              <div style={{ padding: '1.5rem', paddingTop: '1rem' }}>
+                {inventoryStats.topCategories.length > 0 ? (
+                  inventoryStats.topCategories.map((cat, index) => {
+                    const colors = ['#3b82f6', '#ec4899', '#f59e0b', '#10b981', '#8b5cf6'];
+                    const color = colors[index % colors.length];
+                    const maxCount = inventoryStats.topCategories[0]?.count || 1;
+                    const totalParts = inventoryStats.topCategories.reduce((sum, c) => sum + c.count, 0);
+                    const percentage = (cat.count / maxCount) * 100;
+                    const percentOfTotal = ((cat.count / totalParts) * 100).toFixed(1);
+                    
+                    return (
+                      <div key={cat.name} style={{ marginBottom: '1.5rem' }}>
+                        <div style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          marginBottom: '0.5rem',
+                          fontSize: '0.875rem',
+                          alignItems: 'baseline'
+                        }}>
+                          <span style={{ fontWeight: 600, color: '#374151' }}>{cat.name}</span>
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline' }}>
+                            <span style={{ color: '#6B7280', fontWeight: 500 }}>{cat.count} parts</span>
+                            <span style={{ color: '#9CA3AF', fontSize: '0.75rem' }}>({percentOfTotal}%)</span>
+                          </div>
+                        </div>
                         <div style={{
-                          width: `${percentage}%`,
-                          height: '100%',
-                          background: color,
-                          borderRadius: '4px',
-                          transition: 'width 0.3s ease'
-                        }} />
+                          width: '100%',
+                          height: '10px',
+                          background: '#E5E7EB',
+                          borderRadius: '5px',
+                          overflow: 'hidden'
+                        }}>
+                          <div style={{
+                            width: `${percentage}%`,
+                            height: '100%',
+                            background: color,
+                            borderRadius: '5px',
+                            transition: 'width 0.3s ease'
+                          }} />
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                ) : (
+                  <div style={{
+                    padding: '2rem',
+                    textAlign: 'center',
+                    color: '#9CA3AF',
+                    background: '#F9FAFB',
+                    borderRadius: '8px'
+                  }}>
+                    <Package size={48} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
+                    <div>No inventory categories found</div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -834,6 +863,141 @@ export default function AdminDashboard() {
       </div>
 
       <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} user={user} />
+      
+      {/* Request Details Modal */}
+      {selectedRequest && (
+        <div 
+          className="modal-overlay" 
+          onClick={() => setSelectedRequest(null)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}
+        >
+          <div 
+            className="modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              padding: '2rem',
+              maxWidth: '500px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflow: 'auto',
+              position: 'relative',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+            }}
+          >
+            <button
+              onClick={() => setSelectedRequest(null)}
+              style={{
+                position: 'absolute',
+                top: '1rem',
+                right: '1rem',
+                background: '#F3F4F6',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '0.5rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={(e) => e.target.style.background = '#E5E7EB'}
+              onMouseLeave={(e) => e.target.style.background = '#F3F4F6'}
+            >
+              <X size={20} />
+            </button>
+
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1.5rem', color: '#111827' }}>
+              Request Details
+            </h2>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ 
+                padding: '1rem', 
+                background: '#F9FAFB', 
+                borderRadius: '8px',
+                borderLeft: '4px solid #3b82f6'
+              }}>
+                <div style={{ fontSize: '0.75rem', color: '#6B7280', marginBottom: '0.25rem' }}>
+                  Part Name
+                </div>
+                <div style={{ fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
+                  {selectedRequest.partName}
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div style={{ padding: '1rem', background: '#F9FAFB', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#6B7280', marginBottom: '0.25rem' }}>
+                    Request ID
+                  </div>
+                  <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>
+                    {selectedRequest.requestId}
+                  </div>
+                </div>
+
+                <div style={{ padding: '1rem', background: '#F9FAFB', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#6B7280', marginBottom: '0.25rem' }}>
+                    Quantity
+                  </div>
+                  <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>
+                    {selectedRequest.quantity} items
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ padding: '1rem', background: '#F9FAFB', borderRadius: '8px' }}>
+                <div style={{ fontSize: '0.75rem', color: '#6B7280', marginBottom: '0.25rem' }}>
+                  Total Cost
+                </div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#3b82f6' }}>
+                  {selectedRequest.totalCost}
+                </div>
+              </div>
+
+              <div style={{ padding: '1rem', background: '#F9FAFB', borderRadius: '8px' }}>
+                <div style={{ fontSize: '0.75rem', color: '#6B7280', marginBottom: '0.25rem' }}>
+                  Mechanic
+                </div>
+                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>
+                  {selectedRequest.mechanic}
+                </div>
+              </div>
+
+              <div style={{ padding: '1rem', background: '#F9FAFB', borderRadius: '8px' }}>
+                <div style={{ fontSize: '0.75rem', color: '#6B7280', marginBottom: '0.25rem' }}>
+                  Request Time
+                </div>
+                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>
+                  <Clock size={14} style={{ display: 'inline', marginRight: '0.5rem' }} />
+                  {formatTime(selectedRequest.requestTime)}
+                </div>
+              </div>
+
+              <div style={{ padding: '1rem', background: '#F9FAFB', borderRadius: '8px' }}>
+                <div style={{ fontSize: '0.75rem', color: '#6B7280', marginBottom: '0.5rem' }}>
+                  Status
+                </div>
+                <span className={`status-badge ${selectedRequest.status}`} style={{ fontSize: '0.875rem' }}>
+                  {selectedRequest.status}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

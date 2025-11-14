@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useSidebar } from '../context/SidebarContext';
 import { useAuthNavigation } from '../hooks/useAuthNavigation';
 import Loading from '../components/Loading.jsx';
 import { 
@@ -38,6 +39,7 @@ import '../css/MechanicDashboard.css';
 
 export default function MechanicDashboard() {
   const { user } = useAuth();
+  const { sidebarOpen } = useSidebar();
   const navigate = useNavigate();
   const location = useLocation();
   const [parts, setParts] = useState([]);
@@ -45,7 +47,6 @@ export default function MechanicDashboard() {
   const [isRequestingParts, setIsRequestingParts] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [customers, setCustomers] = useState([]);
@@ -256,11 +257,10 @@ export default function MechanicDashboard() {
   return (
     <div className={`dashboard-container mechanic-page${!sidebarOpen ? ' sidebar-collapsed' : ''}`}> 
       {/* MechanicSidebar */}
-      <MechanicSidebar sidebarOpen={sidebarOpen} active={location.pathname === '/mechanicdashboard'} />
+      <MechanicSidebar active={location.pathname === '/mechanicdashboard'} />
       <div className={`main-content${!sidebarOpen ? ' expanded' : ''}`}> 
         <NavigationBar
           title="Mechanic Dashboard"
-          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           userRole="mechanic"
           userName={user?.displayName || 'Mechanic'}
           userEmail={user?.email || ''}

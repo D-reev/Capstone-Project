@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useSidebar } from '../context/SidebarContext';
 import { getFirestore, collection, query, where, getDocs, orderBy, limit, doc, getDoc } from 'firebase/firestore';
 import { Badge, Dropdown, Space, Typography, Button, Grid } from 'antd';
 import { 
@@ -21,7 +22,6 @@ const { useBreakpoint } = Grid;
 const NavigationBar = ({ 
   title, 
   subtitle,
-  onToggleSidebar, 
   userRole, 
   userName, 
   userEmail,
@@ -29,6 +29,7 @@ const NavigationBar = ({
   loading = false
 }) => {
   const { user } = useAuth();
+  const { toggleSidebar } = useSidebar();
   const db = getFirestore();
   const screens = useBreakpoint();
   
@@ -322,7 +323,7 @@ const NavigationBar = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button 
             className="nav-toggle-btn"
-            onClick={onToggleSidebar}
+            onClick={toggleSidebar}
             aria-label="Toggle Sidebar"
           >
             <Menu size={20} />

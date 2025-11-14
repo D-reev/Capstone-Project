@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useSidebar } from '../context/SidebarContext';
 import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
-import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, FilterOutlined, TagOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, FilterOutlined, TagOutlined, ExclamationCircleOutlined, DollarOutlined } from '@ant-design/icons';
 import { Table, Tag, Input, Button, Space, Avatar, ConfigProvider, Select, Modal, App } from 'antd';
-import { PackagePlus } from 'lucide-react';
+import { PackagePlus, ChevronDown, Package } from 'lucide-react';
 import AdminSidebar from '../components/AdminSidebar';
 import AddPartModal from '../components/modals/AddPartModal';
 import EditPartModal from '../components/modals/EditPartModal';
@@ -17,7 +18,7 @@ const { Option } = Select;
 
 function InventoryPage() {
   const { message: messageApi } = App.useApp();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { sidebarOpen } = useSidebar();
   const [profileOpen, setProfileOpen] = useState(false);
   const [parts, setParts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,6 +32,7 @@ function InventoryPage() {
   const [partToDelete, setPartToDelete] = useState(null);
   const [restockModalOpen, setRestockModalOpen] = useState(false);
   const [partToRestock, setPartToRestock] = useState(null);
+  const [expandedMobileCards, setExpandedMobileCards] = useState([]);
   const { user } = useAuth();
   const db = getFirestore();
 
@@ -198,6 +200,14 @@ function InventoryPage() {
   const handleRowClick = (record) => {
     const isExpanded = expandedRowKeys.includes(record.id);
     setExpandedRowKeys(isExpanded ? [] : [record.id]);
+  };
+
+  const toggleMobileCard = (partId) => {
+    setExpandedMobileCards(prev =>
+      prev.includes(partId)
+        ? prev.filter(id => id !== partId)
+        : [...prev, partId]
+    );
   };
 
   // Get unique categories for filter
@@ -378,12 +388,11 @@ function InventoryPage() {
 
   return (
     <div className="inventory-page">
-        <AdminSidebar sidebarOpen={sidebarOpen} user={user} />
+        <AdminSidebar />
 
         <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
           <NavigationBar
             title="Inventory Management"
-            onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
             onProfileClick={() => setProfileOpen(true)}
             userRole="admin"
             userName={user?.displayName || 'Admin'}
@@ -470,6 +479,115 @@ function InventoryPage() {
                   }}
                   className="inventory-data-table"
                 />
+
+                {/* Mobile Card List */}
+                <div className="inventory-mobile-list">
+                  {filteredParts.length > 0 ? (
+                    filteredParts.map(part => {
+                      const isExpanded = expandedMobileCards.includes(part.id);
+                      const isLowStock = part.quantity <= (part.minStock || 0);
+                      
+                      return (
+                        <div key={part.id} className="inventory-mobile-card">
+                          <div 
+                            className="inventory-mobile-card-header"
+                            onClick={() => toggleMobileCard(part.id)}
+                          >
+                            <div className="inventory-mobile-info">
+                              <div className="inventory-mobile-name">{part.name || 'Unknown Part'}</div>
+                              <div className="inventory-mobile-brand">{part.category || 'Uncategorized'}</div>
+                            </div>
+                            <ChevronDown 
+                              size={20} 
+                              className={`inventory-mobile-toggle ${isExpanded ? 'expanded' : ''}`}
+                            />
+                          </div>
+
+                          <div className="inventory-mobile-meta">
+                            <span className={`inventory-mobile-badge quantity ${isLowStock ? 'low' : ''}`}>
+                              <Package size={14} />
+                              {part.quantity || 0} in stock
+                            </span>
+                            <span className="inventory-mobile-badge price">
+                              <DollarOutlined />
+                              ₱{part.price?.toFixed(2) || '0.00'}
+                            </span>
+                          </div>
+
+                          {isExpanded && (
+                            <div className="inventory-mobile-expanded">
+                              <div className="inventory-mobile-detail">
+                                <span className="inventory-mobile-detail-label">Part ID</span>
+                                <span className="inventory-mobile-detail-value">{part.id?.substring(0, 8) || 'N/A'}</span>
+                              </div>
+                              <div className="inventory-mobile-detail">
+                                <span className="inventory-mobile-detail-label">Status</span>
+                                <span className="inventory-mobile-detail-value">
+                                  {part.status || 'Available'}
+                                </span>
+                              </div>
+                              <div className="inventory-mobile-detail">
+                                <span className="inventory-mobile-detail-label">Min Stock</span>
+                                <span className="inventory-mobile-detail-value">{part.minStock || '0'}</span>
+                              </div>
+                              <div className="inventory-mobile-detail">
+                                <span className="inventory-mobile-detail-label">Supplier</span>
+                                <span className="inventory-mobile-detail-value">{part.supplier || 'Not specified'}</span>
+                              </div>
+                              <div className="inventory-mobile-detail">
+                                <span className="inventory-mobile-detail-label">Last Updated</span>
+                                <span className="inventory-mobile-detail-value">{formatDate(part.updatedAt)}</span>
+                              </div>
+
+                              <div className="inventory-mobile-actions">
+                                <button 
+                                  className="inventory-mobile-restock"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRestock(part);
+                                  }}
+                                >
+                                  <PackagePlus size={18} />
+                                  Restock
+                                </button>
+                                <button 
+                                  className="inventory-mobile-edit"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditPart(part);
+                                    setIsEditModalOpen(true);
+                                  }}
+                                >
+                                  <EditOutlined />
+                                  Edit
+                                </button>
+                                <button 
+                                  className="inventory-mobile-delete"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeletePart(part.id);
+                                  }}
+                                >
+                                  <DeleteOutlined />
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div style={{ 
+                      padding: '2rem', 
+                      textAlign: 'center', 
+                      color: '#6B7280',
+                      fontSize: '0.875rem'
+                    }}>
+                      {searchTerm ? 'No parts found matching your search.' : 'No parts available in inventory.'}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

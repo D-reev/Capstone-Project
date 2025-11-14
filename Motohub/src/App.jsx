@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { App as AntdApp } from "antd";
 import { AuthProvider } from "./context/AuthContext";
+import { SidebarProvider } from "./context/SidebarContext";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
 import UserDashboard from "./pages/UserDashboard";
@@ -15,6 +16,7 @@ import AdminLogs from "./pages/AdminLogs";
 import ProfileSection from "./pages/ProfileSection";
 import MechanicINVRequest from "./pages/MechanicINVRequest";
 import MyCars from "./pages/MyCars";
+import AdminPromotions from "./pages/AdminPromotions";
 
 import "./App.css";
 
@@ -23,9 +25,10 @@ function App() {
     <AntdApp>
       <Router>
         <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route path="/login" element={<Login />} />
+          <SidebarProvider>
+            <Routes>
+              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/login" element={<Login />} />
           
           {/* Admin Routes */}
           <Route path="/admindashboard" element={
@@ -56,6 +59,11 @@ function App() {
           <Route path="/admindashboard/logs" element={
             <ProtectedRoute allowedRoles={['admin']}>
               <AdminLogs />
+            </ProtectedRoute>
+          } />
+          <Route path="/admindashboard/promotions" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminPromotions />
             </ProtectedRoute>
           } />
 
@@ -101,6 +109,7 @@ function App() {
           {/* Catch all - redirect to login */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
+          </SidebarProvider>
       </AuthProvider>
     </Router>
     </AntdApp>

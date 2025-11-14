@@ -34,6 +34,12 @@
   backdrop-filter: blur(10px);
 }
 
+.sidebar.collapsed .sidebar-brand,
+.customer-sidebar.collapsed .sidebar-brand {
+  justify-content: center;
+  padding: 1.25rem 0;
+}
+
 .brand-logo {
   width: 48px;
   height: 48px;
@@ -97,8 +103,15 @@
   background: rgba(255, 195, 0, 0.02);
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.75rem;
   min-height: 88px;
+}
+
+.sidebar.collapsed .sidebar-header,
+.customer-sidebar.collapsed .sidebar-header {
+  justify-content: center;
+  padding: 1.25rem 0;
 }
 
 .user-profile {
@@ -108,6 +121,12 @@
   transition: all 0.3s ease;
   flex: 1;
   min-width: 0;
+}
+
+.sidebar.collapsed .user-profile,
+.customer-sidebar.collapsed .user-profile {
+  justify-content: center;
+  flex: 0;
 }
 
 .user-avatar {
@@ -124,6 +143,11 @@
   overflow: hidden;
   transition: all 0.3s ease;
   box-shadow: 0 4px 12px rgba(255, 195, 0, 0.3);
+}
+
+.sidebar.collapsed .user-avatar,
+.customer-sidebar.collapsed .user-avatar {
+  margin: 0 auto;
 }
 
 .sidebar:not(.collapsed) .user-avatar:hover,
@@ -288,6 +312,17 @@
   overflow: hidden;
 }
 
+.sidebar.collapsed .nav-item,
+.customer-sidebar.collapsed .nav-item {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.875rem 0;
+  margin: 0.25rem auto;
+  min-width: 48px;
+  width: 48px;
+}
+
 .nav-item-content {
   display: flex;
   align-items: center;
@@ -313,8 +348,24 @@
 .sidebar.collapsed .nav-item,
 .customer-sidebar.collapsed .nav-item {
   justify-content: center;
-  padding: 0.875rem;
-  margin: 0.25rem 0.625rem;
+  padding: 0.875rem 0;
+  margin: 0.25rem auto;
+  min-width: 48px;
+  width: 48px;
+}
+
+.sidebar.collapsed .nav-item-content,
+.customer-sidebar.collapsed .nav-item-content {
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  gap: 0;
+}
+
+.sidebar.collapsed .nav-item-icon,
+.customer-sidebar.collapsed .nav-item-icon {
+  margin: 0;
+  display: block;
 }
 
 .nav-item:hover:not(.active) {
@@ -330,7 +381,8 @@
 .sidebar.collapsed .nav-item:hover:not(.active),
 .customer-sidebar.collapsed .nav-item:hover:not(.active) {
   transform: scale(1.05);
-  padding-left: 0.875rem;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .nav-item.active {
@@ -510,7 +562,7 @@
 @media (max-width: 768px) {
   .sidebar,
   .customer-sidebar {
-    transform: translateX(-100%);
+    display: none;
   }
 
   .sidebar.open,
@@ -520,7 +572,18 @@
 
   .sidebar.collapsed,
   .customer-sidebar.collapsed {
-    transform: translateX(-100%);
+    display: none;
+  }
+
+  /* Add bottom padding to main content areas for dock */
+  .admin-main-content,
+  .customer-main-content,
+  .my-cars-main-content,
+  .profile-main-content,
+  .service-history-content,
+  .mechanic-main-content,
+  .inventory-main-content {
+    padding-bottom: 100px !important;
   }
 }
 

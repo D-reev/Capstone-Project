@@ -4,6 +4,7 @@ import { getFirestore, collection, getDocs, addDoc, doc, updateDoc, deleteDoc } 
 import { Car, History, Plus, Edit, Trash2 } from 'lucide-react';
 
 import { useAuth } from '../context/AuthContext';
+import { useSidebar } from '../context/SidebarContext';
 import UserSidebar from '../components/UserSidebar';
 import NavigationBar from '../components/NavigationBar';
 import ServiceHistoryModal from '../components/modals/ServiceHistoryModal';
@@ -14,7 +15,7 @@ import '../css/MyCars.css';
 
 function MyCarsContent() {
   const [vehicles, setVehicles] = useState([]);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { sidebarOpen } = useSidebar();
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
   const [isAddingCar, setIsAddingCar] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState(null);
@@ -285,7 +286,6 @@ function MyCarsContent() {
   return (
     <div className="my-cars-container">
       <UserSidebar
-        sidebarOpen={sidebarOpen}
         user={user}
         className={`customer-sidebar${sidebarOpen ? '' : ' collapsed'}${sidebarMobileOpen ? ' open' : ''}`}
         onCloseMobile={() => setSidebarMobileOpen(false)}
@@ -295,13 +295,6 @@ function MyCarsContent() {
         <NavigationBar
           title="My Vehicles"
           subtitle="Manage your registered vehicles"
-          onToggleSidebar={() => {
-            if (window.innerWidth <= 768) {
-              setSidebarMobileOpen(!sidebarMobileOpen);
-            } else {
-              setSidebarOpen(!sidebarOpen);
-            }
-          }}
           userRole="customer"
           userName={user?.displayName || 'User'}
           userEmail={user?.email || ''}

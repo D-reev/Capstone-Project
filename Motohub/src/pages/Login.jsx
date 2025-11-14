@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from "../config/firebase.js";
@@ -10,8 +10,8 @@ import RegisterModal from '../components/modals/RegisterModal';
 import LoginModal from '../components/modals/LoginModal';
 import SuccessModal from '../components/modals/SuccessModal';
 import ForgotPasswordModal from '../components/modals/ForgotPasswordModal';
-import Threads from '../components/Threads';
-import headerBg from '../assets/images/header.jpg';
+
+const Threads = lazy(() => import('../components/Threads'));
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -63,21 +63,53 @@ function Login() {
 
     try {
       const result = await signInWithPopup(auth, googleProvider);
+      
+      // Create user profile if it doesn't exist
       await createUserProfile(result.user);
+      
+      // Get user role
       const role = await getUserRole(result.user.uid);
      
       messageApi.success('Login successful!');
       
+      // Navigate based on role
       if (role === 'admin') {
         navigate('/admindashboard');
-      } else if (role === 'mechanic'){
+      } else if (role === 'mechanic') {
         navigate('/mechanicdashboard');
       } else{
         navigate('/userdashboard');
       }
     } catch (error) {
+      console.error('❌ Google sign-in error:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      console.error('Full error object:', JSON.stringify(error, null, 2));
+
+      if (error.code === 'auth/popup-closed-by-user' || 
+          error.code === 'auth/cancelled-popup-request') {
+        setIsLoading(false);
+        return;
+      }
+   
+      let errorMessage = 'An error occurred. Please try again.';
+      
+      if (error.code === 'auth/popup-blocked') {
+        errorMessage = 'Popup was blocked. Please enable popups for this site and try again.';
+      } else if (error.code === 'auth/account-exists-with-different-credential') {
+        errorMessage = 'An account already exists with the same email address but different sign-in method.';
+      } else if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      } else if (error.code === 'auth/operation-not-allowed') {
+        errorMessage = 'Google sign-in is not enabled. Please contact support.';
+      } else if (error.code === 'auth/unauthorized-domain') {
+        errorMessage = 'This domain is not authorized for Google sign-in. Please contact support.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       messageApi.error({
-        content: getErrorMessage(error.code),
+        content: errorMessage,
         duration: 5,
       });
     } finally {
@@ -117,22 +149,25 @@ function Login() {
     <>
       {contextHolder}
       <div className="login-container">
-        {/* Animated Background */}
-        <Threads 
-          color={[1.0, 0.764, 0.0]} // Yellow color (#FFC300 in RGB normalized)
-          amplitude={1.5}
-          distance={0.4}
-          enableMouseInteraction={true}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            zIndex: 0,
-            opacity: 0.4
-          }}
-        />
+        {/* Animated Background - Lazy loaded */}
+        <Suspense fallback={null}>
+          <Threads 
+            color={[1.0, 0.764, 0.0]} // Yellow color (#FFC300 in RGB normalized)
+            amplitude={1.5}
+            distance={0.4}
+            enableMouseInteraction={false} // Disable mouse interaction for better performance
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              zIndex: 0,
+              opacity: 0.3,
+              willChange: 'transform' // GPU acceleration hint
+            }}
+          />
+        </Suspense>
         
         <div className="hero-content">
           <div className="new-background-badge">

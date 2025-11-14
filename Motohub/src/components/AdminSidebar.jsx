@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useSidebar } from '../context/SidebarContext';
 import { useAuthNavigation } from '../hooks/useAuthNavigation';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -10,9 +11,11 @@ import {
   Package,
   ClipboardList,
   FileText,
-  ChevronRight
+  ChevronRight,
+  Tag
 } from 'lucide-react';
 import logo from '../assets/images/logo.jpeg';
+import Dock from './Dock';
 import './Sidebar.css';
 
 function NavItem({ icon: Icon, label, active = false, badge, color = "red", sidebarOpen, onClick }) {
@@ -37,8 +40,9 @@ function NavItem({ icon: Icon, label, active = false, badge, color = "red", side
   );
 }
 
-export default function AdminSidebar({ sidebarOpen }) {
+export default function AdminSidebar() {
   const { user } = useAuth();
+  const { sidebarOpen } = useSidebar();
   const { logout } = useAuthNavigation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -96,6 +100,13 @@ export default function AdminSidebar({ sidebarOpen }) {
           sidebarOpen={sidebarOpen}
           onClick={() => navigate('/admindashboard/logs')}
         />
+        <NavItem
+          icon={Tag}
+          label="Promotions"
+          active={isPathActive('/admindashboard/promotions')}
+          sidebarOpen={sidebarOpen}
+          onClick={() => navigate('/admindashboard/promotions')}
+        />
         <NavItem 
           icon={LogOut} 
           label="Logout" 
@@ -106,62 +117,112 @@ export default function AdminSidebar({ sidebarOpen }) {
     );
   };
 
+  const dockItems = [
+    {
+      icon: <LayoutDashboard size={24} />,
+      label: 'Dashboard',
+      onClick: () => navigate('/admindashboard'),
+      className: isPathActive('/admindashboard') ? 'active' : ''
+    },
+    {
+      icon: <Users size={24} />,
+      label: 'Users',
+      onClick: () => navigate('/admindashboard/users'),
+      className: isPathActive('/admindashboard/users') ? 'active' : ''
+    },
+    {
+      icon: <Package size={24} />,
+      label: 'Inventory',
+      onClick: () => navigate('/admindashboard/inventory'),
+      className: isPathActive('/admindashboard/inventory') ? 'active' : ''
+    },
+    {
+      icon: <ClipboardList size={24} />,
+      label: 'Requests',
+      onClick: () => navigate('/admindashboard/adminrequest'),
+      className: isPathActive('/admindashboard/adminrequest') ? 'active' : ''
+    },
+    {
+      icon: <FileText size={24} />,
+      label: 'Logs',
+      onClick: () => navigate('/admindashboard/logs'),
+      className: isPathActive('/admindashboard/logs') ? 'active' : ''
+    },
+    {
+      icon: <Tag size={24} />,
+      label: 'Promotions',
+      onClick: () => navigate('/admindashboard/promotions'),
+      className: isPathActive('/admindashboard/promotions') ? 'active' : ''
+    },
+    {
+      icon: <LogOut size={24} />,
+      label: 'Logout',
+      onClick: handleLogout,
+      className: ''
+    }
+  ];
+
   return (
-    <div className={`sidebar ${sidebarOpen ? '' : 'collapsed'}`}>
-      {/* Brand/Logo Section */}
-      <div className="sidebar-brand">
-        <div className="brand-logo">
-          <img src={logo} alt="Motohub Logo" className="brand-logo-img" />
+    <>
+      <div className={`sidebar ${sidebarOpen ? '' : 'collapsed'}`}>
+        {/* Brand/Logo Section */}
+        <div className="sidebar-brand">
+          <div className="brand-logo">
+            <img src={logo} alt="Motohub Logo" className="brand-logo-img" />
+          </div>
+          {sidebarOpen && (
+            <div className="brand-text">
+              <h1 className="brand-title">MOTOHUB</h1>
+              <p className="brand-subtitle">Admin Portal</p>
+            </div>
+          )}
         </div>
+
+        {/* User Profile Section */}
+        <div className="sidebar-header">
+          <div className="user-profile">
+            <div className="user-avatar">
+              {user?.photoURL && user.photoURL.trim() !== '' ? (
+                <img src={user.photoURL} alt={user?.displayName || 'User'} className="user-avatar-img" />
+              ) : (
+                <User size={24} />
+              )}
+            </div>
+            {sidebarOpen && (
+              <div className="user-info">
+                <div className="user-name">{user?.displayName || 'Guest'}</div>
+                <div className="user-status">
+                  <div className="status-indicator"></div>
+                  <span className="user-role-text">Administrator</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Navigation Section */}
+        <nav className="sidebar-nav">
+          <div className="nav-section">
+            {sidebarOpen && (
+              <div className="nav-section-title">MAIN MENU</div>
+            )}
+            {renderNavItems()}
+          </div>
+        </nav>
+
+        {/* Footer Section */}
         {sidebarOpen && (
-          <div className="brand-text">
-            <h1 className="brand-title">MOTOHUB</h1>
-            <p className="brand-subtitle">Admin Portal</p>
+          <div className="sidebar-footer">
+            <div className="footer-info">
+              <p className="footer-text">© 2025 Motohub</p>
+              <p className="footer-version">v1.0.0</p>
+            </div>
           </div>
         )}
       </div>
 
-      {/* User Profile Section */}
-      <div className="sidebar-header">
-        <div className="user-profile">
-          <div className="user-avatar">
-            {user?.photoURL ? (
-              <img src={user.photoURL} alt={user.displayName} className="user-avatar-img"/>
-            ) : (
-              <User size={24} />
-            )}
-          </div>
-          {sidebarOpen && (
-            <div className="user-info">
-              <div className="user-name">{user?.displayName || 'Guest'}</div>
-              <div className="user-status">
-                <div className="status-indicator"></div>
-                <span className="user-role-text">Administrator</span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Navigation Section */}
-      <nav className="sidebar-nav">
-        <div className="nav-section">
-          {sidebarOpen && (
-            <div className="nav-section-title">MAIN MENU</div>
-          )}
-          {renderNavItems()}
-        </div>
-      </nav>
-
-      {/* Footer Section */}
-      {sidebarOpen && (
-        <div className="sidebar-footer">
-          <div className="footer-info">
-            <p className="footer-text">© 2025 Motohub</p>
-            <p className="footer-version">v1.0.0</p>
-          </div>
-        </div>
-      )}
-    </div>
+      {/* Mobile Dock */}
+      <Dock items={dockItems} />
+    </>
   );
 }

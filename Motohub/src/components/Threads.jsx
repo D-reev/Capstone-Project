@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { Renderer, Program, Mesh, Triangle, Color } from 'ogl';
 
 import './Threads.css';
@@ -14,7 +14,7 @@ void main() {
 `;
 
 const fragmentShader = `
-precision highp float;
+precision mediump float; // Changed from highp to mediump for better performance
 
 uniform float iTime;
 uniform vec3 iResolution;
@@ -25,7 +25,7 @@ uniform vec2 uMouse;
 
 #define PI 3.1415926538
 
-const int u_line_count = 40;
+const int u_line_count = 25; // Reduced from 40 to 25
 const float u_line_width = 7.0;
 const float u_line_blur = 10.0;
 
@@ -123,12 +123,48 @@ void main() {
 const Threads = ({ color = [1, 1, 1], amplitude = 1, distance = 0, enableMouseInteraction = false, ...rest }) => {
   const containerRef = useRef(null);
   const animationFrameId = useRef();
+  const lastFrameTime = useRef(0);
+  
+  // Memoize color to avoid recreating on each render
+  const memoizedColor = useMemo(() => color, [color.join(',')]);
 
   useEffect(() => {
     if (!containerRef.current) return;
+    
+    // Performance check: Disable on very low-end devices
+    const isLowEndDevice = () => {
+      // Check for low memory (less than 4GB)
+      const memory = navigator.deviceMemory;
+      if (memory && memory < 4) return true;
+      
+      // Check for slow hardware concurrency (less than 4 cores)
+      const cores = navigator.hardwareConcurrency;
+      if (cores && cores < 4) return true;
+      
+      // Check for reduced motion preference
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (prefersReducedMotion) return true;
+      
+      return false;
+    };
+
+    // Skip animation on very low-end devices
+    if (isLowEndDevice()) {
+      console.log('Threads animation disabled for performance');
+      return;
+    }
+
     const container = containerRef.current;
 
-    const renderer = new Renderer({ alpha: true });
+    // Performance: Use lower resolution on mobile devices
+    const isMobile = window.innerWidth < 768;
+    const pixelRatio = isMobile ? 1 : Math.min(window.devicePixelRatio, 2);
+
+    const renderer = new Renderer({ 
+      alpha: true,
+      dpr: pixelRatio, // Limit pixel ratio for better performance
+      antialias: !isMobile // Disable antialiasing on mobile
+    });
     const gl = renderer.gl;
     gl.clearColor(0, 0, 0, 0);
     gl.enable(gl.BLEND);
@@ -144,7 +180,7 @@ const Threads = ({ color = [1, 1, 1], amplitude = 1, distance = 0, enableMouseIn
         iResolution: {
           value: new Color(gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height)
         },
-        uColor: { value: new Color(...color) },
+        uColor: { value: new Color(...memoizedColor) },
         uAmplitude: { value: amplitude },
         uDistance: { value: distance },
         uMouse: { value: new Float32Array([0.5, 0.5]) }
@@ -153,12 +189,17 @@ const Threads = ({ color = [1, 1, 1], amplitude = 1, distance = 0, enableMouseIn
 
     const mesh = new Mesh(gl, { geometry, program });
 
+    // Debounced resize for better performance
+    let resizeTimeout;
     function resize() {
-      const { clientWidth, clientHeight } = container;
-      renderer.setSize(clientWidth, clientHeight);
-      program.uniforms.iResolution.value.r = clientWidth;
-      program.uniforms.iResolution.value.g = clientHeight;
-      program.uniforms.iResolution.value.b = clientWidth / clientHeight;
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        const { clientWidth, clientHeight } = container;
+        renderer.setSize(clientWidth, clientHeight);
+        program.uniforms.iResolution.value.r = clientWidth;
+        program.uniforms.iResolution.value.g = clientHeight;
+        program.uniforms.iResolution.value.b = clientWidth / clientHeight;
+      }, 100);
     }
     window.addEventListener('resize', resize);
     resize();
@@ -176,11 +217,23 @@ const Threads = ({ color = [1, 1, 1], amplitude = 1, distance = 0, enableMouseIn
       targetMouse = [0.5, 0.5];
     }
     if (enableMouseInteraction) {
-      container.addEventListener('mousemove', handleMouseMove);
-      container.addEventListener('mouseleave', handleMouseLeave);
+      container.addEventListener('mousemove', handleMouseMove, { passive: true });
+      container.addEventListener('mouseleave', handleMouseLeave, { passive: true });
     }
 
+    // Target 30 FPS on mobile, 60 FPS on desktop for better performance
+    const targetFPS = isMobile ? 30 : 60;
+    const frameInterval = 1000 / targetFPS;
+
     function update(t) {
+      // Throttle frame rate for better performance
+      const elapsed = t - lastFrameTime.current;
+      if (elapsed < frameInterval) {
+        animationFrameId.current = requestAnimationFrame(update);
+        return;
+      }
+      lastFrameTime.current = t - (elapsed % frameInterval);
+
       if (enableMouseInteraction) {
         const smoothing = 0.05;
         currentMouse[0] += smoothing * (targetMouse[0] - currentMouse[0]);
@@ -200,6 +253,7 @@ const Threads = ({ color = [1, 1, 1], amplitude = 1, distance = 0, enableMouseIn
 
     return () => {
       if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
+      clearTimeout(resizeTimeout);
       window.removeEventListener('resize', resize);
 
       if (enableMouseInteraction) {
@@ -209,7 +263,7 @@ const Threads = ({ color = [1, 1, 1], amplitude = 1, distance = 0, enableMouseIn
       if (container.contains(gl.canvas)) container.removeChild(gl.canvas);
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     };
-  }, [color, amplitude, distance, enableMouseInteraction]);
+  }, [memoizedColor, amplitude, distance, enableMouseInteraction]);
 
   return <div ref={containerRef} className="threads-container" {...rest} />;
 };
