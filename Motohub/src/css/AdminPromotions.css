@@ -113,7 +113,7 @@
   padding: 1.5rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   border-bottom: 1px solid rgba(255, 195, 0, 0.15);
 }
 
