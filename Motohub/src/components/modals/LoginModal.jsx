@@ -22,24 +22,9 @@ export default function LoginModal({ open, onClose, onSwitchToRegister }) {
       const identifier = (values.emailOrUsername || "").trim();
       let loginEmail = identifier;
 
-      // If it's not an email format, assume it's a username
+      // If it's not an email format, assume it's a username and convert to synthetic email
       if (!identifier.includes('@')) {
-        // First, check if user exists in Firestore with this username
-        const usersRef = collection(db, 'users');
-        const usersSnapshot = await getDocs(usersRef);
-        const userDoc = usersSnapshot.docs.find(doc => {
-          const data = doc.data();
-          return data.username === identifier;
-        });
-
-        if (userDoc) {
-          const userData = userDoc.data();
-          // If user has a googleEmail, use it; otherwise use synthetic email
-          loginEmail = userData.googleEmail || `${identifier}@motohub.local`;
-        } else {
-          // Default to synthetic email if user not found in Firestore
-          loginEmail = `${identifier}@motohub.local`;
-        }
+        loginEmail = `${identifier}@motohub.local`;
       }
 
       console.log('Attempting login with:', loginEmail); // Debug log
