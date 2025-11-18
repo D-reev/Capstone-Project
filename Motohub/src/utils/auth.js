@@ -324,37 +324,40 @@ export const updateUserProfile = async (uid, updates = {}) => {
   }
 };
 
-export const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
-
-export const initiatePasswordReset = async (email) => {
+export const sendPasswordReset = async (email) => {
   try {
-    await sendPasswordResetEmail(auth, email);
-    return true;
+    // Firebase will automatically check if user exists
+    // Just send the reset email directly
+    await sendPasswordResetEmail(auth, email, {
+      url: window.location.origin + '/login',
+      handleCodeInApp: false
+    });
+
+    return { 
+      success: true, 
+      message: 'If an account exists with this email, a password reset link has been sent' 
+    };
   } catch (error) {
     console.error("Error sending password reset email:", error);
-    throw error;
-  }
-};
-
-export const verifyOTP = async (code) => {
-  try {
-    await verifyPasswordResetCode(auth, code);
-    return true;
-  } catch (error) {
-    console.error("Error verifying OTP:", error);
-    throw error;
-  }
-};
-
-export const resetPassword = async (code, newPassword) => {
-  try {
-    await confirmPasswordReset(auth, code, newPassword);
-    return true;
-  } catch (error) {
-    console.error("Error resetting password:", error);
-    throw error;
+    
+    // Provide more specific error messages
+    if (error.code === 'auth/user-not-found') {
+      // Don't reveal if user exists or not for security
+      return { 
+        success: true, 
+        message: 'If an account exists with this email, a password reset link has been sent' 
+      };
+    } else if (error.code === 'auth/invalid-email') {
+      throw new Error('Invalid email address');
+    } else if (error.code === 'auth/too-many-requests') {
+      throw new Error('Too many requests. Please try again later.');
+    } else {
+      // Generic success message to avoid revealing account existence
+      return { 
+        success: true, 
+        message: 'If an account exists with this email, a password reset link has been sent' 
+      };
+    }
   }
 };
 

@@ -209,10 +209,6 @@ function Login() {
           </div>
         </div>
 
-        <div className="footer-attribution">
-          designed by D-reev
-        </div>
-
         <RegisterModal
           open={registerOpen}
           onClose={() => setRegisterOpen(false)}

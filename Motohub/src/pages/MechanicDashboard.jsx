@@ -24,7 +24,8 @@ import {
   User, 
   Wrench,
   Menu,
-  FileText
+  FileText,
+  Search
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getUserRole } from '../utils/auth.js';
@@ -52,10 +53,14 @@ export default function MechanicDashboard() {
   const [customers, setCustomers] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerCars, setCustomerCars] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [selectedCar, setSelectedCar] = useState(null);
   const [expandedCustomerId, setExpandedCustomerId] = useState(null);
   const [successModalOpen, setSuccessModalOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
   const db = getFirestore();
 
   useEffect(() => {
@@ -254,6 +259,27 @@ export default function MechanicDashboard() {
     return <div className="error">{error}</div>;
   }
 
+  // Filter and search customers
+  const filteredCustomers = customers.filter(customer => {
+    const matchesSearch = 
+      customer.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesFilter = filterStatus === 'all' || (customer.status || 'active') === filterStatus;
+    
+    return matchesSearch && matchesFilter;
+  });
+
+  const getStatusCounts = () => {
+    return {
+      all: customers.length,
+      active: customers.filter(c => (c.status || 'active') === 'active').length,
+      inactive: customers.filter(c => c.status === 'inactive').length
+    };
+  };
+
+  const statusCounts = getStatusCounts();
+
   return (
     <div className={`dashboard-container mechanic-page${!sidebarOpen ? ' sidebar-collapsed' : ''}`}> 
       {/* MechanicSidebar */}
@@ -268,15 +294,51 @@ export default function MechanicDashboard() {
         />
         <div className="content-area">
           <div className="customers-section">
-            <div className="section-header">
-              <h2>Customer Management</h2>
-              <span className="customer-count">
-                {customers.length} {customers.length === 1 ? 'customer' : 'customers'}
-              </span>
+            <div className="customers-header">
+              <div className="customers-header-left">
+                <h2 className="customers-title">Customer Management</h2>
+                <p className="customers-subtitle">Manage customer information and vehicles</p>
+              </div>
+              <div className="customers-actions">
+                <div className="customers-search">
+                  <Search size={18} />
+                  <input
+                    type="text"
+                    placeholder="Search by name or email..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Status Filter Tabs */}
+            <div className="status-filters">
+              <button 
+                className={`filter-tab ${filterStatus === 'all' ? 'active' : ''}`}
+                onClick={() => setFilterStatus('all')}
+              >
+                All <span className="filter-count">{statusCounts.all}</span>
+              </button>
+              <button 
+                className={`filter-tab ${filterStatus === 'active' ? 'active' : ''}`}
+                onClick={() => setFilterStatus('active')}
+              >
+                <CheckCircle size={16} />
+                Active <span className="filter-count">{statusCounts.active}</span>
+              </button>
+              <button 
+                className={`filter-tab ${filterStatus === 'inactive' ? 'active' : ''}`}
+                onClick={() => setFilterStatus('inactive')}
+              >
+                <Clock size={16} />
+                Inactive <span className="filter-count">{statusCounts.inactive}</span>
+              </button>
             </div>
 
             <div className="grid-layout">
               <div className="customers-list">
+                {/* Desktop Table */}
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -287,88 +349,312 @@ export default function MechanicDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {customers.map(customer => (
-                      <tr 
-                        key={customer.id}
-                        onClick={() => handleCustomerSelect(customer)}
-                        className={expandedCustomerId === customer.id ? 'selected' : ''}
-                      >
-                        <td>{customer.displayName}</td>
-                        <td>{customer.email}</td>
-                        <td>{customer.carsCount || 0}</td>
-                        <td>
-                          <span className={`status-badge ${customer.status || 'active'}`}>
-                            {customer.status || 'Active'}
-                          </span>
-                        </td>
-                      </tr>
+                    {filteredCustomers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(customer => (
+                      <React.Fragment key={customer.id}>
+                        <tr 
+                          onClick={() => handleCustomerSelect(customer)}
+                          className={expandedCustomerId === customer.id ? 'selected' : ''}
+                        >
+                          <td>{customer.displayName}</td>
+                          <td>{customer.email}</td>
+                          <td>{customer.carsCount || 0}</td>
+                          <td>
+                            <span className={`status-badge ${customer.status || 'active'}`}>
+                              {customer.status || 'Active'}
+                            </span>
+                          </td>
+                        </tr>
+                        {expandedCustomerId === customer.id && (
+                          <tr className="expanded-row">
+                            <td colSpan="4">
+                              <div className="expanded-content">
+                                <div className="expanded-header">
+                                  <h3>Vehicles - {customer.displayName}</h3>
+                                  <span className="vehicles-count">
+                                    {customerCars.length} {customerCars.length === 1 ? 'vehicle' : 'vehicles'}
+                                  </span>
+                                </div>
+                                {customerCars.length > 0 ? (
+                                  <div className="expanded-cars-grid">
+                                    {customerCars.map(car => (
+                                      <div 
+                                        key={car.id}
+                                        className={`expanded-car-card ${selectedCar?.id === car.id ? 'selected' : ''}`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedCar(car);
+                                        }}
+                                      >
+                                        <div className="car-card-header">
+                                          <h4>{car.year} {car.make} {car.model}</h4>
+                                          <span className="car-plate-badge">{car.plateNumber}</span>
+                                        </div>
+                                        <div className="car-card-details">
+                                          <p>{car.engine} • {car.transmission}</p>
+                                          <p>Mileage: {car.mileage} km</p>
+                                        </div>
+                                        <div className="car-card-actions">
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSelectedCar(car);
+                                              setIsReportingService(true);
+                                            }}
+                                            className="report-btn"
+                                          >
+                                            <FileText size={16} />
+                                            Write Report
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSelectedCar(car);
+                                              setIsRequestingParts(true);
+                                            }}
+                                            className="request-btn"
+                                          >
+                                            <ShoppingBag size={16} />
+                                            Request Parts
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="expanded-no-cars">
+                                    <p>No vehicles found for this customer.</p>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
-              </div>
 
-              {expandedCustomerId && selectedCustomer && (
-                <div className="cars-grid">
-                  <h3>
-                    Vehicles - {selectedCustomer.displayName}
-                    <span className="cars-count">
-                      ({customerCars.length} {customerCars.length === 1 ? 'vehicle' : 'vehicles'})
-                    </span>
-                  </h3>
-                  <div className="cars-list">
-                    {customerCars.length > 0 ? (
-                      customerCars.map(car => (
-                        <div 
-                          key={car.id}
-                          className={`car-card ${selectedCar?.id === car.id ? 'selected' : ''}`}
-                          onClick={() => setSelectedCar(car)}
-                        >
-                          <div className="car-header">
-                            <h4>{car.year} {car.make} {car.model}</h4>
-                            <span className="plate-number">{car.plateNumber}</span>
+                {/* Mobile Card List */}
+                <div className="customers-mobile-list">
+                  {filteredCustomers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(customer => (
+                    <div key={customer.id} className="customer-mobile-wrapper">
+                      <div
+                        className={`customer-mobile-card ${expandedCustomerId === customer.id ? 'selected' : ''}`}
+                        onClick={() => handleCustomerSelect(customer)}
+                      >
+                        <div className="customer-mobile-header">
+                          <div className="customer-mobile-info">
+                            <h4 className="customer-mobile-name">{customer.displayName}</h4>
+                            <p className="customer-mobile-email">{customer.email}</p>
                           </div>
-                          <div className="car-details">
-                            <p>{car.engine} • {car.transmission}</p>
-                            <p>Mileage: {car.mileage} km</p>
-                          </div>
-                          <div className="car-actions">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                console.log('Write Report clicked for car:', car);
-                                setSelectedCar(car);
-                                setIsReportingService(true);
-                              }}
-                              className="report-btn"
-                            >
-                              <FileText size={16} />
-                              Write Report
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                console.log('Request Parts clicked for car:', car);
-                                setSelectedCar(car);
-                                setIsRequestingParts(true);
-                              }}
-                              className="request-btn"
-                            >
-                              <ShoppingBag size={16} />
-                              Request Parts
-                            </button>
+                          <span className={`status-badge ${customer.status || 'active'}`}>
+                            {customer.status || 'Active'}
+                          </span>
+                        </div>
+                        <div className="customer-mobile-details">
+                          <div className="customer-mobile-stat">
+                            <User size={14} />
+                            <span>{customer.carsCount || 0} {customer.carsCount === 1 ? 'vehicle' : 'vehicles'}</span>
                           </div>
                         </div>
-                      ))
-                    ) : (
-                      <div className="no-cars">
-                        <p>No vehicles found for this customer.</p>
                       </div>
-                    )}
-                  </div>
+
+                      {/* Expanded Cars Section */}
+                      {expandedCustomerId === customer.id && (
+                        <div className="customer-mobile-expanded">
+                          <div className="mobile-cars-header">
+                            <h4>Vehicles</h4>
+                            <span className="mobile-cars-count">
+                              {customerCars.length} {customerCars.length === 1 ? 'vehicle' : 'vehicles'}
+                            </span>
+                          </div>
+                          {customerCars.length > 0 ? (
+                            <div className="mobile-cars-list">
+                              {customerCars.map(car => (
+                                <div 
+                                  key={car.id}
+                                  className={`mobile-car-card ${selectedCar?.id === car.id ? 'selected' : ''}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedCar(car);
+                                  }}
+                                >
+                                  <div className="mobile-car-header">
+                                    <h5>{car.year} {car.make} {car.model}</h5>
+                                    <span className="mobile-plate-number">{car.plateNumber}</span>
+                                  </div>
+                                  <div className="mobile-car-details">
+                                    <p>{car.engine} • {car.transmission}</p>
+                                    <p>Mileage: {car.mileage} km</p>
+                                  </div>
+                                  <div className="mobile-car-actions">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedCar(car);
+                                        setIsReportingService(true);
+                                      }}
+                                      className="report-btn"
+                                    >
+                                      <FileText size={14} />
+                                      Report
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedCar(car);
+                                        setIsRequestingParts(true);
+                                      }}
+                                      className="request-btn"
+                                    >
+                                      <ShoppingBag size={14} />
+                                      Parts
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="mobile-no-cars">
+                              <p>No vehicles found for this customer.</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              )}
+
+                {/* Pagination Controls */}
+                {customers.length > itemsPerPage && (
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    padding: '16px 24px',
+                    borderTop: '1px solid #e5e7eb',
+                    flexWrap: 'wrap',
+                    gap: '12px'
+                  }}>
+                    <span style={{ 
+                      color: '#6B7280',
+                      fontSize: '14px'
+                    }}>
+                      {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredCustomers.length)} of {filteredCustomers.length} entries
+                    </span>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <button
+                        onClick={() => setCurrentPage(1)}
+                        disabled={currentPage === 1}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          background: currentPage === 1 ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
+                          color: currentPage === 1 ? '#9ca3af' : '#000',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '12px',
+                          fontWeight: '600'
+                        }}
+                      >
+                        &lt;&lt;
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          background: currentPage === 1 ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
+                          color: currentPage === 1 ? '#9ca3af' : '#000',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '14px',
+                          fontWeight: '600'
+                        }}
+                      >
+                        &lt;
+                      </button>
+                      <input
+                        type="number"
+                        min="1"
+                        max={Math.ceil(customers.length / itemsPerPage)}
+                        value={currentPage}
+                        onChange={(e) => {
+                          const page = parseInt(e.target.value);
+                          if (page >= 1 && page <= Math.ceil(customers.length / itemsPerPage)) {
+                            setCurrentPage(page);
+                          }
+                        }}
+                        style={{
+                          width: '50px',
+                          height: '32px',
+                          textAlign: 'center',
+                          background: '#fff',
+                          color: '#374151',
+                          border: '1px solid #FFC300',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontWeight: '600'
+                        }}
+                      />
+                      <span style={{ color: '#FFC300', fontSize: '14px', fontWeight: '600' }}>of {Math.ceil(customers.length / itemsPerPage)}</span>
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(customers.length / itemsPerPage)))}
+                        disabled={currentPage >= Math.ceil(customers.length / itemsPerPage)}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          background: currentPage >= Math.ceil(customers.length / itemsPerPage) ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
+                          color: currentPage >= Math.ceil(customers.length / itemsPerPage) ? '#9ca3af' : '#000',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: currentPage >= Math.ceil(customers.length / itemsPerPage) ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '14px',
+                          fontWeight: '600'
+                        }}
+                      >
+                        &gt;
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage(Math.ceil(customers.length / itemsPerPage))}
+                        disabled={currentPage >= Math.ceil(customers.length / itemsPerPage)}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          background: currentPage >= Math.ceil(customers.length / itemsPerPage) ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
+                          color: currentPage >= Math.ceil(customers.length / itemsPerPage) ? '#9ca3af' : '#000',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: currentPage >= Math.ceil(customers.length / itemsPerPage) ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '12px',
+                          fontWeight: '600'
+                        }}
+                      >
+                        &gt;&gt;
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

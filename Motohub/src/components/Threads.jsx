@@ -1,5 +1,5 @@
 import { useEffect, useRef, useMemo } from 'react';
-import { Renderer, Program, Mesh, Triangle, Color } from 'ogl';
+import { Renderer, Program, Mesh, Triangle } from 'ogl';
 
 import './Threads.css';
 
@@ -131,40 +131,23 @@ const Threads = ({ color = [1, 1, 1], amplitude = 1, distance = 0, enableMouseIn
   useEffect(() => {
     if (!containerRef.current) return;
     
-    // Performance check: Disable on very low-end devices
-    const isLowEndDevice = () => {
-      // Check for low memory (less than 4GB)
-      const memory = navigator.deviceMemory;
-      if (memory && memory < 4) return true;
-      
-      // Check for slow hardware concurrency (less than 4 cores)
-      const cores = navigator.hardwareConcurrency;
-      if (cores && cores < 4) return true;
-      
-      // Check for reduced motion preference
-      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (prefersReducedMotion) return true;
-      
-      return false;
-    };
-
-    // Skip animation on very low-end devices
-    if (isLowEndDevice()) {
-      console.log('Threads animation disabled for performance');
-      return;
-    }
-
     const container = containerRef.current;
 
     // Performance: Use lower resolution on mobile devices
     const isMobile = window.innerWidth < 768;
     const pixelRatio = isMobile ? 1 : Math.min(window.devicePixelRatio, 2);
 
-    const renderer = new Renderer({ 
-      alpha: true,
-      dpr: pixelRatio, // Limit pixel ratio for better performance
-      antialias: !isMobile // Disable antialiasing on mobile
-    });
+    let renderer;
+    try {
+      renderer = new Renderer({ 
+        alpha: true,
+        dpr: pixelRatio, // Limit pixel ratio for better performance
+        antialias: !isMobile // Disable antialiasing on mobile
+      });
+    } catch (err) {
+      console.error('Threads: Failed to create renderer', err);
+      return;
+    }
     const gl = renderer.gl;
     gl.clearColor(0, 0, 0, 0);
     gl.enable(gl.BLEND);
@@ -177,10 +160,10 @@ const Threads = ({ color = [1, 1, 1], amplitude = 1, distance = 0, enableMouseIn
       fragment: fragmentShader,
       uniforms: {
         iTime: { value: 0 },
-        iResolution: {
-          value: new Color(gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height)
-        },
-        uColor: { value: new Color(...memoizedColor) },
+        // iResolution as floats: [width, height, aspect]
+        iResolution: { value: new Float32Array([gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height]) },
+        // uColor as float RGB
+        uColor: { value: new Float32Array(memoizedColor) },
         uAmplitude: { value: amplitude },
         uDistance: { value: distance },
         uMouse: { value: new Float32Array([0.5, 0.5]) }
@@ -195,10 +178,18 @@ const Threads = ({ color = [1, 1, 1], amplitude = 1, distance = 0, enableMouseIn
       clearTimeout(resizeTimeout);
       resizeTimeout = setTimeout(() => {
         const { clientWidth, clientHeight } = container;
-        renderer.setSize(clientWidth, clientHeight);
-        program.uniforms.iResolution.value.r = clientWidth;
-        program.uniforms.iResolution.value.g = clientHeight;
-        program.uniforms.iResolution.value.b = clientWidth / clientHeight;
+        // Update renderer and shader uniform array
+        try {
+          renderer.setSize(clientWidth, clientHeight);
+          const irr = program.uniforms.iResolution.value;
+          if (irr && irr.length >= 3) {
+            irr[0] = clientWidth;
+            irr[1] = clientHeight;
+            irr[2] = clientWidth / clientHeight;
+          }
+        } catch (err) {
+          console.warn('Threads: resize update failed', err);
+        }
       }, 100);
     }
     window.addEventListener('resize', resize);
@@ -238,15 +229,26 @@ const Threads = ({ color = [1, 1, 1], amplitude = 1, distance = 0, enableMouseIn
         const smoothing = 0.05;
         currentMouse[0] += smoothing * (targetMouse[0] - currentMouse[0]);
         currentMouse[1] += smoothing * (targetMouse[1] - currentMouse[1]);
-        program.uniforms.uMouse.value[0] = currentMouse[0];
-        program.uniforms.uMouse.value[1] = currentMouse[1];
+        try {
+          const uMouseVal = program.uniforms.uMouse.value;
+          if (uMouseVal && uMouseVal.length >= 2) {
+            uMouseVal[0] = currentMouse[0];
+            uMouseVal[1] = currentMouse[1];
+          }
+        } catch (err) {
+          // swallow if uniform update fails
+        }
       } else {
         program.uniforms.uMouse.value[0] = 0.5;
         program.uniforms.uMouse.value[1] = 0.5;
       }
       program.uniforms.iTime.value = t * 0.001;
 
-      renderer.render({ scene: mesh });
+      try {
+        renderer.render({ scene: mesh });
+      } catch (err) {
+        console.error('Threads: render error', err);
+      }
       animationFrameId.current = requestAnimationFrame(update);
     }
     animationFrameId.current = requestAnimationFrame(update);

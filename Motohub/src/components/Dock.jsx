@@ -89,11 +89,16 @@ export default function Dock({
   const mouseX = useMotionValue(Infinity);
   const isHovered = useMotionValue(0);
   const [isMobile, setIsMobile] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
+  const [showDock, setShowDock] = useState(false);
 
   useEffect(() => {
-    // Detect if device is mobile (touch-based)
+    // Detect if device is mobile (touch-based) and screen width
     const checkMobile = () => {
-      setIsMobile('ontouchstart' in window || navigator.maxTouchPoints > 0);
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const isMobileWidth = window.innerWidth <= 768;
+      setIsMobile(isTouchDevice);
+      setShowDock(isMobileWidth);
     };
     checkMobile();
     window.addEventListener('resize', checkMobile);
@@ -108,41 +113,64 @@ export default function Dock({
   const height = useSpring(heightRow, spring);
 
   return (
-    <motion.div style={{ height: isMobile ? panelHeight : height, scrollbarWidth: 'none' }} className="dock-outer">
-      <motion.div
-        onMouseMove={({ pageX }) => {
-          if (!isMobile) {
-            isHovered.set(1);
-            mouseX.set(pageX);
-          }
-        }}
-        onMouseLeave={() => {
-          if (!isMobile) {
-            isHovered.set(0);
-            mouseX.set(Infinity);
-          }
-        }}
-        className={`dock-panel ${className}`}
-        style={{ height: panelHeight }}
-        role="toolbar"
-        aria-label="Application dock"
+    <>
+      <motion.div 
+        style={{ 
+          height: isMobile ? panelHeight : height, 
+          scrollbarWidth: 'none',
+          display: !showDock || isHidden ? 'none' : 'flex'
+        }} 
+        className="dock-outer"
       >
-        {items.map((item, index) => (
-          <DockItem
-            key={index}
-            onClick={item.onClick}
-            className={item.className}
-            mouseX={mouseX}
-            spring={spring}
-            distance={isMobile ? 0 : distance}
-            magnification={isMobile ? baseItemSize : magnification}
-            baseItemSize={baseItemSize}
-          >
-            <DockIcon>{item.icon}</DockIcon>
-            <DockLabel>{item.label}</DockLabel>
-          </DockItem>
-        ))}
+        <motion.div
+          onMouseMove={({ pageX }) => {
+            if (!isMobile) {
+              isHovered.set(1);
+              mouseX.set(pageX);
+            }
+          }}
+          onMouseLeave={() => {
+            if (!isMobile) {
+              isHovered.set(0);
+              mouseX.set(Infinity);
+            }
+          }}
+          className={`dock-panel ${className}`}
+          style={{ height: panelHeight }}
+          role="toolbar"
+          aria-label="Application dock"
+        >
+          {items.map((item, index) => (
+            <DockItem
+              key={index}
+              onClick={item.onClick}
+              className={item.className}
+              mouseX={mouseX}
+              spring={spring}
+              distance={isMobile ? 0 : distance}
+              magnification={isMobile ? baseItemSize : magnification}
+              baseItemSize={baseItemSize}
+            >
+              <DockIcon>{item.icon}</DockIcon>
+              <DockLabel>{item.label}</DockLabel>
+            </DockItem>
+          ))}
+        </motion.div>
       </motion.div>
-    </motion.div>
+      
+      {/* Toggle Button - Only show on mobile */}
+      {showDock && (
+        <button
+          onClick={() => setIsHidden(!isHidden)}
+          className="dock-toggle-btn"
+          style={{
+            bottom: isHidden ? '0.5rem' : 'calc(68px + 1rem)'
+          }}
+          aria-label={isHidden ? 'Show dock' : 'Hide dock'}
+        >
+          {isHidden ? '▼' : '▲'}
+        </button>
+      )}
+    </>
   );
 }

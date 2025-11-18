@@ -1128,7 +1128,7 @@
 @media (max-width: 768px) {
   .service-history-content {
     margin-left: 0;
-    padding-bottom: 100px !important;
+    padding-bottom: 0 !important;
   }
 
   .service-history-main {

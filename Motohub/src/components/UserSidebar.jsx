@@ -38,7 +38,7 @@ function NavItem({ icon: Icon, label, active = false, badge, color = "red", side
   );
 }
 
-export default function UserSidebar({ className = '', onCloseMobile }) {
+export default function UserSidebar() {
   const { user } = useAuth();
   const { sidebarOpen } = useSidebar();
   const { logout } = useAuthNavigation();
@@ -128,7 +128,7 @@ export default function UserSidebar({ className = '', onCloseMobile }) {
 
   return (
     <>
-      <div className={`sidebar${sidebarOpen ? '' : ' collapsed'} ${className}`.trim()}>
+      <div className={`sidebar ${sidebarOpen ? '' : 'collapsed'}`}>
         {/* Brand Section */}
         <div className="sidebar-brand">
           <div className="brand-logo">

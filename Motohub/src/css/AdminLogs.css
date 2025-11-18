@@ -37,7 +37,6 @@
   display: flex;
   flex-direction: column;
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow-y: auto;
   height: 100vh;
 }
 
@@ -49,6 +48,7 @@
 .logs-page .content-area {
   flex: 1;
   padding: 2rem;
+  overflow-y: auto;
 }
 
 /* Logs Header */

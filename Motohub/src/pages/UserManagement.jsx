@@ -31,11 +31,20 @@ export default function UserManagement() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const { user } = useAuth();
   const db = getFirestore();
 
   useEffect(() => {
     fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const fetchUsers = async () => {
@@ -368,6 +377,8 @@ export default function UserManagement() {
                     }}
                     size="large"
                     suffixIcon={<FilterOutlined />}
+                    placement={isMobile ? "topLeft" : "bottomLeft"}
+                    getPopupContainer={(trigger) => trigger.parentNode}
                   >
                     <Option value="all">All Roles</Option>
                     <Option value="admin">Admin</Option>
@@ -409,7 +420,7 @@ export default function UserManagement() {
               <div className="user-table-container">
                 <Table
                   columns={columns}
-                  dataSource={filteredUsers}
+                  dataSource={filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)}
                   rowKey="id"
                   expandable={{
                     expandedRowRender,
@@ -421,12 +432,7 @@ export default function UserManagement() {
                     onClick: () => handleRowClick(record),
                     style: { cursor: 'pointer' }
                   })}
-                  pagination={{
-                    pageSize: 10,
-                    showSizeChanger: false,
-                    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} entries`,
-                    style: { marginTop: 16, marginBottom: 16 }
-                  }}
+                  pagination={false}
                   locale={{
                     emptyText: searchTerm ? 'No users found matching your search.' : 'No users available.'
                   }}
@@ -440,7 +446,7 @@ export default function UserManagement() {
                       {searchTerm ? 'No users found matching your search.' : 'No users available.'}
                     </div>
                   ) : (
-                    filteredUsers.map((userItem) => {
+                    filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((userItem) => {
                       const isExpanded = expandedMobileCards.includes(userItem.id);
                       return (
                         <div 
@@ -525,9 +531,135 @@ export default function UserManagement() {
                           )}
                         </div>
                       );
-                    })
+                    })  
                   )}
                 </div>
+
+                {/* Pagination Controls */}
+                {filteredUsers.length > itemsPerPage && (
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    padding: '16px 24px',
+                    borderTop: '1px solid #e5e7eb',
+                    flexWrap: 'wrap',
+                    gap: '12px'
+                  }}>
+                    <span style={{ 
+                      color: '#6B7280',
+                      fontSize: '14px'
+                    }}>
+                      {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredUsers.length)} of {filteredUsers.length} entries
+                    </span>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <button
+                        onClick={() => setCurrentPage(1)}
+                        disabled={currentPage === 1}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          background: currentPage === 1 ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
+                          color: currentPage === 1 ? '#9ca3af' : '#000',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '12px',
+                          fontWeight: '600'
+                        }}
+                      >
+                        &lt;&lt;
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          background: currentPage === 1 ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
+                          color: currentPage === 1 ? '#9ca3af' : '#000',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '14px',
+                          fontWeight: '600'
+                        }}
+                      >
+                        &lt;
+                      </button>
+                      <input
+                        type="number"
+                        min="1"
+                        max={Math.ceil(filteredUsers.length / itemsPerPage)}
+                        value={currentPage}
+                        onChange={(e) => {
+                          const page = parseInt(e.target.value);
+                          if (page >= 1 && page <= Math.ceil(filteredUsers.length / itemsPerPage)) {
+                            setCurrentPage(page);
+                          }
+                        }}
+                        style={{
+                          width: '50px',
+                          height: '32px',
+                          textAlign: 'center',
+                          background: '#fff',
+                          color: '#374151',
+                          border: '1px solid #FFC300',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontWeight: '600'
+                        }}
+                      />
+                      <span style={{ color: '#FFC300', fontSize: '14px', fontWeight: '600' }}>of {Math.ceil(filteredUsers.length / itemsPerPage)}</span>
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(filteredUsers.length / itemsPerPage)))}
+                        disabled={currentPage >= Math.ceil(filteredUsers.length / itemsPerPage)}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          background: currentPage >= Math.ceil(filteredUsers.length / itemsPerPage) ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
+                          color: currentPage >= Math.ceil(filteredUsers.length / itemsPerPage) ? '#9ca3af' : '#000',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: currentPage >= Math.ceil(filteredUsers.length / itemsPerPage) ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '14px',
+                          fontWeight: '600'
+                        }}
+                      >
+                        &gt;
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage(Math.ceil(filteredUsers.length / itemsPerPage))}
+                        disabled={currentPage >= Math.ceil(filteredUsers.length / itemsPerPage)}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          background: currentPage >= Math.ceil(filteredUsers.length / itemsPerPage) ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
+                          color: currentPage >= Math.ceil(filteredUsers.length / itemsPerPage) ? '#9ca3af' : '#000',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: currentPage >= Math.ceil(filteredUsers.length / itemsPerPage) ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '12px',
+                          fontWeight: '600'
+                        }}
+                      >
+                        &gt;&gt;
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Modal, Form, Input, Button, Checkbox, App } from 'antd';
-import { UserOutlined, LockOutlined, MailOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { Modal, Form, Input, Button, Checkbox, App, Tooltip } from 'antd';
+import { UserOutlined, LockOutlined, MailOutlined, ExclamationCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../../config/firebase';
+import { auth, db } from '../../config/firebase';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { getUserRole } from '../../utils/auth';
 import { useNavigate } from 'react-router-dom';
 import ForgotPasswordModal from './ForgotPasswordModal';
@@ -18,9 +19,28 @@ export default function LoginModal({ open, onClose, onSwitchToRegister }) {
   const handleLogin = async (values) => {
     setLoading(true);
     try {
-      // Support both email and username login
       const identifier = (values.emailOrUsername || "").trim();
-      const loginEmail = identifier.includes('@') ? identifier : `${identifier}@motohub.local`;
+      let loginEmail = identifier;
+
+      // If it's not an email format, assume it's a username
+      if (!identifier.includes('@')) {
+        // First, check if user exists in Firestore with this username
+        const usersRef = collection(db, 'users');
+        const usersSnapshot = await getDocs(usersRef);
+        const userDoc = usersSnapshot.docs.find(doc => {
+          const data = doc.data();
+          return data.username === identifier;
+        });
+
+        if (userDoc) {
+          const userData = userDoc.data();
+          // If user has a googleEmail, use it; otherwise use synthetic email
+          loginEmail = userData.googleEmail || `${identifier}@motohub.local`;
+        } else {
+          // Default to synthetic email if user not found in Firestore
+          loginEmail = `${identifier}@motohub.local`;
+        }
+      }
 
       console.log('Attempting login with:', loginEmail); // Debug log
       
@@ -43,9 +63,6 @@ export default function LoginModal({ open, onClose, onSwitchToRegister }) {
       console.error('Login error:', error);
       console.error('Error code:', error.code);
       console.error('Error message:', error.message);
-      console.error('Attempted email:', (values.emailOrUsername || "").trim().includes('@') 
-        ? (values.emailOrUsername || "").trim() 
-        : `${(values.emailOrUsername || "").trim()}@motohub.local`);
       
       const errorMessage = getErrorMessage(error.code, values.emailOrUsername);
       
@@ -197,12 +214,48 @@ export default function LoginModal({ open, onClose, onSwitchToRegister }) {
           onFinish={handleLogin}
         >
           <Form.Item
-            label="Email or Username"
+            label={
+              <span>
+                Email or Username{' '}
+                <Tooltip
+                  title={
+                    <div style={{ fontSize: '13px' }}>
+                      <div style={{ marginBottom: 8, fontWeight: 600 }}>You can log in using:</div>
+                      <ul style={{ marginBottom: 0, paddingLeft: 20 }}>
+                        <li>Your <strong>username</strong> (e.g., john_doe)</li>
+                        <li>Your <strong>email address</strong></li>
+                        <li>Your <strong>Gmail</strong> (if added during registration)</li>
+                      </ul>
+                      <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(0,0,0,0.1)', fontSize: '12px' }}>
+                        <InfoCircleOutlined style={{ marginRight: 4 }} />
+                        Username accounts use <code style={{ background: 'rgba(0,0,0,0.1)', padding: '2px 4px', borderRadius: 3, color: '#000' }}>@motohub.local</code> internally
+                      </div>
+                    </div>
+                  }
+                  overlayStyle={{ maxWidth: '350px' }}
+                  overlayInnerStyle={{
+                    background: 'linear-gradient(135deg, #FFC300, #FFD54F)',
+                    color: '#000',
+                    borderRadius: '8px',
+                    padding: '12px 16px'
+                  }}
+                  placement="right"
+                >
+                  <InfoCircleOutlined 
+                    style={{ 
+                      color: '#FFC300', 
+                      fontSize: '14px',
+                      cursor: 'help',
+                      marginLeft: '4px'
+                    }} 
+                  />
+                </Tooltip>
+              </span>
+            }
             name="emailOrUsername"
             rules={[
               { required: true, message: 'Please enter your email or username' }
             ]}
-            extra="Enter your username (e.g., john_doe) or email address"
           >
             <Input 
               prefix={<UserOutlined />} 

@@ -3,16 +3,22 @@ import { useAuth } from '../context/AuthContext';
 import { useSidebar } from '../context/SidebarContext';
 import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { Tag, Plus, Edit2, Trash2, Save, X, Calendar } from 'lucide-react';
-import { message } from 'antd';
+import { Modal, Form, Input, Select, Button, App } from 'antd';
 import AdminSidebar from '../components/AdminSidebar';
 import NavigationBar from '../components/NavigationBar';
 import SuccessModal from '../components/modals/SuccessModal';
 import DeletePromotionModal from '../components/modals/DeletePromotionModal';
+import Loading from '../components/Loading';
 import '../css/AdminPromotions.css';
+
+const { TextArea } = Input;
+const { Option } = Select;
 
 export default function AdminPromotions() {
   const { user } = useAuth();
   const { sidebarOpen } = useSidebar();
+  const { message } = App.useApp();
+  const [form] = Form.useForm();
   const [promotions, setPromotions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -21,17 +27,7 @@ export default function AdminPromotions() {
   const [promotionToDelete, setPromotionToDelete] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [editingPromo, setEditingPromo] = useState(null);
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    discount: '',
-    savings: '',
-    validUntil: '',
-    expirationDate: '',
-    icon: 'Wrench',
-    features: [],
-    active: true
-  });
+  const [features, setFeatures] = useState([]);
 
   const db = getFirestore();
 
@@ -64,6 +60,7 @@ export default function AdminPromotions() {
   };
 
   const loadPromotions = async () => {
+    setLoading(true);
     try {
       const promoRef = collection(db, 'promotions');
       const snapshot = await getDocs(promoRef);
@@ -75,52 +72,37 @@ export default function AdminPromotions() {
     } catch (error) {
       console.error('Error loading promotions:', error);
       message.error('Failed to load promotions');
-    }
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    
-    if (name === 'discount') {
-      const numValue = value.replace(/[^0-9]/g, '');
-      setFormData({ ...formData, [name]: numValue });
-    } else if (name === 'expirationDate') {
-      const date = new Date(value);
-      const validUntil = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-      setFormData({ ...formData, [name]: value, validUntil });
-    } else {
-      setFormData({ ...formData, [name]: value });
+    } finally {
+      setLoading(false);
     }
   };
 
   const addFeature = () => {
-    if (formData.features.length >= 10) {
-      alert('Maximum 10 features allowed');
+    if (features.length >= 10) {
+      message.warning('Maximum 10 features allowed');
       return;
     }
-    setFormData({ ...formData, features: [...formData.features, ''] });
+    setFeatures([...features, '']);
   };
 
   const updateFeature = (index, value) => {
-    const newFeatures = [...formData.features];
+    const newFeatures = [...features];
     newFeatures[index] = value;
-    setFormData({ ...formData, features: newFeatures });
+    setFeatures(newFeatures);
   };
 
   const removeFeature = (index) => {
-    const newFeatures = formData.features.filter((_, i) => i !== index);
-    setFormData({ ...formData, features: newFeatures });
+    setFeatures(features.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (values) => {
     setLoading(true);
-
     try {
       const promoData = {
-        ...formData,
-        discount: formData.discount ? `${formData.discount}% OFF` : '',
-        features: formData.features.filter(f => f.trim() !== ''),
+        ...values,
+        discount: values.discount ? `${values.discount}% OFF` : '',
+        validUntil: values.expirationDate ? new Date(values.expirationDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '',
+        features: features.filter(f => f.trim() !== ''),
         active: true,
         updatedAt: new Date().toISOString()
       };
@@ -136,9 +118,7 @@ export default function AdminPromotions() {
         setSuccessMessage('Promotion created successfully');
       }
 
-      setShowModal(false);
-      setEditingPromo(null);
-      resetForm();
+      handleCancel();
       loadPromotions();
       setShowSuccessModal(true);
     } catch (error) {
@@ -151,17 +131,15 @@ export default function AdminPromotions() {
 
   const handleEdit = (promo) => {
     setEditingPromo(promo);
-    setFormData({
+    form.setFieldsValue({
       title: promo.title || '',
       description: promo.description || '',
       discount: promo.discount ? promo.discount.replace(/[^0-9]/g, '') : '',
       savings: promo.savings || '',
-      validUntil: promo.validUntil || '',
       expirationDate: promo.expirationDate || '',
-      icon: promo.icon || 'Wrench',
-      features: promo.features || [],
-      active: promo.active !== false
+      icon: promo.icon || 'Wrench'
     });
+    setFeatures(promo.features || []);
     setShowModal(true);
   };
 
@@ -188,24 +166,11 @@ export default function AdminPromotions() {
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      title: '',
-      description: '',
-      discount: '',
-      savings: '',
-      validUntil: '',
-      expirationDate: '',
-      icon: 'Wrench',
-      features: [],
-      active: true
-    });
-  };
-
   const handleCancel = () => {
     setShowModal(false);
     setEditingPromo(null);
-    resetForm();
+    form.resetFields();
+    setFeatures([]);
   };
 
   const isExpired = (expirationDate) => {
@@ -232,200 +197,269 @@ export default function AdminPromotions() {
           userEmail={user?.email || ''}
         />
 
-        <div className="admin-promotions-content">
-          <div className="promotions-header">
-            <div className="promotions-header-text">
-              <h1 className="promotions-title">Promotions</h1>
-              <p className="promotions-subtitle">{promotions.length} total promotions</p>
-            </div>
-            <button className="add-promotion-btn" onClick={() => setShowModal(true)}>
-              <Plus size={20} />
-              Add Promotion
-            </button>
-          </div>
-
-          <div className="promotions-grid">
-            {promotions.map(promo => (
-              <div key={promo.id} className="promotion-card">
-                <div className="promotion-card-header">
-                  <div className="promotion-actions">
-                    <button className="edit-btn" onClick={() => handleEdit(promo)}>
-                      <Edit2 size={16} />
-                    </button>
-                    <button className="delete-btn" onClick={() => handleDeleteClick(promo)}>
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="promotion-card-body">
-                  <h3 className="promotion-card-title">{promo.title}</h3>
-                  <p className="promotion-card-description">{promo.description}</p>
-                  
-                  {promo.features && promo.features.length > 0 && (
-                    <ul className="promotion-features-list">
-                      {promo.features.map((feature, index) => (
-                        <li key={index}>{feature}</li>
-                      ))}
-                    </ul>
-                  )}
-
-                  <div className={`expiration-info${isExpired(promo.expirationDate) ? ' expired' : ''}`}>
-                    <Calendar size={14} />
-                    {isExpired(promo.expirationDate) ? 'Expired: ' : 'Expires: '}
-                    {formatExpirationDate(promo.expirationDate)}
-                  </div>
-                </div>
-
-                <div className="promotion-card-footer">
-                  <div className="promotion-discount">{promo.discount}</div>
-                  <div className="promotion-validity">
-                    <Calendar size={14} />
-                    Valid until {promo.validUntil}
-                  </div>
-                </div>
+        {loading ? (
+          <Loading text="Loading promotions..." />
+        ) : (
+          <div className="admin-promotions-content">
+            <div className="promotions-header">
+              <div className="promotions-header-text">
+                <h1 className="promotions-title">Promotions</h1>
+                <p className="promotions-subtitle">{promotions.length} total promotions</p>
               </div>
-            ))}
+              <button className="add-promotion-btn" onClick={() => setShowModal(true)}>
+                <Plus size={20} />
+                Add Promotion
+              </button>
+            </div>
+
+            <div className="promotions-grid">
+              {promotions.map(promo => (
+                <div key={promo.id} className="promotion-card">
+                  <div className="promotion-card-header">
+                    <div className="promotion-actions">
+                      <button className="edit-btn" onClick={() => handleEdit(promo)}>
+                        <Edit2 size={16} />
+                      </button>
+                      <button className="delete-btn" onClick={() => handleDeleteClick(promo)}>
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="promotion-card-body">
+                    <h3 className="promotion-card-title">{promo.title}</h3>
+                    <p className="promotion-card-description">{promo.description}</p>
+                    
+                    {promo.features && promo.features.length > 0 && (
+                      <ul className="promotion-features-list">
+                        {promo.features.map((feature, index) => (
+                          <li key={index}>{feature}</li>
+                        ))}
+                      </ul>
+                    )}
+
+                    <div className={`expiration-info${isExpired(promo.expirationDate) ? ' expired' : ''}`}>
+                      <Calendar size={14} />
+                      {isExpired(promo.expirationDate) ? 'Expired: ' : 'Expires: '}
+                      {formatExpirationDate(promo.expirationDate)}
+                    </div>
+                  </div>
+
+                  <div className="promotion-card-footer">
+                    <div className="promotion-discount">{promo.discount}</div>
+                    <div className="promotion-validity">
+                      <Calendar size={14} />
+                      Valid until {promo.validUntil}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {showModal && (
-        <div className="promo-modal-overlay" onClick={handleCancel}>
-          <div className="promo-modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="promo-modal-header">
-              <h2>{editingPromo ? 'Edit Promotion' : 'Add New Promotion'}</h2>
-              <button type="button" className="close-modal-btn" onClick={handleCancel}>
-                <X size={24} />
-              </button>
+        <Modal
+          open={showModal}
+          title={editingPromo ? 'Edit Promotion' : 'Add New Promotion'}
+          onCancel={handleCancel}
+          footer={null}
+          width={700}
+          centered
+          destroyOnClose
+        >
+          <style>{`
+            .ant-modal-header {
+              background: linear-gradient(135deg, #FFC300, #FFD54F);
+            }
+            .ant-modal-title {
+              color: #000 !important;
+              font-weight: 700;
+              font-size: 18px;
+              text-align: center;
+            }
+            .ant-input:hover,
+            .ant-input:focus,
+            .ant-input-focused,
+            .ant-input-number:hover,
+            .ant-input-number:focus,
+            .ant-input-number-focused,
+            .ant-select:not(.ant-select-disabled):hover .ant-select-selector,
+            .ant-select-focused:not(.ant-select-disabled) .ant-select-selector {
+              border-color: #FFC300 !important;
+            }
+            .ant-input:focus,
+            .ant-input-focused,
+            .ant-input-number:focus,
+            .ant-input-number-focused,
+            .ant-select-focused .ant-select-selector {
+              border-color: #FFC300 !important;
+              box-shadow: 0 0 0 2px rgba(255, 195, 0, 0.1) !important;
+              outline: none !important;
+            }
+            .promo-cancel-btn {
+              height: 42px;
+              border-radius: 8px;
+              border-color: #FFC300 !important;
+              color: #FFC300 !important;
+              background: transparent !important;
+            }
+            .promo-cancel-btn:hover:not(:disabled) {
+              border-color: #FFD54F !important;
+              color: #FFD54F !important;
+              background: transparent !important;
+            }
+            .promo-submit-btn {
+              height: 42px;
+              border-radius: 8px;
+              background: linear-gradient(135deg, #FFC300, #FFD54F) !important;
+              border-color: #FFC300 !important;
+              color: #000 !important;
+              font-weight: 600;
+            }
+            .promo-submit-btn:hover:not(:disabled) {
+              background: linear-gradient(135deg, #FFD54F, #FFEB3B) !important;
+              border-color: #FFD54F !important;
+            }
+            .add-feature-btn {
+              height: 32px;
+              border-radius: 8px;
+              background: linear-gradient(135deg, #FFC300, #FFD54F) !important;
+              border-color: #FFC300 !important;
+              color: #000 !important;
+              font-weight: 600;
+              font-size: 14px;
+            }
+            .remove-feature-btn {
+              height: 32px;
+              width: 32px;
+              border-radius: 8px;
+              background: #FFC300 !important;
+              border-color: #FFC300 !important;
+              color: #000 !important;
+            }
+            .feature-input-group {
+              display: flex;
+              gap: 8px;
+              margin-bottom: 8px;
+            }
+            .feature-input-group .ant-input {
+              flex: 1;
+            }
+          `}</style>
+
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleSubmit}
+            initialValues={{
+              icon: 'Wrench'
+            }}
+          >
+            <Form.Item
+              label="Title"
+              name="title"
+              rules={[{ required: true, message: 'Please enter promotion title' }]}
+            >
+              <Input placeholder="Enter promotion title" size="large" />
+            </Form.Item>
+
+            <Form.Item
+              label="Description"
+              name="description"
+              rules={[{ required: true, message: 'Please enter description' }]}
+            >
+              <TextArea rows={3} placeholder="Enter promotion description" size="large" />
+            </Form.Item>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <Form.Item
+                label="Discount (%)"
+                name="discount"
+                rules={[{ required: true, message: 'Please enter discount percentage' }]}
+              >
+                <Input placeholder="20" size="large" />
+              </Form.Item>
+
+              <Form.Item
+                label="Savings"
+                name="savings"
+              >
+                <Input placeholder="Save up to ₱5,000" size="large" />
+              </Form.Item>
             </div>
-            <form className="promo-form" onSubmit={handleSubmit}>
-                <div className="form-group">
-                  <label>Title *</label>
-                  <input
-                    type="text"
-                    name="title"
-                    value={formData.title}
-                    onChange={handleInputChange}
-                    required
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <Form.Item
+                label="Expiration Date"
+                name="expirationDate"
+                rules={[{ required: true, message: 'Please select expiration date' }]}
+              >
+                <Input type="date" size="large" />
+              </Form.Item>
+
+              <Form.Item
+                label="Icon"
+                name="icon"
+              >
+                <Select size="large">
+                  <Option value="Wrench">Wrench</Option>
+                  <Option value="Car">Car</Option>
+                  <Option value="TrendingUp">Trending Up</Option>
+                </Select>
+              </Form.Item>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <label style={{ fontWeight: 600 }}>Features</label>
+                <Button
+                  className="add-feature-btn"
+                  onClick={addFeature}
+                  disabled={features.length >= 10}
+                  icon={<Plus size={16} />}
+                  size="small"
+                >
+                  Add Feature
+                </Button>
+              </div>
+              {features.map((feature, index) => (
+                <div key={index} className="feature-input-group">
+                  <Input
+                    value={feature}
+                    onChange={(e) => updateFeature(index, e.target.value)}
+                    placeholder={`Feature ${index + 1}`}
+                    size="large"
+                  />
+                  <Button
+                    className="remove-feature-btn"
+                    onClick={() => removeFeature(index)}
+                    icon={<X size={16} />}
                   />
                 </div>
+              ))}
+            </div>
 
-                <div className="form-group">
-                  <label>Description *</label>
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    required
-                    rows={3}
-                  />
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Discount (%) *</label>
-                    <input
-                      type="text"
-                      name="discount"
-                      value={formData.discount}
-                      onChange={handleInputChange}
-                      placeholder="20"
-                      required
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Savings</label>
-                    <input
-                      type="text"
-                      name="savings"
-                      value={formData.savings}
-                      onChange={handleInputChange}
-                      placeholder="Save up to ₱5,000"
-                    />
-                  </div>
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Expiration Date *</label>
-                    <input
-                      type="date"
-                      name="expirationDate"
-                      value={formData.expirationDate}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Valid Until (Auto-filled)</label>
-                    <input
-                      type="text"
-                      name="validUntil"
-                      value={formData.validUntil}
-                      readOnly
-                      placeholder="Auto-filled from expiration date"
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label>Icon</label>
-                  <select name="icon" value={formData.icon} onChange={handleInputChange}>
-                    <option value="Wrench">Wrench</option>
-                    <option value="Car">Car</option>
-                    <option value="TrendingUp">Trending Up</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <div className="features-header">
-                    <label>Features</label>
-                    <button
-                      type="button"
-                      className="add-feature-btn"
-                      onClick={addFeature}
-                      disabled={formData.features.length >= 10}
-                    >
-                      <Plus size={16} />
-                      Add Feature
-                    </button>
-                  </div>
-                  {formData.features.map((feature, index) => (
-                    <div key={index} className="feature-input-group">
-                      <input
-                        type="text"
-                        className="feature-input"
-                        value={feature}
-                        onChange={(e) => updateFeature(index, e.target.value)}
-                        placeholder={`Feature ${index + 1}`}
-                      />
-                      <button
-                        type="button"
-                        className="remove-feature-btn"
-                        onClick={() => removeFeature(index)}
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="modal-actions">
-                  <button type="button" className="cancel-btn" onClick={handleCancel}>
-                    <X size={18} />
-                    Cancel
-                  </button>
-                  <button type="submit" className="save-btn" disabled={loading}>
-                    <Save size={18} />
-                    {loading ? 'Saving...' : 'Save Promotion'}
-                  </button>
-                </div>
-              </form>
-          </div>
-        </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+              <Button
+                className="promo-cancel-btn"
+                onClick={handleCancel}
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="primary"
+                className="promo-submit-btn"
+                htmlType="submit"
+                loading={loading}
+              >
+                {loading ? 'Saving...' : 'Save Promotion'}
+              </Button>
+            </div>
+          </Form>
+        </Modal>
       )}
 
       <SuccessModal

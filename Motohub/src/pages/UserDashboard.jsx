@@ -10,12 +10,14 @@ import {
   Download,
   Tag,
   Calendar,
-  TrendingUp
+  TrendingUp,
+  History,
+  Plus
 } from 'lucide-react';
 import { ConfigProvider, App, Modal } from 'antd';
 import { getFirestore, collection, getDocs, query, limit } from 'firebase/firestore';
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
@@ -25,6 +27,7 @@ import { useSidebar } from '../context/SidebarContext';
 import UserSidebar from '../components/UserSidebar';
 import NavigationBar from '../components/NavigationBar';
 import ScrollStack, { ScrollStackItem } from '../components/ScrollStack';
+import ServiceHistoryModal from '../components/modals/ServiceHistoryModal';
 
 import '../css/UserDashboard.css';
 
@@ -243,18 +246,53 @@ function MotohubCustomerDashboardContent() {
       try {
         // Initialize jsPDF
         doc = new jsPDF();
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
 
-        // Add header
-        doc.setFontSize(20);
+        // ========== HEADER SECTION ==========
+        // Add background header rectangle
+        doc.setFillColor(31, 41, 55); // Dark gray background
+        doc.rect(0, 0, pageWidth, 45, 'F');
+        
+        // Add accent line
+        doc.setFillColor(255, 195, 0); // Gold accent
+        doc.rect(0, 45, pageWidth, 3, 'F');
+
+        // MOTOHUB Logo/Title
+        doc.setFontSize(28);
+        doc.setFont('helvetica', 'bold');
         doc.setTextColor(255, 195, 0);
-        doc.text('MOTOHUB', 105, 15, { align: 'center' });
+        doc.text('MOTOHUB', pageWidth / 2, 20, { align: 'center' });
 
-        doc.setFontSize(16);
-        doc.setTextColor(0, 0, 0);
-        doc.text('Service History Report', 105, 25, { align: 'center' });
-
-        // Add vehicle details with safe string conversion
+        // Subtitle
         doc.setFontSize(12);
+        doc.setTextColor(255, 255, 255);
+        doc.text('Professional Auto Care Services', pageWidth / 2, 28, { align: 'center' });
+
+        // Report Type
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(255, 195, 0);
+        doc.text('SERVICE HISTORY REPORT', pageWidth / 2, 38, { align: 'center' });
+
+        // ========== VEHICLE INFORMATION SECTION ==========
+        let currentY = 58;
+        
+        // Section Title
+        doc.setFillColor(245, 245, 245);
+        doc.rect(14, currentY - 5, pageWidth - 28, 8, 'F');
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(31, 41, 55);
+        doc.text('VEHICLE INFORMATION', 17, currentY);
+        
+        currentY += 10;
+
+        // Vehicle details with improved formatting
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(60, 60, 60);
+        
         const vehicleYear = vehicle.year ? String(vehicle.year) : 'N/A';
         const vehicleMake = vehicle.make ? String(vehicle.make) : 'N/A';
         const vehicleModel = vehicle.model ? String(vehicle.model) : 'N/A';
@@ -263,27 +301,75 @@ function MotohubCustomerDashboardContent() {
         const transmission = vehicle.transmission ? String(vehicle.transmission) : 'N/A';
         const mileage = vehicle.mileage ? String(vehicle.mileage) : 'N/A';
 
-        doc.text(`Vehicle: ${vehicleYear} ${vehicleMake} ${vehicleModel}`, 14, 40);
-        doc.text(`Plate Number: ${plateNumber}`, 14, 47);
-        doc.text(`Engine: ${engine}`, 14, 54);
-        doc.text(`Transmission: ${transmission}`, 14, 61);
-        doc.text(`Current Mileage: ${mileage} km`, 14, 68);
+        // Left Column
+        doc.setFont('helvetica', 'bold');
+        doc.text('Vehicle:', 17, currentY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${vehicleYear} ${vehicleMake} ${vehicleModel}`, 45, currentY);
+        
+        currentY += 7;
+        doc.setFont('helvetica', 'bold');
+        doc.text('Plate Number:', 17, currentY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(plateNumber, 45, currentY);
+        
+        currentY += 7;
+        doc.setFont('helvetica', 'bold');
+        doc.text('Engine:', 17, currentY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(engine, 45, currentY);
 
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 75);
+        // Right Column
+        currentY = 68;
+        doc.setFont('helvetica', 'bold');
+        doc.text('Transmission:', 110, currentY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(transmission, 145, currentY);
+        
+        currentY += 7;
+        doc.setFont('helvetica', 'bold');
+        doc.text('Current Mileage:', 110, currentY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${mileage} km`, 145, currentY);
 
+        currentY += 7;
+        doc.setFont('helvetica', 'bold');
+        doc.text('Report Date:', 110, currentY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(new Date().toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        }), 145, currentY);
+
+        currentY += 12;
+
+        // ========== SERVICE HISTORY SECTION ==========
         if (history.length > 0) {
-          // Safely convert service data to table format
-          const tableData = history.map(service => {
+          // Section Title
+          doc.setFillColor(245, 245, 245);
+          doc.rect(14, currentY - 5, pageWidth - 28, 8, 'F');
+          doc.setFontSize(11);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(31, 41, 55);
+          doc.text('SERVICE HISTORY', 17, currentY);
+          
+          currentY += 8;
+
+          // Prepare table data with better formatting
+          const tableData = history.map((service, index) => {
             try {
               const date = service.timestamp || service.date;
-              const dateStr = date ? new Date(date).toLocaleDateString() : 'N/A';
+              const dateStr = date ? new Date(date).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+              }) : 'N/A';
               const serviceType = service.serviceType ? String(service.serviceType) : 'N/A';
               const description = service.description || service.diagnosis || 'N/A';
-              const descStr = String(description).substring(0, 100); // Limit length
+              const descStr = String(description).substring(0, 80);
               const mechanicName = service.mechanicName ? String(service.mechanicName) : 'N/A';
-              const cost = service.cost ? `₱${service.cost}` : 'N/A';
+              const cost = service.cost ? `₱${Number(service.cost).toLocaleString()}` : 'N/A';
               const status = service.status ? String(service.status) : 'N/A';
 
               return [dateStr, serviceType, descStr, mechanicName, cost, status];
@@ -293,48 +379,107 @@ function MotohubCustomerDashboardContent() {
             }
           });
 
-          doc.autoTable({
-            startY: 85,
+          // Enhanced table with better styling
+          autoTable(doc, {
+            startY: currentY,
             head: [['Date', 'Service Type', 'Description', 'Mechanic', 'Cost', 'Status']],
             body: tableData,
-            theme: 'striped',
+            theme: 'grid',
             headStyles: {
               fillColor: [255, 195, 0],
-              textColor: [0, 0, 0],
+              textColor: [31, 41, 55],
               fontStyle: 'bold',
+              fontSize: 9,
+              halign: 'center',
+              cellPadding: 4,
             },
             styles: {
-              fontSize: 9,
+              fontSize: 8,
               cellPadding: 3,
               overflow: 'linebreak',
+              lineColor: [220, 220, 220],
+              lineWidth: 0.1,
             },
             columnStyles: {
-              0: { cellWidth: 25 },
-              1: { cellWidth: 30 },
-              2: { cellWidth: 50 },
-              3: { cellWidth: 30 },
-              4: { cellWidth: 25 },
-              5: { cellWidth: 25 },
+              0: { cellWidth: 24, halign: 'center' },
+              1: { cellWidth: 28, halign: 'left' },
+              2: { cellWidth: 55, halign: 'left' },
+              3: { cellWidth: 28, halign: 'left' },
+              4: { cellWidth: 22, halign: 'right' },
+              5: { cellWidth: 22, halign: 'center' },
+            },
+            alternateRowStyles: {
+              fillColor: [250, 250, 250],
+            },
+            didDrawCell: (data) => {
+              // Add status badge styling
+              if (data.column.index === 5 && data.cell.section === 'body') {
+                const status = data.cell.text[0];
+                if (status === 'Completed') {
+                  doc.setTextColor(34, 197, 94); // Green
+                } else if (status === 'Pending') {
+                  doc.setTextColor(251, 191, 36); // Yellow
+                } else if (status === 'Cancelled') {
+                  doc.setTextColor(239, 68, 68); // Red
+                }
+              }
             },
           });
+
+          // Add summary statistics
+          const finalY = doc.lastAutoTable.finalY + 10;
+          if (finalY < pageHeight - 40) {
+            doc.setFillColor(245, 245, 245);
+            doc.rect(14, finalY, pageWidth - 28, 20, 'F');
+            
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(31, 41, 55);
+            doc.text('Summary:', 17, finalY + 7);
+            
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(60, 60, 60);
+            doc.text(`Total Services: ${history.length}`, 17, finalY + 14);
+            
+            const totalCost = history.reduce((sum, service) => {
+              return sum + (Number(service.cost) || 0);
+            }, 0);
+            doc.text(`Total Cost: ₱${totalCost.toLocaleString()}`, 80, finalY + 14);
+            
+            const completedServices = history.filter(s => s.status === 'Completed').length;
+            doc.text(`Completed Services: ${completedServices}`, 140, finalY + 14);
+          }
         } else {
-          doc.setFontSize(12);
+          doc.setFontSize(11);
           doc.setTextColor(150, 150, 150);
-          doc.text('No service history available for this vehicle.', 105, 100, { align: 'center' });
+          doc.setFont('helvetica', 'italic');
+          doc.text('No service history available for this vehicle.', pageWidth / 2, currentY + 20, { align: 'center' });
         }
 
-        // Add page numbers
+        // ========== FOOTER SECTION ==========
         const pageCount = doc.internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
           doc.setPage(i);
+          
+          // Footer background
+          doc.setFillColor(245, 245, 245);
+          doc.rect(0, pageHeight - 20, pageWidth, 20, 'F');
+          
+          // Footer line
+          doc.setDrawColor(255, 195, 0);
+          doc.setLineWidth(0.5);
+          doc.line(14, pageHeight - 20, pageWidth - 14, pageHeight - 20);
+          
+          // Page number
           doc.setFontSize(8);
-          doc.setTextColor(150, 150, 150);
-          doc.text(
-            `Page ${i} of ${pageCount}`,
-            doc.internal.pageSize.getWidth() / 2,
-            doc.internal.pageSize.getHeight() - 10,
-            { align: 'center' }
-          );
+          doc.setTextColor(100, 100, 100);
+          doc.setFont('helvetica', 'normal');
+          doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+          
+          // Footer text
+          doc.setFontSize(7);
+          doc.text('© 2025 Motohub - Professional Auto Care Services', 14, pageHeight - 10);
+          doc.text('This is a computer-generated document', pageWidth - 14, pageHeight - 10, { align: 'right' });
         }
       } catch (pdfError) {
         console.error('Error creating PDF document:', pdfError);
@@ -388,63 +533,63 @@ function MotohubCustomerDashboardContent() {
     const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [serviceHistory, setServiceHistory] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [lastServiceDisplay, setLastServiceDisplay] = useState(vehicle.lastService || 'N/A');
 
     const loadServiceHistory = async () => {
-      setLoading(true);
       try {
-        const serviceHistoryRef = collection(db, `users/${user.uid}/cars/${vehicle.id}/serviceHistory`);
-        const snapshot = await getDocs(serviceHistoryRef);
-
+        setLoading(true);
+        const historyRef = collection(db, `users/${user.uid}/cars/${vehicle.id}/serviceHistory`);
+        const snapshot = await getDocs(historyRef);
         const history = snapshot.docs.map(doc => ({
           id: doc.id,
-          ...doc.data(),
+          ...doc.data()
         }));
-
-        history.sort((a, b) => new Date(b.timestamp || b.date) - new Date(a.timestamp || a.date));
+        
+        // Sort by timestamp to get the most recent
+        history.sort((a, b) => {
+          const dateA = new Date(a.timestamp || a.date);
+          const dateB = new Date(b.timestamp || b.date);
+          return dateB - dateA;
+        });
+        
         setServiceHistory(history);
+        
+        // Update last service display
+        if (history.length > 0) {
+          const lastService = history[0];
+          const serviceDate = new Date(lastService.timestamp || lastService.date);
+          const formattedDate = serviceDate.toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+          });
+          setLastServiceDisplay(formattedDate);
+        }
       } catch (error) {
-        console.error('Error fetching service history:', error);
-        setServiceHistory([]);
+        console.error('Error loading service history:', error);
+        messageApi.error('Failed to load service history');
       } finally {
         setLoading(false);
       }
     };
 
-    useEffect(() => {
-      if (showHistoryModal) loadServiceHistory();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [showHistoryModal]);
-
-    const getStatusColor = (status) => {
-      switch (status?.toLowerCase()) {
-        case 'excellent': return 'status-excellent';
-        case 'good': return 'status-good';
-        case 'needs attention': return 'status-needs-attention';
-        case 'in service': return 'status-in-service';
-        default: return 'status-good';
-      }
-    };
-
-    const getStatusIcon = (status) => {
-      switch (status?.toLowerCase()) {
-        case 'excellent': return <CheckCircle size={16} />;
-        case 'good': return <CheckCircle size={16} />;
-        case 'needs attention': return <AlertTriangle size={16} />;
-        case 'in service': return <Wrench size={16} />;
-        default: return <CheckCircle size={16} />;
-      }
+    const handleHistoryClick = async () => {
+      await loadServiceHistory();
+      setShowHistoryModal(true);
     };
 
     return (
       <>
         <div className="vehicle-card">
-          <div className="vehicle-card-image">
-            <Car size={64} />
-            <div className={`vehicle-status-badge ${getStatusColor(vehicle.status)}`}>
-              {getStatusIcon(vehicle.status)}
-              <span>{vehicle.status}</span>
+          {vehicle.imageUrl ? (
+            <div className="vehicle-card-image">
+              <img src={vehicle.imageUrl} alt={`${vehicle.make} ${vehicle.model}`} />
             </div>
-          </div>
+          ) : (
+            <div className="vehicle-card-badge">
+              <Car size={20} />
+            </div>
+          )}
 
           <div className="vehicle-card-content">
             <div className="vehicle-header">
@@ -462,7 +607,7 @@ function MotohubCustomerDashboardContent() {
               </div>
               <div className="vehicle-spec-item">
                 <span className="vehicle-spec-label">Last Service</span>
-                <span className="vehicle-spec-value">{vehicle.lastService || 'N/A'}</span>
+                <span className="vehicle-spec-value">{lastServiceDisplay}</span>
               </div>
               <div className="vehicle-spec-item">
                 <span className="vehicle-spec-label">Next Service</span>
@@ -479,10 +624,11 @@ function MotohubCustomerDashboardContent() {
             <div className="vehicle-actions">
               <button
                 className="vehicle-action-btn btn-secondary"
-                onClick={() => setShowHistoryModal(true)}
+                onClick={handleHistoryClick}
+                disabled={loading}
               >
                 <History size={16} />
-                History
+                {loading ? 'Loading...' : 'History'}
               </button>
             </div>
           </div>
@@ -577,11 +723,7 @@ function MotohubCustomerDashboardContent() {
 
   return (
     <div className="customer-dashboard-container">
-      <UserSidebar
-        user={user}
-        className={`customer-sidebar${sidebarOpen ? '' : ' collapsed'}${sidebarMobileOpen ? ' open' : ''}`}
-        onCloseMobile={() => setSidebarMobileOpen(false)}
-      />
+      <UserSidebar />
 
       <div className={`customer-main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
         <NavigationBar
@@ -654,22 +796,46 @@ function MotohubCustomerDashboardContent() {
             />
           </div>
 
-          {/* Quick Actions */}
-          <div className="section-with-title">
-            <h3 className="section-title">Quick Actions</h3>
-            <div className="quick-actions">
-              <QuickActionCard
-                icon={MessageSquare}
-                title="Contact Support"
-                description="Get help from our team"
-                onClick={handleContactSupport}
-              />
-              <QuickActionCard
-                icon={FileText}
-                title="Service History"
-                description="Download your vehicle history"
-                onClick={handleServiceHistoryClick}
-              />
+          {/* My Vehicles and Quick Actions Grid */}
+          <div className="vehicles-actions-grid">
+            {/* My Vehicles Section */}
+            <div className="section-with-title">
+              <h3 className="section-title">
+                <Car size={20} />
+                My Vehicles
+              </h3>
+              {vehicles.length > 0 ? (
+                <div className="my-vehicles-grid">
+                  {vehicles.map(vehicle => (
+                    <VehicleCard key={vehicle.id} vehicle={vehicle} />
+                  ))}
+                </div>
+              ) : (
+                <div className="no-vehicles">
+                  <Car size={64} />
+                  <h3>No Vehicles Yet</h3>
+                  <p>Start by adding your first vehicle to track its service history</p>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Actions */}
+            <div className="section-with-title">
+              <h3 className="section-title">Quick Actions</h3>
+              <div className="quick-actions">
+                <QuickActionCard
+                  icon={MessageSquare}
+                  title="Contact Support"
+                  description="Get help from our team"
+                  onClick={handleContactSupport}
+                />
+                <QuickActionCard
+                  icon={FileText}
+                  title="Service History"
+                  description="Download your vehicle history"
+                  onClick={handleServiceHistoryClick}
+                />
+              </div>
             </div>
           </div>
         </div>

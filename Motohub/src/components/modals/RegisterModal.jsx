@@ -246,10 +246,11 @@ export default function RegisterModal({ open, onClose, onSuccess, onSwitchToLogi
             label="Postal Code"
             name="postalCode"
             rules={[
-              { required: true, message: 'Please enter postal code' }
+              { required: true, message: 'Please enter postal code' },
+              { pattern: /^\d{4}$/, message: 'Enter a valid 4-digit postal code' }
             ]}
           >
-            <Input placeholder="Enter postal code" size="large" />
+            <Input placeholder="e.g., 1000" size="large" maxLength={4} />
           </Form.Item>
         </div>
 

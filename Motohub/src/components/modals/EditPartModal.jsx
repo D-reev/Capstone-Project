@@ -154,7 +154,18 @@ export default function EditPartModal({ part, onClose, onUpdate, open = false })
           <Form.Item
             label="Part Name"
             name="name"
-            rules={[{ required: true, message: 'Please enter part name' }]}
+            rules={[
+              { required: true, message: 'Please enter part name' },
+              {
+                validator: (_, value) => {
+                  if (!value) return Promise.resolve();
+                  if (/^\d+$/.test(value.trim())) {
+                    return Promise.reject(new Error('Part name cannot be only numbers'));
+                  }
+                  return Promise.resolve();
+                }
+              }
+            ]}
           >
             <Input placeholder="Enter part name" size="large" />
           </Form.Item>
@@ -178,11 +189,21 @@ export default function EditPartModal({ part, onClose, onUpdate, open = false })
           <Form.Item
             label="Stock"
             name="quantity"
-            rules={[{ required: true, message: 'Please enter quantity' }]}
+            rules={[
+              { required: true, message: 'Please enter quantity' },
+              {
+                validator: (_, value) => {
+                  if (value === null || value === undefined) return Promise.resolve();
+                  if (value < 0) return Promise.reject(new Error('Quantity cannot be negative'));
+                  return Promise.resolve();
+                }
+              }
+            ]}
           >
             <InputNumber 
               style={{ width: '100%' }} 
-              min={0} 
+              min={0}
+              max={999999}
               placeholder="Enter quantity"
               size="large"
             />
@@ -191,11 +212,21 @@ export default function EditPartModal({ part, onClose, onUpdate, open = false })
           <Form.Item
             label="Price (₱)"
             name="price"
-            rules={[{ required: true, message: 'Please enter price' }]}
+            rules={[
+              { required: true, message: 'Please enter price' },
+              {
+                validator: (_, value) => {
+                  if (value === null || value === undefined) return Promise.resolve();
+                  if (value < 0) return Promise.reject(new Error('Price cannot be negative'));
+                  return Promise.resolve();
+                }
+              }
+            ]}
           >
             <InputNumber 
               style={{ width: '100%' }} 
-              min={0} 
+              min={0}
+              max={9999999}
               step={0.01}
               placeholder="Enter price"
               size="large"
@@ -205,11 +236,21 @@ export default function EditPartModal({ part, onClose, onUpdate, open = false })
           <Form.Item
             label="Minimum Stock"
             name="minStock"
-            rules={[{ required: true, message: 'Please enter minimum stock' }]}
+            rules={[
+              { required: true, message: 'Please enter minimum stock' },
+              {
+                validator: (_, value) => {
+                  if (value === null || value === undefined) return Promise.resolve();
+                  if (value < 0) return Promise.reject(new Error('Minimum stock cannot be negative'));
+                  return Promise.resolve();
+                }
+              }
+            ]}
           >
             <InputNumber 
               style={{ width: '100%' }} 
               min={0}
+              max={99999}
               placeholder="Enter minimum stock"
               size="large"
             />

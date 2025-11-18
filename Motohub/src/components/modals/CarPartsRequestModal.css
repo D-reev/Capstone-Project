@@ -85,3 +85,20 @@
 .mh-yellow-message .ant-message-success .anticon {
   color: #FFC300 !important;
 }
+
+/* Mobile adjustments for dock spacing */
+@media (max-width: 768px) {
+  .mh-yellow-modal.ant-modal {
+    max-height: calc(100vh - 140px) !important;
+    margin: 1rem auto 0 !important;
+  }
+
+  .mh-yellow-modal .ant-modal-body {
+    max-height: calc(100vh - 260px) !important;
+    overflow-y: auto !important;
+  }
+
+  .mh-part-item {
+    padding: 10px 12px;
+  }
+}

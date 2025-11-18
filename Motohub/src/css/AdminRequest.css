@@ -16,7 +16,6 @@
   margin-left: 280px;
   width: calc(100% - 280px);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow-y: auto;
   height: 100vh;
 }
 
@@ -28,6 +27,7 @@
 .requests-content {
   flex: 1;
   padding: 2rem 3rem;
+  overflow-y: auto;
 }
 
 /* Page Title */

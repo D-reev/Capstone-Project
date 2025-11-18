@@ -20,6 +20,9 @@ function ServiceHistory() {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [expandedMobileCards, setExpandedMobileCards] = useState([]);
+  const itemsPerPage = 10;
   const { sidebarOpen } = useSidebar();
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
   const { user } = useAuth();
@@ -282,7 +285,9 @@ function ServiceHistory() {
                       </tr>
                     </thead>
                     <tbody>
-                      {serviceHistory.map(service => (
+                      {serviceHistory
+                        .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                        .map(service => (
                         <React.Fragment key={service.id}>
                           <tr 
                             className={`table-row ${isRowExpanded(service.id) ? 'expanded' : ''}`}
@@ -409,7 +414,9 @@ function ServiceHistory() {
 
                   {/* Mobile List View */}
                   <div className="service-history-mobile-list">
-                    {serviceHistory.map(service => {
+                    {serviceHistory
+                      .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                      .map(service => {
                       const isExpanded = isRowExpanded(service.id);
                       
                       return (
@@ -523,6 +530,132 @@ function ServiceHistory() {
                       );
                     })}
                   </div>
+
+                  {/* Pagination Controls */}
+                  {serviceHistory.length > itemsPerPage && (
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '16px 24px',
+                      borderTop: '1px solid #e2e8f0',
+                      flexWrap: 'wrap',
+                      gap: '12px'
+                    }}>
+                      <span style={{ 
+                        color: '#6B7280',
+                        fontSize: '14px'
+                      }}>
+                        {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, serviceHistory.length)} of {serviceHistory.length} entries
+                      </span>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <button
+                          onClick={() => setCurrentPage(1)}
+                          disabled={currentPage === 1}
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            background: currentPage === 1 ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
+                            color: currentPage === 1 ? '#9ca3af' : '#000',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '12px',
+                            fontWeight: '600'
+                          }}
+                        >
+                          &lt;&lt;
+                        </button>
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                          disabled={currentPage === 1}
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            background: currentPage === 1 ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
+                            color: currentPage === 1 ? '#9ca3af' : '#000',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '14px',
+                            fontWeight: '600'
+                          }}
+                        >
+                          &lt;
+                        </button>
+                        <input
+                          type="number"
+                          min="1"
+                          max={Math.ceil(serviceHistory.length / itemsPerPage)}
+                          value={currentPage}
+                          onChange={(e) => {
+                            const page = parseInt(e.target.value);
+                            if (page >= 1 && page <= Math.ceil(serviceHistory.length / itemsPerPage)) {
+                              setCurrentPage(page);
+                            }
+                          }}
+                          style={{
+                            width: '50px',
+                            height: '32px',
+                            textAlign: 'center',
+                            background: '#fff',
+                            color: '#374151',
+                            border: '1px solid #FFC300',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            fontWeight: '600'
+                          }}
+                        />
+                        <span style={{ color: '#FFC300', fontSize: '14px', fontWeight: '600' }}>of {Math.ceil(serviceHistory.length / itemsPerPage)}</span>
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(serviceHistory.length / itemsPerPage)))}
+                          disabled={currentPage >= Math.ceil(serviceHistory.length / itemsPerPage)}
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            background: currentPage >= Math.ceil(serviceHistory.length / itemsPerPage) ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
+                            color: currentPage >= Math.ceil(serviceHistory.length / itemsPerPage) ? '#9ca3af' : '#000',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: currentPage >= Math.ceil(serviceHistory.length / itemsPerPage) ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '14px',
+                            fontWeight: '600'
+                          }}
+                        >
+                          &gt;
+                        </button>
+                        <button
+                          onClick={() => setCurrentPage(Math.ceil(serviceHistory.length / itemsPerPage))}
+                          disabled={currentPage >= Math.ceil(serviceHistory.length / itemsPerPage)}
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            background: currentPage >= Math.ceil(serviceHistory.length / itemsPerPage) ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
+                            color: currentPage >= Math.ceil(serviceHistory.length / itemsPerPage) ? '#9ca3af' : '#000',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: currentPage >= Math.ceil(serviceHistory.length / itemsPerPage) ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '12px',
+                            fontWeight: '600'
+                          }}
+                        >
+                          &gt;&gt;
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="no-history">

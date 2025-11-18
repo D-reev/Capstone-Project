@@ -232,7 +232,18 @@ export default function EditCarModal({ vehicle, onSubmit, onClose }) {
         <Form.Item
           label={<span>MAKE <Tooltip title={fieldInfo.make}><Info size={14} /></Tooltip></span>}
           name="make"
-          rules={[{ required: true, message: 'Please enter the make' }]}
+          rules={[
+            { required: true, message: 'Please enter the make' },
+            {
+              validator: (_, value) => {
+                if (!value) return Promise.resolve();
+                if (/\d/.test(value)) {
+                  return Promise.reject(new Error('Make should not contain numbers (e.g., Toyota, Honda)'));
+                }
+                return Promise.resolve();
+              }
+            }
+          ]}
         >
           <Input placeholder="e.g., Toyota" />
         </Form.Item>
@@ -240,7 +251,19 @@ export default function EditCarModal({ vehicle, onSubmit, onClose }) {
         <Form.Item
           label={<span>MODEL <Tooltip title={fieldInfo.model}><Info size={14} /></Tooltip></span>}
           name="model"
-          rules={[{ required: true, message: 'Please enter the model' }]}
+          rules={[
+            { required: true, message: 'Please enter the model' },
+            {
+              validator: (_, value) => {
+                if (!value) return Promise.resolve();
+                if (!/\d/.test(value) && value.length > 3) {
+                  return Promise.reject(new Error('Model usually contains numbers (e.g., Civic, Camry, F-150)'));
+                }
+                return Promise.resolve();
+              },
+              warningOnly: true
+            }
+          ]}
         >
           <Input placeholder="e.g., Camry" />
         </Form.Item>
@@ -256,7 +279,20 @@ export default function EditCarModal({ vehicle, onSubmit, onClose }) {
         <Form.Item
           label={<span>PLATE NUMBER <Tooltip title={fieldInfo.plateNumber}><Info size={14} /></Tooltip></span>}
           name="plateNumber"
-          rules={[{ required: true, message: 'Please enter the plate number' }]}
+          rules={[
+            { required: true, message: 'Please enter the plate number' },
+            {
+              validator: (_, value) => {
+                if (!value) return Promise.resolve();
+                const normalized = value.toUpperCase().replace(/\s+/g, '-');
+                if (/^[A-Z]{2,3}-?\d{3,4}$/.test(normalized)) {
+                  return Promise.resolve();
+                }
+                return Promise.reject(new Error('Invalid format. Use: ABC-1234 or AB-1234'));
+              }
+            }
+          ]}
+          normalize={(value) => value ? value.toUpperCase() : value}
         >
           <Input placeholder="e.g., ABC-1234" />
         </Form.Item>
@@ -284,9 +320,20 @@ export default function EditCarModal({ vehicle, onSubmit, onClose }) {
         <Form.Item
           label={<span>CURRENT MILEAGE (KM) <Tooltip title={fieldInfo.mileage}><Info size={14} /></Tooltip></span>}
           name="mileage"
-          rules={[{ required: true, message: 'Please enter current mileage' }]}
+          rules={[
+            { required: true, message: 'Please enter current mileage' },
+            {
+              validator: (_, value) => {
+                if (value === null || value === undefined) return Promise.resolve();
+                if (value < 0) {
+                  return Promise.reject(new Error('Mileage cannot be negative'));
+                }
+                return Promise.resolve();
+              }
+            }
+          ]}
         >
-          <InputNumber style={{ width: '100%' }} min={0} placeholder="e.g., 50000" />
+          <InputNumber style={{ width: '100%' }} min={0} max={999999} placeholder="e.g., 50000" />
         </Form.Item>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>

@@ -10,7 +10,12 @@ export default function RestockModal({ part, open, onClose, onRestock }) {
 
   const handleRestock = async () => {
     if (!quantity || quantity <= 0) {
-      messageApi.error('Please enter a valid quantity');
+      messageApi.error('Please enter a valid positive quantity');
+      return;
+    }
+
+    if (quantity < 0) {
+      messageApi.error('Quantity cannot be negative');
       return;
     }
 
@@ -140,6 +145,7 @@ export default function RestockModal({ part, open, onClose, onRestock }) {
           <InputNumber
             size="large"
             min={1}
+            max={99999}
             value={quantity}
             onChange={setQuantity}
             placeholder="Enter quantity to add"

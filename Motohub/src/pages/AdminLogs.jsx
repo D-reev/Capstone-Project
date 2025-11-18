@@ -16,6 +16,8 @@ export default function AdminLogs() {
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('all');
   const [expandedMobileCards, setExpandedMobileCards] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const { user } = useAuth();
   const db = getFirestore();
 
@@ -286,7 +288,7 @@ export default function AdminLogs() {
                 </thead>
                 <tbody>
                   {filteredLogs.length > 0 ? (
-                    filteredLogs.map(log => (
+                    filteredLogs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((log) => (
                       <tr key={log.id} className="log-row">
                         <td>
                           <div className={`log-type-badge ${getLogTypeClass(log.type)}`}>
@@ -402,7 +404,7 @@ export default function AdminLogs() {
               {/* Mobile Card List */}
               <div className="logs-mobile-list">
                 {filteredLogs.length > 0 ? (
-                  filteredLogs.map(log => {
+                  filteredLogs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(log => {
                     const isExpanded = expandedMobileCards.includes(log.id);
                     const getTypeClass = () => {
                       if (log.type?.includes('PAGE_VIEW')) return 'type-page-view';
@@ -530,6 +532,132 @@ export default function AdminLogs() {
                   </div>
                 )}
               </div>
+
+              {/* Pagination Controls */}
+              {filteredLogs.length > itemsPerPage && (
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  padding: '16px 24px',
+                  borderTop: '1px solid #e5e7eb',
+                  flexWrap: 'wrap',
+                  gap: '12px'
+                }}>
+                  <span style={{ 
+                    color: '#6B7280',
+                    fontSize: '14px'
+                  }}>
+                    {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredLogs.length)} of {filteredLogs.length} entries
+                  </span>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <button
+                      onClick={() => setCurrentPage(1)}
+                      disabled={currentPage === 1}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        background: currentPage === 1 ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
+                        color: currentPage === 1 ? '#9ca3af' : '#000',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '12px',
+                        fontWeight: '600'
+                      }}
+                    >
+                      &lt;&lt;
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        background: currentPage === 1 ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
+                        color: currentPage === 1 ? '#9ca3af' : '#000',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '14px',
+                        fontWeight: '600'
+                      }}
+                    >
+                      &lt;
+                    </button>
+                    <input
+                      type="number"
+                      min="1"
+                      max={Math.ceil(filteredLogs.length / itemsPerPage)}
+                      value={currentPage}
+                      onChange={(e) => {
+                        const page = parseInt(e.target.value);
+                        if (page >= 1 && page <= Math.ceil(filteredLogs.length / itemsPerPage)) {
+                          setCurrentPage(page);
+                        }
+                      }}
+                      style={{
+                        width: '50px',
+                        height: '32px',
+                        textAlign: 'center',
+                        background: '#fff',
+                        color: '#374151',
+                        border: '1px solid #FFC300',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        fontWeight: '600'
+                      }}
+                    />
+                    <span style={{ color: '#FFC300', fontSize: '14px', fontWeight: '600' }}>of {Math.ceil(filteredLogs.length / itemsPerPage)}</span>
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(filteredLogs.length / itemsPerPage)))}
+                      disabled={currentPage >= Math.ceil(filteredLogs.length / itemsPerPage)}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        background: currentPage >= Math.ceil(filteredLogs.length / itemsPerPage) ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
+                        color: currentPage >= Math.ceil(filteredLogs.length / itemsPerPage) ? '#9ca3af' : '#000',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: currentPage >= Math.ceil(filteredLogs.length / itemsPerPage) ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '14px',
+                        fontWeight: '600'
+                      }}
+                    >
+                      &gt;
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage(Math.ceil(filteredLogs.length / itemsPerPage))}
+                      disabled={currentPage >= Math.ceil(filteredLogs.length / itemsPerPage)}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        background: currentPage >= Math.ceil(filteredLogs.length / itemsPerPage) ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
+                        color: currentPage >= Math.ceil(filteredLogs.length / itemsPerPage) ? '#9ca3af' : '#000',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: currentPage >= Math.ceil(filteredLogs.length / itemsPerPage) ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '12px',
+                        fontWeight: '600'
+                      }}
+                    >
+                      &gt;&gt;
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

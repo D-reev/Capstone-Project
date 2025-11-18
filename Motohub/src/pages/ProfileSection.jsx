@@ -1,20 +1,26 @@
 import React, { useEffect, useState } from 'react';
+import { App, Modal } from 'antd';
 import { useAuth } from '../context/AuthContext';
 import { useSidebar } from '../context/SidebarContext';
 import { getUserProfile, updateUserProfile } from '../utils/auth';
-import { User, Save, RotateCcw, Edit2, Lock } from 'lucide-react';
+import { User, Save, RotateCcw, Edit2, Lock, Edit, X } from 'lucide-react';
 import UserSidebar from '../components/UserSidebar';
 import NavigationBar from '../components/NavigationBar';
 import '../css/ProfileSection.css';
 import Loading from '../components/Loading';
 
 export default function ProfileSection() {
+  const { message: messageApi } = App.useApp();
   const { user } = useAuth();
   const { sidebarOpen } = useSidebar();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
+  const [photoURL, setPhotoURL] = useState('');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [originalProfile, setOriginalProfile] = useState(null);
+  const [originalPhotoURL, setOriginalPhotoURL] = useState('');
   const [profile, setProfile] = useState({
     firstName: '',
     middleName: '',
@@ -39,7 +45,10 @@ export default function ProfileSection() {
       try {
         const p = await getUserProfile(user.uid);
         if (!mounted) return;
-        setProfile({
+        const photoUrl = user?.photoURL || p?.photoURL || '';
+        setPhotoURL(photoUrl);
+        setOriginalPhotoURL(photoUrl);
+        const profileData = {
           firstName: p?.firstName ?? '',
           middleName: p?.middleName ?? '',
           lastName: p?.lastName ?? '',
@@ -48,7 +57,9 @@ export default function ProfileSection() {
           postalCode: p?.postalCode ?? '',
           phoneNumber: p?.phoneNumber ?? '',
           googleEmail: p?.googleEmail ?? p?.email ?? ''
-        });
+        };
+        setProfile(profileData);
+        setOriginalProfile(profileData);
       } catch (err) {
         console.error('load profile error', err);
         setError('Failed to load profile');
@@ -60,8 +71,77 @@ export default function ProfileSection() {
     return () => { mounted = false; };
   }, [user?.uid]);
 
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      messageApi.error('Please upload an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      messageApi.error('Image size must be less than 5MB');
+      return;
+    }
+
+    setUploadingPhoto(true);
+    try {
+      // Convert image to base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64String = reader.result;
+        setPhotoURL(base64String);
+        
+        // Save to Firebase
+        if (user?.uid) {
+          await updateUserProfile(user.uid, { photoURL: base64String });
+          messageApi.success('Profile photo updated successfully!');
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Photo upload error:', err);
+      messageApi.error('Failed to upload photo');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   const isIncomplete = () => {
     return !profile.address?.trim() || !profile.phoneNumber?.trim() || !profile.googleEmail?.trim();
+  };
+
+  const hasChanges = () => {
+    if (!originalProfile) return false;
+    
+    // Check if photo changed
+    if (photoURL !== originalPhotoURL) return true;
+    
+    // Check if any profile field changed
+    return Object.keys(profile).some(key => profile[key] !== originalProfile[key]);
+  };
+
+  const handleCancelEdit = () => {
+    if (hasChanges()) {
+      Modal.confirm({
+        title: 'Unsaved Changes',
+        content: 'You have unsaved changes. Are you sure you want to cancel without saving?',
+        okText: 'Discard Changes',
+        cancelText: 'Continue Editing',
+        okButtonProps: { danger: true },
+        onOk: () => {
+          // Revert changes
+          setProfile(originalProfile);
+          setPhotoURL(originalPhotoURL);
+          setEditMode(false);
+        },
+      });
+    } else {
+      setEditMode(false);
+    }
   };
 
   const handleChange = (field) => (e) => {
@@ -87,9 +167,12 @@ export default function ProfileSection() {
         updatedAt: new Date().toISOString()
       };
       await updateUserProfile(user.uid, updates);
-      setMessage('Profile saved successfully!');
+      messageApi.success('Profile saved successfully!');
+      
+      // Update original values after successful save
+      setOriginalProfile({ ...profile });
+      setOriginalPhotoURL(photoURL);
       setEditMode(false);
-      setTimeout(() => setMessage(null), 3000);
     } catch (err) {
       console.error('save profile error', err);
       setError(err?.message || 'Failed to save profile');
@@ -182,16 +265,40 @@ export default function ProfileSection() {
               </div>
               
               <div className="profile-avatar-section">
-                <div className="profile-avatar-large">
-                  {user?.photoURL && user.photoURL.trim() !== '' ? (
-                    <img src={user.photoURL} alt={user?.displayName || 'User'} className="profile-avatar-img" />
-                  ) : (
-                    <User size={64} className="profile-avatar-icon" />
-                  )}
+                <div className="profile-avatar-container">
+                  <label 
+                    className={`profile-avatar-click ${editMode ? 'editable' : ''}`} 
+                    htmlFor="photo-upload" 
+                    style={{ cursor: editMode ? 'pointer' : 'default' }}
+                  >
+                    <div className="profile-avatar-large">
+                      {photoURL && photoURL.trim() !== '' ? (
+                        <img src={photoURL} alt={user?.displayName || 'User'} className="profile-avatar-img" />
+                      ) : (
+                        <User size={64} className="profile-avatar-icon" />
+                      )}
+                    </div>
+                    {editMode && (
+                      <div className="profile-avatar-edit-overlay">
+                        <Edit size={18} />
+                      </div>
+                    )}
+                    {editMode && (
+                      <div className="profile-avatar-tooltip">Click to change photo</div>
+                    )}
+                  </label>
+                  <input
+                    type="file"
+                    id="photo-upload"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    style={{ display: 'none' }}
+                    disabled={uploadingPhoto}
+                  />
                 </div>
                 <div className="profile-info-text">
                   <h2 className="profile-name">{profile.firstName} {profile.lastName}</h2>
-                  <p className="profile-contact">+1 {profile.phoneNumber || '(XXX) XXX-XXXX'}</p>
+                  <p className="profile-contact">{profile.phoneNumber || '(XXX) XXX-XXXX'}</p>
                   <p className="profile-email">{profile.googleEmail || user?.email || 'email@example.com'}</p>
                 </div>
               </div>
@@ -201,9 +308,15 @@ export default function ProfileSection() {
             <div className="profile-card account-details-card">
               <div className="account-section-header">
                 <h3 className="account-section-title">Account Details</h3>
-                {!editMode && (
+                {!editMode ? (
                   <button onClick={() => setEditMode(true)} className="edit-btn-small">
+                    <Edit2 size={16} />
                     Edit
+                  </button>
+                ) : (
+                  <button onClick={handleCancelEdit} className="cancel-edit-btn-small">
+                    <X size={16} />
+                    Cancel
                   </button>
                 )}
               </div>
@@ -249,7 +362,7 @@ export default function ProfileSection() {
                   <label>Phone Number</label>
                   <input
                     type="tel"
-                    placeholder="+1 (XXX) XXX-XXXX"
+                    placeholder="XXX) XXX-XXXX"
                     value={profile.phoneNumber}
                     onChange={handleChange('phoneNumber')}
                     disabled={!editMode}
@@ -303,9 +416,11 @@ export default function ProfileSection() {
                 {editMode && (
                   <div className="form-actions-modern">
                     <button type="submit" className="save-btn-modern" disabled={saving}>
+                      <Save size={18} />
                       {saving ? 'Saving...' : 'Save'}
                     </button>
-                    <button type="button" className="cancel-btn-modern" onClick={() => setEditMode(false)} disabled={saving}>
+                    <button type="button" className="cancel-btn-modern" onClick={handleCancelEdit} disabled={saving}>
+                      <RotateCcw size={18} />
                       Cancel
                     </button>
                   </div>
@@ -315,6 +430,29 @@ export default function ProfileSection() {
           </div>
         </div>
       </div>
+
+      {/* Floating Save Button */}
+      {editMode && (
+        <div className="floating-save-container">
+          <button 
+            type="button" 
+            className="floating-save-btn" 
+            onClick={handleSave}
+            disabled={saving}
+          >
+            <Save size={20} />
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+          <button 
+            type="button" 
+            className="floating-cancel-btn" 
+            onClick={handleCancelEdit}
+            disabled={saving}
+          >
+            <RotateCcw size={18} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
