@@ -162,11 +162,16 @@
   cursor: pointer;
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
 }
 
 .view-all:hover {
   background: #FEF3C7;
+  transform: translateY(-1px);
+}
+
+.view-all:active {
+  transform: translateY(0);
 }
 
 /* Data Table */
@@ -265,13 +270,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   font-size: 1rem;
 }
 
 .icon-btn:hover {
   background: #FEF3C7;
   color: #D97706;
+  transform: translateY(-1px);
+}
+
+.icon-btn:active {
+  transform: translateY(0);
 }
 
 /* Responsive Design */
@@ -304,12 +314,10 @@
   .requests-main {
     margin-left: 0;
     width: 100%;
-    padding-bottom: 100px !important;
   }
 
   .requests-content {
     padding: 1rem;
-    padding-bottom: 100px;
   }
 
   .page-header {
@@ -352,9 +360,16 @@
     border: 1px solid #E5E7EB;
     border-radius: 12px;
     padding: 1rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
     cursor: pointer;
     transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .requests-mobile-card:hover {
+    border-color: #FBBF24;
+    box-shadow: 0 4px 12px rgba(251, 191, 36, 0.15);
+    transform: translateY(-2px);
   }
 
   .requests-mobile-card:active {

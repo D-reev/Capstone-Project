@@ -285,7 +285,8 @@ function AdminRequestsContent() {
                 prefix={<SearchOutlined />}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ width: 320 }}
+                style={{ width: 280, paddingRight: '2.5rem' }}
+                size="large"
               />
             </div>
           </div>
