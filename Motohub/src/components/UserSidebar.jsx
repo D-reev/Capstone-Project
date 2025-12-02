@@ -1,4 +1,5 @@
 import React from 'react';
+import { App } from 'antd';
 import { useAuth } from '../context/AuthContext';
 import { useSidebar } from '../context/SidebarContext';
 import { useAuthNavigation } from '../hooks/useAuthNavigation';
@@ -8,9 +9,9 @@ import {
   FileText, 
   User,
   LogOut,
-  ChevronRight,
   LayoutDashboard
 } from 'lucide-react';
+import TriangleArrow from './TriangleArrow';
 import logo from '../assets/images/logo.jpeg';
 import Dock from './Dock';
 import './Sidebar.css';
@@ -30,7 +31,7 @@ function NavItem({ icon: Icon, label, active = false, badge, color = "red", side
           <>
             <span className="nav-item-label">{label}</span>
             {badge && <span className={badgeClass}>{badge}</span>}
-            {active && <ChevronRight className="nav-item-indicator" size={16} />}
+            {active && <TriangleArrow className="nav-item-indicator" size={16} />}
           </>
         )}
       </div>
@@ -44,13 +45,29 @@ export default function UserSidebar() {
   const { logout } = useAuthNavigation();
   const navigate = useNavigate();
   const location = useLocation();
+  const { modal } = App.useApp();
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error('Error logging out:', error);
-    }
+  const handleLogout = () => {
+    modal.confirm({
+      title: 'Confirm Logout',
+      content: 'Are you sure you want to logout?',
+      okText: 'Yes, Logout',
+      cancelText: 'Cancel',
+      centered: true,
+      okButtonProps: {
+        style: {
+          background: 'linear-gradient(135deg, #FFC300, #FFD54F)',
+          borderColor: '#FFC300',
+          color: '#000',
+          fontWeight: 600
+        }
+      },
+      onOk() {
+        logout().catch((error) => {
+          console.error('Error logging out:', error);
+        });
+      }
+    });
   };
 
   const isPathActive = (path) => {
@@ -148,12 +165,25 @@ export default function UserSidebar() {
             <div className="user-avatar">
               {(() => {
                 const hasPhoto = user?.photoURL && user.photoURL.trim() !== '';
-                console.log('🖼️ UserSidebar Avatar Debug:');
-                console.log('  user.photoURL:', user?.photoURL);
-                console.log('  hasPhoto:', hasPhoto);
                 
                 if (hasPhoto) {
-                  return <img src={user.photoURL} alt={user?.displayName || 'User'} className="user-avatar-img" />;
+                  return (
+                    <img 
+                      src={user.photoURL} 
+                      alt={user?.displayName || 'User'} 
+                      className="user-avatar-img"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        const parent = e.target.parentElement;
+                        if (parent && !parent.querySelector('.fallback-icon')) {
+                          const icon = document.createElement('div');
+                          icon.className = 'fallback-icon';
+                          icon.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+                          parent.appendChild(icon);
+                        }
+                      }}
+                    />
+                  );
                 }
                 return <User size={24} />;
               })()}

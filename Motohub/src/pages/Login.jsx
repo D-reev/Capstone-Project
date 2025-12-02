@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from "../config/firebase.js";
 import { createUserProfile, getUserRole } from '../utils/auth';
-import { message } from 'antd';
+import { message, Alert } from 'antd';
 import '../css/Login.css';
 import { FcGoogle } from 'react-icons/fc';
 import RegisterModal from '../components/modals/RegisterModal';
@@ -19,6 +19,7 @@ function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
+  const [registrationError, setRegistrationError] = useState(null);
   const [loginOpen, setLoginOpen] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -41,7 +42,7 @@ function Login() {
      
       messageApi.success('Login successful!');
       
-      if (role === 'admin') {
+      if (role === 'admin' || role === 'superadmin') {
         navigate('/admindashboard');
       } else if (role === 'mechanic'){
         navigate('/mechanicdashboard');
@@ -73,7 +74,7 @@ function Login() {
       messageApi.success('Login successful!');
       
       // Navigate based on role
-      if (role === 'admin') {
+      if (role === 'admin' || role === 'superadmin') {
         navigate('/admindashboard');
       } else if (role === 'mechanic') {
         navigate('/mechanicdashboard');
@@ -217,11 +218,25 @@ function Login() {
             setSuccessMessage('Registration successful! You can now login with your username and password. If you provided a Gmail address, you can use "Forgot Password" for account recovery.');
             setSuccessOpen(true);
           }}
+          onError={(err) => setRegistrationError(err)}
           onSwitchToLogin={() => {
             setRegisterOpen(false);
             setLoginOpen(true);
           }}
         />
+
+        {registrationError && (
+          <div style={{ width: '100%', maxWidth: 700, margin: '12px auto 0' }}>
+            <Alert
+              message={registrationError.code === 'auth/email-already-in-use' ? 'Username already taken' : 'Registration Error'}
+              description={registrationError.message || 'An error occurred while creating your account.'}
+              type="error"
+              showIcon
+              closable
+              onClose={() => setRegistrationError(null)}
+            />
+          </div>
+        )}
 
         <LoginModal
           open={loginOpen}

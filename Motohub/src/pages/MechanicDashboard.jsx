@@ -30,9 +30,8 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getUserRole } from '../utils/auth.js';
 import MechanicSidebar from '../components/MechanicSidebar.jsx';
-import CarPartsRequestModal from '../components/modals/CarPartsRequestModal.jsx';
+import SuperAdminSidebar from '../components/SuperAdminSidebar';
 import ServiceReportModal from '../components/modals/ServiceReportModal.jsx';
-import { createPartsRequest } from '../utils/auth.js';
 import SuccessModal from '../components/modals/SuccessModal.jsx';
 import ProfileModal from '../components/modals/ProfileModal.jsx';
 import NavigationBar from "../components/NavigationBar.jsx";
@@ -45,7 +44,6 @@ export default function MechanicDashboard() {
   const location = useLocation();
   const [parts, setParts] = useState([]);
   const [isReportingService, setIsReportingService] = useState(false);
-  const [isRequestingParts, setIsRequestingParts] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
@@ -64,15 +62,6 @@ export default function MechanicDashboard() {
   const db = getFirestore();
 
   useEffect(() => {
-    console.log('Modal states:', { 
-      isReportingService, 
-      isRequestingParts, 
-      hasSelectedCar: !!selectedCar, 
-      hasSelectedCustomer: !!selectedCustomer 
-    });
-  }, [isReportingService, isRequestingParts, selectedCar, selectedCustomer]);
-
-  useEffect(() => {
     checkUserAccess();
   }, [user]);
 
@@ -84,7 +73,7 @@ export default function MechanicDashboard() {
 
     try {
       const userRole = await getUserRole(user.uid);
-      if (userRole !== 'mechanic' && userRole !== 'admin') {
+      if (userRole !== 'mechanic' && userRole !== 'admin' && userRole !== 'superadmin') {
         navigate("/login");
         return;
       }
@@ -116,7 +105,6 @@ export default function MechanicDashboard() {
 
   const fetchCustomers = async () => {
     try {
-      console.log('Fetching customers...');
       const usersRef = collection(db, 'users');
       const q = query(
         usersRef, 
@@ -125,12 +113,9 @@ export default function MechanicDashboard() {
       
       const snapshot = await getDocs(q);
       if (snapshot.empty) {
-        console.log('No customers found');
         setCustomers([]);
         return;
       }
-
-      console.log('Found customers:', snapshot.size);
 
       const customersList = await Promise.all(
         snapshot.docs.map(async (docSnap) => {
@@ -139,7 +124,6 @@ export default function MechanicDashboard() {
           try {
             const carsRef = collection(db, `users/${docSnap.id}/cars`);
             const carsSnap = await getDocs(carsRef);
-            console.log(`Customer ${customerData.displayName || docSnap.id} has ${carsSnap.size} cars`);
             return {
               ...customerData,
               carsCount: carsSnap.size
@@ -160,7 +144,6 @@ export default function MechanicDashboard() {
         return a.displayName.localeCompare(b.displayName);
       });
 
-      console.log('Sorted customers:', sortedCustomers);
       setCustomers(sortedCustomers);
     } catch (error) {
       console.error('Error fetching customers:', error);
@@ -172,21 +155,16 @@ export default function MechanicDashboard() {
     if (!customerId) return;
 
     try {
-      console.log('Fetching cars for customer:', customerId);
       const carsRef = collection(db, `users/${customerId}/cars`);
       const snapshot = await getDocs(carsRef);
       
-      console.log('Cars snapshot size:', snapshot.size);
-      
       if (snapshot.empty) {
-        console.log('No cars found for customer:', customerId);
         setCustomerCars([]);
         return;
       }
 
       const carsList = snapshot.docs.map(doc => {
         const data = doc.data();
-        console.log('Car data:', { id: doc.id, ...data });
         return {
           id: doc.id,
           ...data
@@ -200,7 +178,6 @@ export default function MechanicDashboard() {
         return dateB - dateA;
       });
       
-      console.log('Sorted cars list:', sortedCars);
       setCustomerCars(sortedCars);
     } catch (error) {
       console.error('Error fetching customer cars:', error);
@@ -209,33 +186,7 @@ export default function MechanicDashboard() {
     }
   };
 
-  const handlePartsRequest = async (requestData) => {
-    try {
-      if (!selectedCar || !selectedCustomer || !user) {
-        throw new Error('Missing required information');
-      }
-
-      await createPartsRequest({
-        car: selectedCar,
-        customer: selectedCustomer,
-        parts: requestData.parts,
-        urgent: requestData.urgent,
-        notes: requestData.notes
-      }, user.uid);
-      
-      setIsRequestingParts(false);
-      setSelectedCar(null);
-
-      setSuccessMessage('Parts request submitted successfully');
-      setSuccessModalOpen(true);
-    } catch (error) {
-      console.error('Error requesting parts:', error);
-      setError(error.message || 'Failed to submit parts request');
-    }
-  };
-
   const handleCustomerSelect = async (customer) => {
-    console.log('Customer selected:', customer);
     if (expandedCustomerId === customer.id) {
       // Collapse
       setExpandedCustomerId(null);
@@ -283,10 +234,14 @@ export default function MechanicDashboard() {
   return (
     <div className={`dashboard-container mechanic-page${!sidebarOpen ? ' sidebar-collapsed' : ''}`}> 
       {/* MechanicSidebar */}
-      <MechanicSidebar active={location.pathname === '/mechanicdashboard'} />
+      {user?.role === 'superadmin' ? (
+        <SuperAdminSidebar />
+      ) : (
+        <MechanicSidebar active={location.pathname === '/mechanicdashboard'} />
+      )}
       <div className={`main-content${!sidebarOpen ? ' expanded' : ''}`}> 
         <NavigationBar
-          title="Mechanic Dashboard"
+          title="Customer Management"
           userRole="mechanic"
           userName={user?.displayName || 'Mechanic'}
           userEmail={user?.email || ''}
@@ -344,6 +299,7 @@ export default function MechanicDashboard() {
                     <tr>
                       <th>Customer Name</th>
                       <th>Email</th>
+                      <th>Mobile</th>
                       <th>Cars</th>
                       <th>Status</th>
                     </tr>
@@ -357,6 +313,7 @@ export default function MechanicDashboard() {
                         >
                           <td>{customer.displayName}</td>
                           <td>{customer.email}</td>
+                          <td>{customer.phoneNumber || customer.mobileNumber || '—'}</td>
                           <td>{customer.carsCount || 0}</td>
                           <td>
                             <span className={`status-badge ${customer.status || 'active'}`}>
@@ -366,7 +323,7 @@ export default function MechanicDashboard() {
                         </tr>
                         {expandedCustomerId === customer.id && (
                           <tr className="expanded-row">
-                            <td colSpan="4">
+                            <td colSpan="5">
                               <div className="expanded-content">
                                 <div className="expanded-header">
                                   <h3>Vehicles - {customer.displayName}</h3>
@@ -406,18 +363,6 @@ export default function MechanicDashboard() {
                                             <FileText size={16} />
                                             Write Report
                                           </button>
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setSelectedCar(car);
-                                              setIsRequestingParts(true);
-                                            }}
-                                            className="request-btn"
-                                          >
-                                            <ShoppingBag size={16} />
-                                            Request Parts
-                                          </button>
                                         </div>
                                       </div>
                                     ))}
@@ -448,6 +393,7 @@ export default function MechanicDashboard() {
                           <div className="customer-mobile-info">
                             <h4 className="customer-mobile-name">{customer.displayName}</h4>
                             <p className="customer-mobile-email">{customer.email}</p>
+                            <p className="customer-mobile-phone">{customer.phoneNumber || customer.mobileNumber || 'No phone provided'}</p>
                           </div>
                           <span className={`status-badge ${customer.status || 'active'}`}>
                             {customer.status || 'Active'}
@@ -501,18 +447,6 @@ export default function MechanicDashboard() {
                                     >
                                       <FileText size={14} />
                                       Report
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedCar(car);
-                                        setIsRequestingParts(true);
-                                      }}
-                                      className="request-btn"
-                                    >
-                                      <ShoppingBag size={14} />
-                                      Parts
                                     </button>
                                   </div>
                                 </div>
@@ -676,18 +610,6 @@ export default function MechanicDashboard() {
           setSelectedCar(null);
         }}
       />
-
-      {isRequestingParts && selectedCar && selectedCustomer && (
-        <CarPartsRequestModal
-          car={selectedCar}
-          customer={selectedCustomer}
-          onSubmit={handlePartsRequest}
-          onClose={() => {
-            setIsRequestingParts(false);
-            setSelectedCar(null);
-          }}
-        />
-      )}
 
       {successModalOpen && (
         <SuccessModal

@@ -4,6 +4,7 @@ import { useSidebar } from '../context/SidebarContext';
 import { collection, getDocs, getDoc, doc, getFirestore, query, orderBy, limit } from 'firebase/firestore';
 import { FileText, Filter, Download, RefreshCw, AlertCircle, Eye, Shield, User, Package, CheckCircle, XCircle, ChevronDown, Clock } from 'lucide-react';
 import AdminSidebar from '../components/AdminSidebar';
+import SuperAdminSidebar from '../components/SuperAdminSidebar';
 import NavigationBar from '../components/NavigationBar';
 import ProfileModal from '../components/modals/ProfileModal';
 import Loading from '../components/Loading';
@@ -200,7 +201,7 @@ export default function AdminLogs() {
 
   return (
     <div className="user-management-bg logs-page">
-      <AdminSidebar />
+      {user?.role === 'superadmin' ? <SuperAdminSidebar /> : <AdminSidebar />}
 
       <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
         <NavigationBar

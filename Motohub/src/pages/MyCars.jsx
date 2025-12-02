@@ -6,6 +6,7 @@ import { Car, History, Plus, Edit, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSidebar } from '../context/SidebarContext';
 import UserSidebar from '../components/UserSidebar';
+import SuperAdminSidebar from '../components/SuperAdminSidebar';
 import NavigationBar from '../components/NavigationBar';
 import ServiceHistoryModal from '../components/modals/ServiceHistoryModal';
 import AddCarModal from '../components/modals/AddCarModal';
@@ -179,7 +180,6 @@ function MyCarsContent() {
         
         setServiceHistory(history);
         
-        // Update last service display
         if (history.length > 0) {
           const lastService = history[0];
           const serviceDate = new Date(lastService.timestamp || lastService.date);
@@ -285,11 +285,15 @@ function MyCarsContent() {
 
   return (
     <div className="my-cars-container">
-      <UserSidebar
-        user={user}
-        className={`customer-sidebar${sidebarOpen ? '' : ' collapsed'}${sidebarMobileOpen ? ' open' : ''}`}
-        onCloseMobile={() => setSidebarMobileOpen(false)}
-      />
+      {user?.role === 'superadmin' ? (
+        <SuperAdminSidebar />
+      ) : (
+        <UserSidebar
+          user={user}
+          className={`customer-sidebar${sidebarOpen ? '' : ' collapsed'}${sidebarMobileOpen ? ' open' : ''}`}
+          onCloseMobile={() => setSidebarMobileOpen(false)}
+        />
+      )}
 
       <div className={`my-cars-main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
         <NavigationBar

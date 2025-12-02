@@ -3,11 +3,14 @@ import { App, Modal } from 'antd';
 import { useAuth } from '../context/AuthContext';
 import { useSidebar } from '../context/SidebarContext';
 import { getUserProfile, updateUserProfile } from '../utils/auth';
-import { User, Save, RotateCcw, Edit2, Lock, Edit, X } from 'lucide-react';
+import { User, Save, RotateCcw, Edit2, Lock, Edit, X, Eye, EyeOff } from 'lucide-react';
 import UserSidebar from '../components/UserSidebar';
+import SuperAdminSidebar from '../components/SuperAdminSidebar';
 import NavigationBar from '../components/NavigationBar';
+import ForgotPasswordModal from '../components/modals/ForgotPasswordModal';
 import '../css/ProfileSection.css';
 import Loading from '../components/Loading';
+import { getAuth, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 
 export default function ProfileSection() {
   const { message: messageApi } = App.useApp();
@@ -21,6 +24,16 @@ export default function ProfileSection() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [originalProfile, setOriginalProfile] = useState(null);
   const [originalPhotoURL, setOriginalPhotoURL] = useState('');
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    oldPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
   const [profile, setProfile] = useState({
     firstName: '',
     middleName: '',
@@ -33,6 +46,12 @@ export default function ProfileSection() {
   });
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
+
+  const isGoogleUser = () => {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    return currentUser?.providerData?.some(provider => provider.providerId === 'google.com');
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -75,13 +94,11 @@ export default function ProfileSection() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       messageApi.error('Please upload an image file');
       return;
     }
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       messageApi.error('Image size must be less than 5MB');
       return;
@@ -89,23 +106,42 @@ export default function ProfileSection() {
 
     setUploadingPhoto(true);
     try {
-      // Convert image to base64
       const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64String = reader.result;
-        setPhotoURL(base64String);
-        
-        // Save to Firebase
-        if (user?.uid) {
-          await updateUserProfile(user.uid, { photoURL: base64String });
-          messageApi.success('Profile photo updated successfully!');
+      reader.onload = async () => {
+        try {
+          const base64String = reader.result;
+          
+          // Validate the base64 string
+          if (!base64String || base64String.length === 0) {
+            messageApi.error('Failed to read image file');
+            setUploadingPhoto(false);
+            return;
+          }
+          
+          setPhotoURL(base64String);
+
+          if (user?.uid) {
+            await updateUserProfile(user.uid, { photoURL: base64String });
+            messageApi.success('Profile photo updated successfully!');
+          }
+        } catch (err) {
+          console.error('Error processing photo upload:', err);
+          messageApi.error('Failed to upload photo');
+        } finally {
+          setUploadingPhoto(false);
         }
       };
+      
+      reader.onerror = () => {
+        console.error('FileReader error:', reader.error);
+        messageApi.error('Failed to read image file');
+        setUploadingPhoto(false);
+      };
+      
       reader.readAsDataURL(file);
     } catch (err) {
       console.error('Photo upload error:', err);
       messageApi.error('Failed to upload photo');
-    } finally {
       setUploadingPhoto(false);
     }
   };
@@ -116,11 +152,11 @@ export default function ProfileSection() {
 
   const hasChanges = () => {
     if (!originalProfile) return false;
-    
-    // Check if photo changed
+
     if (photoURL !== originalPhotoURL) return true;
-    
-    // Check if any profile field changed
+
+    if (passwordData.oldPassword || passwordData.newPassword || passwordData.confirmPassword) return true;
+
     return Object.keys(profile).some(key => profile[key] !== originalProfile[key]);
   };
 
@@ -133,9 +169,11 @@ export default function ProfileSection() {
         cancelText: 'Continue Editing',
         okButtonProps: { danger: true },
         onOk: () => {
+
           // Revert changes
           setProfile(originalProfile);
           setPhotoURL(originalPhotoURL);
+          setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
           setEditMode(false);
         },
       });
@@ -148,13 +186,70 @@ export default function ProfileSection() {
     setProfile(prev => ({ ...prev, [field]: e.target.value }));
   };
 
+  const handlePasswordChange = (field) => (e) => {
+    setPasswordData(prev => ({ ...prev, [field]: e.target.value }));
+  };
+
   const handleSave = async (e) => {
     e?.preventDefault();
     if (!user?.uid) return setError('Not authenticated');
+    
+    //Validation
+    if (passwordData.oldPassword || passwordData.newPassword || passwordData.confirmPassword) {
+      if (!passwordData.oldPassword) {
+        messageApi.error('Please enter your current password');
+        return;
+      }
+      if (!passwordData.newPassword) {
+        messageApi.error('Please enter a new password');
+        return;
+      }
+      if (passwordData.newPassword.length < 6) {
+        messageApi.error('New password must be at least 6 characters');
+        return;
+      }
+      if (passwordData.newPassword !== passwordData.confirmPassword) {
+        messageApi.error('Passwords do not match');
+        return;
+      }
+    }
+
     setSaving(true);
     setError(null);
     setMessage(null);
     try {
+      if (passwordData.oldPassword && passwordData.newPassword) {
+        setChangingPassword(true);
+        const auth = getAuth();
+        const currentUser = auth.currentUser;
+        
+        if (!currentUser || !currentUser.email) {
+          throw new Error('No authenticated user found');
+        }
+
+        const credential = EmailAuthProvider.credential(
+          currentUser.email,
+          passwordData.oldPassword
+        );
+        
+        try {
+          await reauthenticateWithCredential(currentUser, credential);
+        } catch (error) {
+          setChangingPassword(false);
+          if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            messageApi.error('Current password is incorrect');
+            setSaving(false);
+            return;
+          }
+          throw new Error('Failed to verify current password');
+        }
+
+        await updatePassword(currentUser, passwordData.newPassword);
+        messageApi.success('Password changed successfully!');
+        setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
+        setChangingPassword(false);
+      }
+
       const updates = {
         firstName: profile.firstName || null,
         middleName: profile.middleName || null,
@@ -169,15 +264,16 @@ export default function ProfileSection() {
       await updateUserProfile(user.uid, updates);
       messageApi.success('Profile saved successfully!');
       
-      // Update original values after successful save
       setOriginalProfile({ ...profile });
       setOriginalPhotoURL(photoURL);
       setEditMode(false);
     } catch (err) {
       console.error('save profile error', err);
       setError(err?.message || 'Failed to save profile');
+      messageApi.error(err?.message || 'Failed to save profile');
     } finally {
       setSaving(false);
+      setChangingPassword(false);
     }
   };
 
@@ -203,11 +299,15 @@ export default function ProfileSection() {
 
   return (
     <div className="profile-dashboard-container">
-      <UserSidebar 
-        user={user}
-        className={`customer-sidebar${sidebarOpen ? '' : ' collapsed'}${sidebarMobileOpen ? ' open' : ''}`}
-        onCloseMobile={() => setSidebarMobileOpen(false)}
-      />
+      {user?.role === 'superadmin' ? (
+        <SuperAdminSidebar />
+      ) : (
+        <UserSidebar 
+          user={user}
+          className={`customer-sidebar${sidebarOpen ? '' : ' collapsed'}${sidebarMobileOpen ? ' open' : ''}`}
+          onCloseMobile={() => setSidebarMobileOpen(false)}
+        />
+      )}
 
       <div className={`profile-main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
         <NavigationBar
@@ -266,34 +366,42 @@ export default function ProfileSection() {
               
               <div className="profile-avatar-section">
                 <div className="profile-avatar-container">
-                  <label 
-                    className={`profile-avatar-click ${editMode ? 'editable' : ''}`} 
-                    htmlFor="photo-upload" 
-                    style={{ cursor: editMode ? 'pointer' : 'default' }}
-                  >
-                    <div className="profile-avatar-large">
-                      {photoURL && photoURL.trim() !== '' ? (
-                        <img src={photoURL} alt={user?.displayName || 'User'} className="profile-avatar-img" />
-                      ) : (
-                        <User size={64} className="profile-avatar-icon" />
-                      )}
-                    </div>
-                    {editMode && (
+                  {editMode ? (
+                    <label 
+                      className="profile-avatar-click editable" 
+                      htmlFor="photo-upload" 
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <div className="profile-avatar-large">
+                        {photoURL && photoURL.trim() !== '' ? (
+                          <img src={photoURL} alt={user?.displayName || 'User'} className="profile-avatar-img" />
+                        ) : (
+                          <User size={64} className="profile-avatar-icon" />
+                        )}
+                      </div>
                       <div className="profile-avatar-edit-overlay">
                         <Edit size={18} />
                       </div>
-                    )}
-                    {editMode && (
                       <div className="profile-avatar-tooltip">Click to change photo</div>
-                    )}
-                  </label>
+                    </label>
+                  ) : (
+                    <div className="profile-avatar-click">
+                      <div className="profile-avatar-large">
+                        {photoURL && photoURL.trim() !== '' ? (
+                          <img src={photoURL} alt={user?.displayName || 'User'} className="profile-avatar-img" />
+                        ) : (
+                          <User size={64} className="profile-avatar-icon" />
+                        )}
+                      </div>
+                    </div>
+                  )}
                   <input
                     type="file"
                     id="photo-upload"
                     accept="image/*"
                     onChange={handlePhotoUpload}
                     style={{ display: 'none' }}
-                    disabled={uploadingPhoto}
+                    disabled={uploadingPhoto || !editMode}
                   />
                 </div>
                 <div className="profile-info-text">
@@ -335,13 +443,19 @@ export default function ProfileSection() {
                   />
                 </div>
 
-                <div className="form-group-modern">
+                <div className="form-group">
                   <label>Middle Name</label>
                   <input
                     type="text"
                     placeholder="Middle name (optional)"
                     value={profile.middleName}
-                    onChange={handleChange('middleName')}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Only allow letters, spaces, periods, and hyphens
+                      if (/^[a-zA-Z\s.\-]*$/.test(value)) {
+                        handleChange('middleName')(e);
+                      }
+                    }}
                     disabled={!editMode}
                   />
                 </div>
@@ -413,6 +527,98 @@ export default function ProfileSection() {
                   />
                 </div>
 
+                {/* Password Change Section - Only for email/password users */}
+                {!isGoogleUser() && (
+                  <>
+                    <div className="password-section-divider">
+                      <div className="divider-line"></div>
+                      <div className="divider-text">
+                        <Lock size={16} />
+                        Change Password
+                      </div>
+                      <div className="divider-line"></div>
+                    </div>
+
+                <div className="form-group-modern">
+                  <label>Current Password</label>
+                  <div className="password-input-wrapper">
+                    <input
+                      type={showOldPassword ? "text" : "password"}
+                      placeholder="Enter current password"
+                      value={passwordData.oldPassword}
+                      onChange={handlePasswordChange('oldPassword')}
+                      disabled={!editMode}
+                    />
+                    {editMode && (
+                      <button
+                        type="button"
+                        className="password-toggle-btn"
+                        onClick={() => setShowOldPassword(!showOldPassword)}
+                      >
+                        {showOldPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="form-group-modern">
+                  <label>New Password</label>
+                  <div className="password-input-wrapper">
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      placeholder="Enter new password (min 6 characters)"
+                      value={passwordData.newPassword}
+                      onChange={handlePasswordChange('newPassword')}
+                      disabled={!editMode}
+                    />
+                    {editMode && (
+                      <button
+                        type="button"
+                        className="password-toggle-btn"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                      >
+                        {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="form-group-modern">
+                  <label>Confirm New Password</label>
+                  <div className="password-input-wrapper">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Confirm new password"
+                      value={passwordData.confirmPassword}
+                      onChange={handlePasswordChange('confirmPassword')}
+                      disabled={!editMode}
+                    />
+                    {editMode && (
+                      <button
+                        type="button"
+                        className="password-toggle-btn"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      >
+                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {editMode && (
+                  <div className="forgot-password-link">
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotPassword(true)}
+                      className="link-btn"
+                    >
+                      Forgot your password? Click here to reset
+                    </button>
+                  </div>
+                )}
+                  </>
+                )}
+
                 {editMode && (
                   <div className="form-actions-modern">
                     <button type="submit" className="save-btn-modern" disabled={saving}>
@@ -453,6 +659,11 @@ export default function ProfileSection() {
           </button>
         </div>
       )}
+
+      <ForgotPasswordModal
+        open={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+      />
     </div>
   );
 }

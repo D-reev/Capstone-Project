@@ -29,3 +29,5 @@ Key Pain Points: Lack of coordination between mechanics and staff remains an iss
 TODO
 UI Modal 
 client service history to table
+
+Mix req parts and service

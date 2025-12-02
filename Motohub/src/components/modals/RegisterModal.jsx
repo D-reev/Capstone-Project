@@ -4,7 +4,7 @@ import { UserOutlined, LockOutlined, ExclamationCircleOutlined, PhoneOutlined, H
 import './Modal.css';
 import { registerWithUsername } from '../../utils/auth';
 
-export default function RegisterModal({ open, onClose, onSuccess, onSwitchToLogin }) {
+export default function RegisterModal({ open, onClose, onSuccess, onSwitchToLogin, onError }) {
   const [form] = Form.useForm();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -31,6 +31,7 @@ export default function RegisterModal({ open, onClose, onSuccess, onSwitchToLogi
       onClose();
     } catch (err) {
       console.error('Registration error:', err);
+      if (typeof onError === 'function') onError(err);
       
       let errorMessage = 'Registration failed';
       let tips = [];
@@ -206,6 +207,12 @@ export default function RegisterModal({ open, onClose, onSuccess, onSwitchToLogi
         <Form.Item
           label="Middle Name (optional)"
           name="middleName"
+          rules={[
+            {
+              pattern: /^[a-zA-Z\s.\-]*$/,
+              message: 'Middle name can only contain letters, spaces, periods (.), and hyphens'
+            }
+          ]}
         >
           <Input placeholder="Enter middle name" size="large" />
         </Form.Item>

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Info, X, Image as ImageIcon } from 'lucide-react';
-import { Modal, Form, Input, Select, InputNumber, Tooltip, Button, App } from 'antd';
+import { Modal, Form, Input, Select, InputNumber, Tooltip, Button, App, Radio } from 'antd';
 import './Modal.css';
 
 export default function AddCarModal({ onSubmit, onClose, userId }) {
@@ -18,6 +18,7 @@ export default function AddCarModal({ onSubmit, onClose, userId }) {
     plateNumber: "Enter your vehicle's license plate number",
     engine: "Enter engine specifications (e.g., 2.0L Turbo, V6 3.5L)",
     transmission: "Select the type of transmission your vehicle has",
+    fuelType: "Select the type of fuel your vehicle uses",
     mileage: "Enter the current odometer reading in kilometers",
     image: "Upload a photo of your vehicle (optional)"
   };
@@ -206,6 +207,7 @@ export default function AddCarModal({ onSubmit, onClose, userId }) {
           plateNumber: '',
           engine: '',
           transmission: '',
+          fuelType: 'Gas',
           mileage: null
         }}
       >
@@ -332,6 +334,17 @@ export default function AddCarModal({ onSubmit, onClose, userId }) {
             <Select.Option value="Automatic">Automatic</Select.Option>
             <Select.Option value="CVT">CVT</Select.Option>
           </Select>
+        </Form.Item>
+
+        <Form.Item
+          label={<span>FUEL TYPE <Tooltip title={fieldInfo.fuelType}><Info size={14} /></Tooltip></span>}
+          name="fuelType"
+          rules={[{ required: true, message: 'Please select fuel type' }]}
+        >
+          <Radio.Group>
+            <Radio value="Gas">Gas</Radio>
+            <Radio value="Diesel">Diesel</Radio>
+          </Radio.Group>
         </Form.Item>
 
         <Form.Item

@@ -553,6 +553,124 @@
   text-transform: uppercase;
 }
 
+/* Collapsible Section Styles */
+.nav-item.collapsible {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nav-item.collapsible .nav-item-content {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 0.75rem;
+}
+
+.nav-item.collapsible .nav-item-indicator {
+  margin-left: auto;
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+}
+
+/* Ensure collapsible sections always show the indicator (not only when the item is "active").
+   This makes the small triangle visible so users know the item can expand/collapse. */
+.nav-item.collapsible .nav-item-indicator {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Child Navigation Section */
+.nav-section-children {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-left: 0;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+    overflow: visible;
+  }
+}
+
+/* Child Navigation Item */
+.nav-item-child {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  margin-left: 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  border-left: 2px solid rgba(255, 195, 0, 0);
+}
+
+.nav-item-child::before {
+  content: '';
+  position: absolute;
+  left: -1.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1rem;
+  height: 1px;
+  background: rgba(255, 195, 0, 0.2);
+}
+
+.nav-item-child:hover {
+  background: rgba(255, 195, 0, 0.08);
+  border-left-color: rgba(255, 195, 0, 0.3);
+}
+
+.nav-item-child.active {
+  background: rgba(255, 195, 0, 0.15);
+  border-left-color: #FFC300;
+  color: #FFC300;
+}
+
+.nav-item-child.active .nav-item-label {
+  color: #FFC300;
+  font-weight: 600;
+}
+
+.nav-item-child-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.child-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 195, 0, 0.5);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.nav-item-child.active .child-dot {
+  background: #FFC300;
+  width: 8px;
+  height: 8px;
+}
+
+.nav-item-child:hover .child-dot {
+  background: #FFC300;
+  transform: scale(1.2);
+}
+
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .sidebar,

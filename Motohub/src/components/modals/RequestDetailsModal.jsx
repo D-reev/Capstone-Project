@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Descriptions, Tag, Typography, App, Space, Divider } from 'antd';
+import { useAuth } from '../../context/AuthContext';
 import { 
   CheckCircleOutlined, 
   CloseCircleOutlined, 
@@ -10,8 +11,9 @@ import {
   ShoppingOutlined,
   HistoryOutlined
 } from '@ant-design/icons';
-import { getFirestore, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, updateDoc, runTransaction, collection, addDoc } from 'firebase/firestore';
 import { notifyRequestStatusChange } from '../../utils/auth';
+import { logHelpers } from '../../utils/logger';
 import './Modal.css';
 
 const { Title, Text } = Typography;
@@ -22,6 +24,7 @@ export default function RequestDetailsModal({
   onClose,
   onStatusChange
 }) {
+  const { user } = useAuth();
   const { message: messageApi } = App.useApp();
   const [request, setRequest] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -71,25 +74,122 @@ export default function RequestDetailsModal({
   const handleApprove = async () => {
     try {
       setProcessing(true);
-      const requestRef = doc(db, 'partRequests', requestId);
-      
-      await updateDoc(requestRef, {
-        status: 'approved',
-        approvedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+
+      // Validate that all parts have valid IDs
+      if (!request.parts || request.parts.length === 0) {
+        messageApi.error('No parts found in request');
+        return;
+      }
+
+      // Check if all parts exist in inventory and have sufficient stock
+      const insufficientParts = [];
+      for (const part of request.parts) {
+        if (!part.partId) {
+          messageApi.error(`Part "${part.name}" is missing inventory reference`);
+          return;
+        }
+
+        const partRef = doc(db, 'inventory', part.partId);
+        const partSnap = await getDoc(partRef);
+        
+        if (!partSnap.exists()) {
+          messageApi.error(`Part "${part.name}" not found in inventory`);
+          return;
+        }
+
+        const currentStock = partSnap.data().quantity || 0;
+        if (currentStock < part.quantity) {
+          insufficientParts.push({
+            name: part.name,
+            requested: part.quantity,
+            available: currentStock
+          });
+        }
+      }
+
+      // Show error if insufficient stock
+      if (insufficientParts.length > 0) {
+        const errorMsg = insufficientParts.map(p => 
+          `${p.name}: requested ${p.requested}, available ${p.available}`
+        ).join('; ');
+        messageApi.error(`Insufficient stock: ${errorMsg}`);
+        return;
+      }
+
+      // Use transaction to ensure atomic updates
+      await runTransaction(db, async (transaction) => {
+        const requestRef = doc(db, 'partRequests', requestId);
+        
+        // Update request status
+        transaction.update(requestRef, {
+          status: 'approved',
+          approvedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+
+        // Deduct parts from inventory
+        for (const part of request.parts) {
+          const partRef = doc(db, 'inventory', part.partId);
+          const partSnap = await transaction.get(partRef);
+          
+          if (partSnap.exists()) {
+            const currentQuantity = partSnap.data().quantity || 0;
+            const newQuantity = currentQuantity - part.quantity;
+            
+            transaction.update(partRef, {
+              quantity: newQuantity,
+              lastModified: new Date().toISOString()
+            });
+          }
+        }
+
+        // Create transaction record
+        const transactionRef = collection(db, 'inventoryTransactions');
+        const transactionData = {
+          type: 'parts_request_approval',
+          requestId: requestId,
+          mechanicId: request.mechanicId,
+          mechanicName: request.mechanicName,
+          customerId: request.customerId,
+          customerName: request.customerName,
+          carDetails: request.carDetails || request.car,
+          parts: request.parts.map(part => ({
+            partId: part.partId,
+            name: part.name,
+            quantity: part.quantity,
+            price: part.price,
+            total: part.price * part.quantity
+          })),
+          totalAmount: request.parts.reduce((sum, part) => sum + (part.price * part.quantity), 0),
+          timestamp: new Date().toISOString(),
+          status: 'completed'
+        };
+        
+        transaction.set(doc(transactionRef), transactionData);
       });
+
+      // Log the action
+      await logHelpers.partsRequestApproved(
+        user?.uid,
+        request.mechanicName,
+        requestId,
+        {
+          parts: request.parts.map(p => ({ name: p.name, quantity: p.quantity })),
+          totalAmount: request.parts.reduce((sum, part) => sum + (part.price * part.quantity), 0)
+        }
+      );
 
       // Send notification to mechanic
       if (request?.mechanicId) {
         await notifyRequestStatusChange(requestId, request.mechanicId, 'approved');
       }
 
-      messageApi.success('Request approved successfully!');
+      messageApi.success('Request approved and inventory updated successfully!');
       onStatusChange?.();
       onClose();
     } catch (error) {
       console.error('Error approving request:', error);
-      messageApi.error('Failed to approve request');
+      messageApi.error(error.message || 'Failed to approve request');
     } finally {
       setProcessing(false);
     }
@@ -169,8 +269,8 @@ export default function RequestDetailsModal({
     <Modal
       open={open}
       title={
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
-          <Text style={{ fontSize: 18, fontWeight: 700, color: '#1F2937' }}>Parts Request Details</Text>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Parts Request Details</span>
           <Tag 
             color={
               request.status === 'pending' ? 'warning' : 
@@ -192,29 +292,45 @@ export default function RequestDetailsModal({
       }
       onCancel={onClose}
       footer={null}
-      width={750}
+      width={700}
       centered
       loading={loading}
+      zIndex={1050}
       styles={{
-        header: {
-          background: 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
-          borderBottom: 'none',
-          borderRadius: '8px 8px 0 0',
-          padding: '20px 24px'
-        },
-        body: {
-          padding: '24px'
-        }
+        body: { maxHeight: 'calc(90vh - 120px)', overflowY: 'auto' }
       }}
     >
+      <style>{`
+        .ant-modal-header {
+          background: transparent !important;
+          border-bottom: 1px solid #E5E7EB !important;
+          padding: 20px 24px !important;
+        }
+        .ant-modal-title {
+          color: #000 !important;
+          font-weight: 700 !important;
+          font-size: 18px !important;
+          text-align: center !important;
+        }
+        .ant-modal-body {
+          padding: 24px !important;
+        }
+        .ant-modal-close-x {
+          color: #000 !important;
+          font-size: 18px !important;
+        }
+        .ant-modal-close-x:hover {
+          color: #1F2937 !important;
+        }
+      `}</style>
       {/* Mechanic Information Card */}
       <div style={{
         background: 'linear-gradient(135deg, #1F2937 0%, #374151 100%)',
         borderRadius: 12,
-        padding: 20,
-        marginBottom: 24,
+        padding: '20px 24px',
+        marginBottom: 20,
         color: 'white',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
       }}>
         <Space direction="vertical" size={12} style={{ width: '100%' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -270,14 +386,43 @@ export default function RequestDetailsModal({
               )}
             </Space>
           )}
+
+          {/* Other Mechanics */}
+          {request.mechanicNames && request.mechanicNames.length > 0 && (
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+              <Text style={{ color: '#9CA3AF', fontSize: 12, display: 'block', marginBottom: 6 }}>
+                Other Mechanics Involved
+              </Text>
+              <div style={{ paddingLeft: 0 }}>
+                {request.mechanicNames.map((name, index) => (
+                  <Tag
+                    key={index}
+                    style={{
+                      background: 'rgba(255, 195, 0, 0.2)',
+                      border: '1px solid rgba(255, 195, 0, 0.3)',
+                      color: '#FFD54F',
+                      marginBottom: 4,
+                      marginRight: 6,
+                      padding: '4px 12px',
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 500
+                    }}
+                  >
+                    {name}
+                  </Tag>
+                ))}
+              </div>
+            </div>
+          )}
         </Space>
       </div>
 
       {/* Quick Actions */}
       {isPending && (
         <>
-          <Title level={5} style={{ marginTop: 0, marginBottom: 12, color: '#6B7280' }}>Quick Actions</Title>
-          <Space wrap style={{ marginBottom: 20 }}>
+          <Title level={5} style={{ marginTop: 0, marginBottom: 12, color: '#374151', fontWeight: 600, fontSize: 14 }}>Quick Actions</Title>
+          <Space wrap style={{ marginBottom: 16 }}>
             <Button 
               icon={<ShoppingOutlined />}
               onClick={handleViewInventory}
@@ -334,7 +479,14 @@ export default function RequestDetailsModal({
       )}
 
       {/* Request Details */}
-      <Descriptions column={1} bordered size="small" style={{ marginBottom: '16px' }}>
+      <Descriptions 
+        column={1} 
+        bordered 
+        size="small" 
+        style={{ marginBottom: 16 }}
+        labelStyle={{ fontWeight: 600, background: '#F9FAFB', width: '140px' }}
+        contentStyle={{ background: 'white' }}
+      >
         <Descriptions.Item label={<Space><CarOutlined />Customer</Space>}>
           {request.customerName || request.customer?.name || 'N/A'}
         </Descriptions.Item>
@@ -366,7 +518,7 @@ export default function RequestDetailsModal({
         </Descriptions.Item>
       </Descriptions>
 
-      <Title level={5} style={{ marginTop: 16, marginBottom: 12 }}>
+      <Title level={5} style={{ marginTop: 16, marginBottom: 12, color: '#374151', fontWeight: 600, fontSize: 14 }}>
         Parts Requested ({request.parts?.length || 0})
       </Title>
       {Array.isArray(request.parts) && request.parts.length > 0 ? (
@@ -379,13 +531,14 @@ export default function RequestDetailsModal({
           }}>
             {request.parts.map((part, index) => (
               <div key={index} style={{ 
-                background: '#f9fafb', 
+                background: 'linear-gradient(to right, #FFFBEB, #FEF3C7)', 
                 borderRadius: 8, 
-                padding: '12px 16px',
+                padding: '14px 18px',
                 display: 'flex', 
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                borderLeft: '4px solid #FFC300'
+                borderLeft: '4px solid #FFC300',
+                transition: 'transform 0.2s ease'
               }}>
                 <Text strong>{part.name}</Text>
                 <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
@@ -398,13 +551,14 @@ export default function RequestDetailsModal({
             ))}
           </div>
           <div style={{
-            background: '#1F2937',
-            padding: '12px 16px',
-            borderRadius: 8,
+            background: 'linear-gradient(135deg, #1F2937, #374151)',
+            padding: '16px 20px',
+            borderRadius: 10,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: 24
+            marginBottom: 20,
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
           }}>
             <Text strong style={{ color: 'white' }}>Total Amount:</Text>
             <Text strong style={{ color: '#FFC300', fontSize: 18 }}>
@@ -419,7 +573,7 @@ export default function RequestDetailsModal({
       )}
 
       {/* Action Buttons */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 20, paddingTop: 4 }}>
         {isPending ? (
           <>
             <Button 

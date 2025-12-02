@@ -5,6 +5,7 @@ import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } 
 import { Tag, Plus, Edit2, Trash2, Save, X, Calendar } from 'lucide-react';
 import { Modal, Form, Input, Select, Button, App } from 'antd';
 import AdminSidebar from '../components/AdminSidebar';
+import SuperAdminSidebar from '../components/SuperAdminSidebar';
 import NavigationBar from '../components/NavigationBar';
 import SuccessModal from '../components/modals/SuccessModal';
 import DeletePromotionModal from '../components/modals/DeletePromotionModal';
@@ -185,8 +186,8 @@ export default function AdminPromotions() {
   };
 
   return (
-    <div className="admin-promotions-container">
-      <AdminSidebar />
+    <div className="admin-promotions-page">
+      {user?.role === 'superadmin' ? <SuperAdminSidebar /> : <AdminSidebar />}
       
       <div className={`admin-promotions-main${!sidebarOpen ? ' sidebar-collapsed' : ''}`}>
         <NavigationBar

@@ -4,8 +4,9 @@ import { useSidebar } from '../context/SidebarContext';
 import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, FilterOutlined, TagOutlined, ExclamationCircleOutlined, DollarOutlined } from '@ant-design/icons';
 import { Table, Tag, Input, Button, Space, Avatar, ConfigProvider, Select, Modal, App } from 'antd';
-import { PackagePlus, ChevronDown, Package } from 'lucide-react';
+import { PackagePlus, ChevronDown, Package, Zap, Settings, Disc, Wind, Battery, Car, ShoppingBag } from 'lucide-react';
 import AdminSidebar from '../components/AdminSidebar';
+import SuperAdminSidebar from '../components/SuperAdminSidebar';
 import AddPartModal from '../components/modals/AddPartModal';
 import EditPartModal from '../components/modals/EditPartModal';
 import RestockModal from '../components/modals/RestockModal';
@@ -196,6 +197,28 @@ function InventoryPage() {
     });
   };
 
+  const getCategoryIcon = (category) => {
+    const iconProps = { size: 24 };
+    switch(category?.toLowerCase()) {
+      case 'engine':
+        return <Zap {...iconProps} />;
+      case 'transmission':
+        return <Settings {...iconProps} />;
+      case 'brake':
+        return <Disc {...iconProps} />;
+      case 'suspension':
+        return <Wind {...iconProps} />;
+      case 'electrical':
+        return <Battery {...iconProps} />;
+      case 'body':
+        return <Car {...iconProps} />;
+      case 'accessories':
+        return <ShoppingBag {...iconProps} />;
+      default:
+        return <Package {...iconProps} />;
+    }
+  };
+
   const getPartInitials = (name) => {
     if (!name) return '?';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -306,16 +329,17 @@ function InventoryPage() {
       render: (text, record) => (
         <Space>
           <Avatar 
-            size={40}
+            size={32}
             style={{ 
-              backgroundColor: '#FEF3C7', 
-              color: '#D97706',
-              fontWeight: 600,
-              border: '2px solid #FBBF24'
+              backgroundColor: '#F3F4F6', 
+              color: '#6B7280',
+              fontWeight: 500,
+              fontSize: '12px'
             }}
-            src={record.image}
+            {...(record.image && { src: record.image })}
+            icon={!record.image ? getCategoryIcon(record.category) : null}
           >
-            {getPartInitials(text)}
+            {!record.image && !record.category ? getPartInitials(text) : null}
           </Avatar>
           <span style={{ fontWeight: 500, color: '#111827' }}>
             {text || 'Unknown Part'}
@@ -350,12 +374,34 @@ function InventoryPage() {
       },
     },
     {
-      title: 'Price',
+      title: 'Unit Price',
+      dataIndex: 'unitPrice',
+      key: 'unitPrice',
+      width: 120,
+      render: (unitPrice) => (
+        <span style={{ fontWeight: 500, color: '#6B7280' }}>
+          ₱{unitPrice?.toFixed(2) || '0.00'}
+        </span>
+      ),
+    },
+    {
+      title: 'Markup',
+      dataIndex: 'markupPercentage',
+      key: 'markupPercentage',
+      width: 100,
+      render: (markup) => (
+        <span style={{ fontWeight: 500, color: '#059669' }}>
+          {markup || 0}%
+        </span>
+      ),
+    },
+    {
+      title: 'Sales Price',
       dataIndex: 'price',
       key: 'price',
       width: 120,
       render: (price) => (
-        <span style={{ fontWeight: 500, color: '#111827' }}>
+        <span style={{ fontWeight: 600, color: '#111827' }}>
           ₱{price?.toFixed(2) || '0.00'}
         </span>
       ),
@@ -397,9 +443,7 @@ function InventoryPage() {
 
   return (
     <div className="inventory-page">
-        <AdminSidebar />
-
-        <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
+      {user?.role === 'superadmin' ? <SuperAdminSidebar /> : <AdminSidebar />}        <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
           <NavigationBar
             title="Inventory Management"
             onProfileClick={() => setProfileOpen(true)}
@@ -499,6 +543,18 @@ function InventoryPage() {
                             className="inventory-mobile-card-header"
                             onClick={() => toggleMobileCard(part.id)}
                           >
+                            <Avatar
+                              size={48}
+                              src={part.image}
+                              icon={!part.image ? getCategoryIcon(part.category) : null}
+                              style={{ 
+                                backgroundColor: '#F59E0B', 
+                                flexShrink: 0,
+                                marginRight: '12px'
+                              }}
+                            >
+                              {!part.image && !part.category ? part.name?.[0] : null}
+                            </Avatar>
                             <div className="inventory-mobile-info">
                               <div className="inventory-mobile-name">{part.name || 'Unknown Part'}</div>
                               <div className="inventory-mobile-brand">{part.category || 'Uncategorized'}</div>

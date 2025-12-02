@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSidebar } from '../context/SidebarContext';
 import { getFirestore, collection, getDocs, updateDoc, doc, query, orderBy, getDoc, runTransaction } from 'firebase/firestore';
-import { SearchOutlined, FilterOutlined, InfoCircleOutlined, MoreOutlined, PlusOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { SearchOutlined, FilterOutlined, InfoCircleOutlined, MoreOutlined, PlusOutlined, CheckOutlined, CloseOutlined, EditOutlined } from '@ant-design/icons';
 import { Input, Button, Avatar, Dropdown, Menu, Modal, message, App, ConfigProvider } from 'antd';
 import { ChevronDown, Car, Package } from 'lucide-react';
 import AdminSidebar from '../components/AdminSidebar';
+import SuperAdminSidebar from '../components/SuperAdminSidebar';
 import NavigationBar from '../components/NavigationBar';
 import ProfileModal from '../components/modals/ProfileModal';
 import Loading from '../components/Loading';
@@ -239,8 +240,8 @@ function AdminRequestsContent() {
   if (loading) return <Loading text="Loading requests..." />;
 
   return (
-    <div className="requests-page">
-      <AdminSidebar />
+    <div className="admin-requests-page">
+      {user?.role === 'superadmin' ? <SuperAdminSidebar /> : <AdminSidebar />}
 
       <div className={`requests-main ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
         <NavigationBar
@@ -334,9 +335,28 @@ function AdminRequestsContent() {
                       <td>{request.parts?.length || 0} items</td>
                       <td>{formatDate(request.createdAt)}</td>
                       <td>
-                        <span className={`status ${request.status || 'pending'}`}>
-                          {(request.status || 'pending').charAt(0).toUpperCase() + (request.status || 'pending').slice(1)}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span className={`status ${request.status || 'pending'}`}>
+                            {(request.status || 'pending').charAt(0).toUpperCase() + (request.status || 'pending').slice(1)}
+                          </span>
+                          {request.isModified && (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '4px 8px',
+                              borderRadius: '12px',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              backgroundColor: '#FEF3C7',
+                              color: '#92400E',
+                              border: '1px solid #FCD34D'
+                            }}>
+                              <EditOutlined style={{ fontSize: '10px' }} />
+                              Modified
+                            </span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -391,6 +411,23 @@ function AdminRequestsContent() {
                         <span className={`requests-mobile-badge status-${request.status || 'pending'}`}>
                           {(request.status || 'pending').charAt(0).toUpperCase() + (request.status || 'pending').slice(1)}
                         </span>
+                        {request.isModified && (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '4px 8px',
+                            borderRadius: '12px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            backgroundColor: '#FEF3C7',
+                            color: '#92400E',
+                            border: '1px solid #FCD34D'
+                          }}>
+                            <EditOutlined style={{ fontSize: '10px' }} />
+                            Modified
+                          </span>
+                        )}
                       </div>
 
                       {isExpanded && (
@@ -633,9 +670,33 @@ function AdminRequestsContent() {
                 </div>
                 <div>
                   <p style={{ fontSize: '0.875rem', color: '#6B7280', marginBottom: '0.25rem' }}>Status</p>
-                  <span className={`status ${selectedRequest.status || 'pending'}`}>
-                    {(selectedRequest.status || 'pending').charAt(0).toUpperCase() + (selectedRequest.status || 'pending').slice(1)}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className={`status ${selectedRequest.status || 'pending'}`}>
+                      {(selectedRequest.status || 'pending').charAt(0).toUpperCase() + (selectedRequest.status || 'pending').slice(1)}
+                    </span>
+                    {selectedRequest.isModified && (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '4px 8px',
+                        borderRadius: '12px',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        backgroundColor: '#FEF3C7',
+                        color: '#92400E',
+                        border: '1px solid #FCD34D'
+                      }}>
+                        <EditOutlined style={{ fontSize: '10px' }} />
+                        Modified
+                      </span>
+                    )}
+                  </div>
+                  {selectedRequest.isModified && selectedRequest.lastModified && (
+                    <p style={{ fontSize: '0.75rem', color: '#6B7280', marginTop: '0.25rem', margin: 0 }}>
+                      Last modified: {formatDate(selectedRequest.lastModified)}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -681,6 +742,9 @@ function AdminRequestsContent() {
                         <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: '#6B7280' }}>
                           Quantity
                         </th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#6B7280' }}>
+                          Work Performed
+                        </th>
                         <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: 600, color: '#6B7280' }}>
                           Price
                         </th>
@@ -695,6 +759,9 @@ function AdminRequestsContent() {
                           <td style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.875rem', color: '#111827' }}>
                             {part.quantity || 0}
                           </td>
+                          <td style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6B7280', fontStyle: part.workPerformed ? 'normal' : 'italic' }}>
+                            {part.workPerformed || 'No work details provided'}
+                          </td>
                           <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>
                             ₱{((part.price || 0) * (part.quantity || 0)).toLocaleString()}
                           </td>
@@ -703,7 +770,7 @@ function AdminRequestsContent() {
                     </tbody>
                     <tfoot style={{ background: '#F9FAFB', borderTop: '2px solid #E5E7EB' }}>
                       <tr>
-                        <td colSpan="2" style={{ padding: '0.75rem', fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>
+                        <td colSpan="3" style={{ padding: '0.75rem', fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>
                           Total Amount
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '1rem', fontWeight: 700, color: '#FBBF24' }}>
@@ -713,6 +780,45 @@ function AdminRequestsContent() {
                     </tfoot>
                   </table>
                 </div>
+              </div>
+            )}
+
+            {/* Work Details - Show detailed work/parts pairs */}
+            {selectedRequest.workDetails && selectedRequest.workDetails.length > 0 && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: '#111827' }}>
+                  Detailed Work & Parts Breakdown
+                </h3>
+                {selectedRequest.workDetails.map((detail, index) => (
+                  <div 
+                    key={index}
+                    style={{ 
+                      marginBottom: '1rem',
+                      padding: '1rem',
+                      background: '#F9FAFB',
+                      borderRadius: '8px',
+                      border: '1px solid #E5E7EB'
+                    }}
+                  >
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>
+                        Entry {index + 1}
+                      </span>
+                    </div>
+                    {detail.partsUsed && (
+                      <div style={{ marginBottom: '0.5rem' }}>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>• Parts: </span>
+                        <span style={{ fontSize: '0.875rem', color: '#374151' }}>{detail.partsUsed}</span>
+                      </div>
+                    )}
+                    {detail.workPerformed && (
+                      <div>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>• Work: </span>
+                        <span style={{ fontSize: '0.875rem', color: '#374151' }}>{detail.workPerformed}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
 

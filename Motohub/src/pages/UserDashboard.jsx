@@ -25,6 +25,7 @@ import 'slick-carousel/slick/slick-theme.css';
 import { useAuth } from '../context/AuthContext';
 import { useSidebar } from '../context/SidebarContext';
 import UserSidebar from '../components/UserSidebar';
+import SuperAdminSidebar from '../components/SuperAdminSidebar';
 import NavigationBar from '../components/NavigationBar';
 import ScrollStack, { ScrollStackItem } from '../components/ScrollStack';
 import ServiceHistoryModal from '../components/modals/ServiceHistoryModal';
@@ -507,7 +508,6 @@ function MotohubCustomerDashboardContent() {
     } catch (error) {
       console.error('Error generating PDF:', error);
       
-      // Provide more specific error messages
       let errorMessage = 'Failed to generate PDF. ';
       if (error.message.includes('Invalid vehicle')) {
         errorMessage += 'Vehicle data is invalid.';
@@ -723,7 +723,7 @@ function MotohubCustomerDashboardContent() {
 
   return (
     <div className="customer-dashboard-container">
-      <UserSidebar />
+      {user?.role === 'superadmin' ? <SuperAdminSidebar /> : <UserSidebar />}
 
       <div className={`customer-main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
         <NavigationBar

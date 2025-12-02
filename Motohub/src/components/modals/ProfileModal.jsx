@@ -171,6 +171,12 @@ export default function ProfileModal({ open, onClose, user, onSaved }) {
           <Form.Item
             label="Middle Name (optional)"
             name="middleName"
+            rules={[
+              {
+                pattern: /^[a-zA-Z\s.\-]*$/,
+                message: 'Middle name can only contain letters, spaces, periods (.), and hyphens'
+              }
+            ]}
           >
             <Input 
               prefix={<UserOutlined />} 

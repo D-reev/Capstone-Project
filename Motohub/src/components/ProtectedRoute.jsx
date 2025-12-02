@@ -16,8 +16,9 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
 
   // Check role access
   if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-    // Redirect to their appropriate dashboard based on their actual role
     switch (user.role) {
+      case 'superadmin':
+        return <Navigate to="/admindashboard" replace />;
       case 'admin':
         return <Navigate to="/admindashboard" replace />;
       case 'mechanic':

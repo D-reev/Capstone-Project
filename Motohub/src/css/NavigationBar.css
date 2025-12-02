@@ -13,7 +13,7 @@
   background: linear-gradient(to right, #1F2937 0%, #111827 100%);
   border-bottom: 1px solid rgba(255, 195, 0, 0.15);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  z-index: 1001;
+  z-index: 900;
   gap: 1rem;
   box-sizing: border-box;
   line-height: 1.2;
@@ -107,7 +107,7 @@
 
 /* Dropdown Overlays */
 .nav-dropdown {
-  z-index: 1050 !important;
+  z-index: 950 !important;
 }
 
 .nav-dropdown .ant-dropdown-menu {

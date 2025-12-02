@@ -30,19 +30,12 @@ export const AuthProvider = ({ children }) => {
         if (firebaseUser) {
           const userProfile = await getUserProfile(firebaseUser.uid);
           
-          console.log('🔍 AuthContext Debug:');
-          console.log('  Firebase Auth photoURL:', firebaseUser.photoURL);
-          console.log('  Firestore photoURL:', userProfile?.photoURL);
-          console.log('  Full userProfile:', userProfile);
-          
-          const finalPhotoURL = userProfile?.photoURL || firebaseUser.photoURL || '';
-          
-          console.log('  Final photoURL:', finalPhotoURL);
+          // Prioritize Firestore photoURL, then Firebase Auth photoURL, trim and validate
+          const finalPhotoURL = (userProfile?.photoURL?.trim?.() || firebaseUser.photoURL?.trim?.() || '').trim();
           
           setUser({
             uid: firebaseUser.uid,
             email: firebaseUser.email,
-            // Prioritize Firestore photoURL, then Firebase Auth photoURL
             photoURL: finalPhotoURL,
             displayName: userProfile?.displayName || firebaseUser.displayName || '',
             role: userProfile?.role || 'user',

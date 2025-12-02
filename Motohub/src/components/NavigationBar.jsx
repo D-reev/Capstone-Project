@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSidebar } from '../context/SidebarContext';
-import { getFirestore, collection, query, where, getDocs, orderBy, limit, doc, getDoc } from 'firebase/firestore';
+import { getFirestore, collection, query, where, getDocs, orderBy, limit, doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { Badge, Dropdown, Space, Typography, Button, Grid } from 'antd';
 import { 
   Bell, 
@@ -14,6 +14,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import RequestDetailsModal from './modals/RequestDetailsModal';
+import NotificationsModal from './modals/NotificationsModal';
 import '../css/NavigationBar.css';
 
 const { Title, Text } = Typography;
@@ -37,6 +38,7 @@ const NavigationBar = ({
   const [notificationCount, setNotificationCount] = useState(0);
   const [selectedRequestId, setSelectedRequestId] = useState(null);
   const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [notificationsModalOpen, setNotificationsModalOpen] = useState(false);
 
   // Responsive breakpoints
   const isMdUp = screens.md;
@@ -44,14 +46,33 @@ const NavigationBar = ({
   const isXs = screens.xs;
 
   useEffect(() => {
-    if (userRole === 'admin' || userRole === 'mechanic') {
+    if (user && (userRole === 'admin' || userRole === 'mechanic' || userRole === 'superadmin')) {
       fetchNotifications();
     }
   }, [userRole, user]);
 
-  const handleNotificationClick = (requestId) => {
+  const handleNotificationClick = async (requestId, notificationId) => {
+    // Mark notification as read
+    if (notificationId && user?.uid) {
+      await markNotificationAsRead(notificationId);
+    }
     setSelectedRequestId(requestId);
     setRequestModalOpen(true);
+  };
+
+  const markNotificationAsRead = async (notificationId) => {
+    if (notificationId && user?.uid) {
+      try {
+        const notifRef = doc(db, 'users', user.uid, 'notifications', notificationId);
+        await updateDoc(notifRef, { read: true });
+        // Optimistically update local state
+        setNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n));
+        // Decrement badge count
+        setNotificationCount(prev => Math.max(0, prev - 1));
+      } catch (error) {
+        console.error('Error marking notification as read:', error);
+      }
+    }
   };
 
   const handleRequestModalClose = () => {
@@ -68,10 +89,27 @@ const NavigationBar = ({
   };
 
   const fetchNotifications = async () => {
+    if (!user?.uid) {
+      return;
+    }
+    
     try {
+      let unreadCount = 0;
       const notifs = [];
 
-      if (userRole === 'admin') {
+      if (userRole === 'admin' || userRole === 'mechanic') {
+        // First, count all unread user notifications
+        if (user?.uid) {
+          const unreadQuery = query(
+            collection(db, 'users', user.uid, 'notifications'),
+            where('read', '==', false)
+          );
+          const unreadSnapshot = await getDocs(unreadQuery);
+          unreadCount = unreadSnapshot.size;
+        }
+      }
+
+      if (userRole === 'admin' || userRole === 'superadmin') {
         // Fetch user-specific notifications (follow-ups)
         if (user?.uid) {
           const userNotificationsQuery = query(
@@ -94,12 +132,13 @@ const NavigationBar = ({
                 // Only show if request still exists and is pending
                 if (requestSnap.exists() && requestSnap.data().status === 'pending') {
                   notifs.push({
+                    id: notifDoc.id,
                     title: data.title || 'Notification',
                     description: data.description || '',
                     time: getTimeAgo(data.timestamp),
                     type: data.type || 'info',
                     icon: <Bell size={18} />,
-                    action: () => handleNotificationClick(data.requestId),
+                    action: () => handleNotificationClick(data.requestId, notifDoc.id),
                     isRead: data.read || false,
                     requestId: data.requestId
                   });
@@ -107,15 +146,16 @@ const NavigationBar = ({
               } catch (error) {
                 console.error('Error validating notification:', error);
               }
-            } else {
-              // Show other notification types as is
+            } else if (data.type !== 'follow_up') {
+              // Show other notification types (but not follow-ups that don't have requestId)
               notifs.push({
+                id: notifDoc.id,
                 title: data.title || 'Notification',
                 description: data.description || '',
                 time: getTimeAgo(data.timestamp),
                 type: data.type || 'info',
-                icon: data.type === 'follow_up' ? <Bell size={18} /> : <Package size={18} />,
-                action: () => handleNotificationClick(data.requestId),
+                icon: <Package size={18} />,
+                action: () => handleNotificationClick(data.requestId, notifDoc.id),
                 isRead: data.read || false,
                 requestId: data.requestId
               });
@@ -123,7 +163,8 @@ const NavigationBar = ({
           }
         }
         
-        // Fetch pending part requests
+        // Fetch pending part requests - avoid duplicates
+        const existingRequestIds = new Set(notifs.map(n => n.requestId).filter(Boolean));
         const requestsQuery = query(
           collection(db, 'partRequests'),
           where('status', '==', 'pending'),
@@ -134,8 +175,8 @@ const NavigationBar = ({
         
         requestsSnapshot.forEach(doc => {
           const data = doc.data();
-          // Only show pending requests
-          if (data.status === 'pending') {
+          // Only show pending requests that aren't already in notifications
+          if (data.status === 'pending' && !existingRequestIds.has(doc.id)) {
             notifs.push({
               title: 'New Part Request',
               description: `${data.mechanicName || 'Mechanic'} requested ${data.parts?.length || 0} part(s)`,
@@ -187,12 +228,13 @@ const NavigationBar = ({
             const isRejected = data.status === 'rejected';
             
             notifs.push({
+              id: doc.id,
               title: data.title || 'Notification',
               description: data.description || '',
               time: getTimeAgo(data.timestamp),
               type: data.type || 'info',
               icon: isApproved ? <CheckCircle size={18} /> : isRejected ? <XCircle size={18} /> : <Package size={18} />,
-              action: () => handleNotificationClick(data.requestId),
+              action: () => handleNotificationClick(data.requestId, doc.id),
               isRead: data.read || false,
               requestId: data.requestId
             });
@@ -230,7 +272,7 @@ const NavigationBar = ({
       }
 
       setNotifications(notifs);
-      setNotificationCount(notifs.length);
+      setNotificationCount(unreadCount);
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }
@@ -253,12 +295,14 @@ const NavigationBar = ({
     if (onRefresh) {
       onRefresh();
     }
-    if (userRole === 'admin' || userRole === 'mechanic') {
+    if (user?.uid && (userRole === 'admin' || userRole === 'mechanic' || userRole === 'superadmin')) {
       fetchNotifications();
     }
   };
 
-  const notificationMenuItems = notifications.length > 0 ? [
+  const unreadNotifications = notifications.filter(n => n.id && n.isRead === false);
+
+  const notificationMenuItems = [
     {
       key: 'header',
       label: (
@@ -270,7 +314,8 @@ const NavigationBar = ({
       disabled: true
     },
     { type: 'divider' },
-    ...notifications.map((notif, index) => ({
+    // If there are unread notifications show them; otherwise show an "all caught up" placeholder
+    ...(unreadNotifications.length > 0 ? unreadNotifications.map((notif, index) => ({
       key: `notif-${index}`,
       label: (
         <div className="notification-item" onClick={notif.action}>
@@ -286,18 +331,7 @@ const NavigationBar = ({
           </div>
         </div>
       )
-    })),
-    { type: 'divider' },
-    {
-      key: 'view-all',
-      label: (
-        <div className="notification-footer">
-          <span>View all notifications</span>
-        </div>
-      )
-    }
-  ] : [
-    {
+    })) : [{
       key: 'empty',
       label: (
         <div className="notification-empty">
@@ -307,6 +341,16 @@ const NavigationBar = ({
         </div>
       ),
       disabled: true
+    }]),
+    { type: 'divider' },
+    // Always show view-all footer
+    {
+      key: 'view-all',
+      label: (
+        <div className="notification-footer" onClick={() => setNotificationsModalOpen(true)}>
+          <span>View all notifications</span>
+        </div>
+      )
     }
   ];
 
@@ -398,6 +442,21 @@ const NavigationBar = ({
         open={requestModalOpen}
         onClose={handleRequestModalClose}
         onStatusChange={handleStatusChange}
+      />
+
+      {/* All Notifications Modal */}
+      <NotificationsModal
+        open={notificationsModalOpen}
+        onClose={() => {
+          setNotificationsModalOpen(false);
+        }}
+        onNotificationClick={(requestId) => {
+          setNotificationsModalOpen(false);
+          handleNotificationClick(requestId);
+        }}
+        onMarkAsRead={markNotificationAsRead}
+        onRefreshNotifications={fetchNotifications}
+        userRole={userRole}
       />
     </nav>
   );

@@ -17,8 +17,10 @@ import {
   Bell
 } from 'lucide-react';
 import MechanicSidebar from '../components/MechanicSidebar';
+import SuperAdminSidebar from '../components/SuperAdminSidebar';
 import NavigationBar from '../components/NavigationBar';
 import ProfileModal from '../components/modals/ProfileModal';
+import Loading from '../components/Loading';
 import '../css/MechanicINVRequest.css';
 
 export default function MechanicINVRequest() {
@@ -33,6 +35,8 @@ export default function MechanicINVRequest() {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [followingUp, setFollowingUp] = useState({});
   const [expandedRows, setExpandedRows] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const db = getFirestore();
 
   useEffect(() => {
@@ -81,7 +85,8 @@ export default function MechanicINVRequest() {
             id: docSnap.id,
             ...requestData,
             carDetails: carDetails,
-            customerName: requestData.customer?.name || requestData.customerName || 'Unknown'
+            customerName: requestData.customer?.name || requestData.customerName || 'Unknown',
+            mechanicName: requestData.mechanicName || 'Unknown Mechanic'
           };
         })
       );
@@ -181,28 +186,12 @@ export default function MechanicINVRequest() {
   const counts = getStatusCounts();
 
   if (loading) {
-    return (
-      <div className="dashboard-container mechanic-requests-page">
-        <MechanicSidebar />
-        <div className="main-content">
-          <NavigationBar
-            title="My Requests"
-            userRole="mechanic"
-            userName={user?.displayName || 'Mechanic'}
-            userEmail={user?.email || ''}
-            onProfileClick={() => setProfileOpen(true)}
-          />
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 100px)' }}>
-            <p>Loading requests...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <Loading text="Loading requests..." />;
   }
 
   return (
     <div className="user-management-bg mechanic-requests-page">
-      <MechanicSidebar />
+      {user?.role === 'superadmin' ? <SuperAdminSidebar /> : <MechanicSidebar />}
 
       <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
         <NavigationBar
@@ -278,6 +267,7 @@ export default function MechanicINVRequest() {
                   <th>Status</th>
                   <th>Vehicle</th>
                   <th>Customer</th>
+                  <th>Mechanic</th>
                   <th>Parts</th>
                   <th>Total Amount</th>
                   <th>Date</th>
@@ -285,7 +275,7 @@ export default function MechanicINVRequest() {
               </thead>
               <tbody>
                 {filteredRequests.length > 0 ? (
-                  filteredRequests.map(request => (
+                  filteredRequests.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(request => (
                     <React.Fragment key={request.id}>
                       <tr 
                         className={`request-row ${expandedRows.includes(request.id) ? 'expanded' : ''}`}
@@ -312,6 +302,12 @@ export default function MechanicINVRequest() {
                           </div>
                         </td>
                         <td>
+                          <div className="customer-info">
+                            <UserIcon size={16} />
+                            <span>{request.mechanicName || 'Unknown'}</span>
+                          </div>
+                        </td>
+                        <td>
                           <div className="parts-info">
                             <Package size={16} />
                             <span>{request.parts?.length || 0} part(s)</span>
@@ -331,7 +327,7 @@ export default function MechanicINVRequest() {
                       </tr>
                       {expandedRows.includes(request.id) && (
                         <tr className="expanded-row">
-                          <td colSpan="6">
+                          <td colSpan="7">
                             <div className="expanded-content">
                               {/* Follow-up button for pending requests */}
                               {request.status?.toLowerCase() === 'pending' && (
@@ -407,7 +403,7 @@ export default function MechanicINVRequest() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="6" className="no-data">
+                    <td colSpan="7" className="no-data">
                       <div className="no-requests">
                         <Package size={48} />
                         <p>No requests found</p>
@@ -427,7 +423,7 @@ export default function MechanicINVRequest() {
           {/* Mobile Requests List */}
           <div className="requests-mobile-list">
             {filteredRequests.length > 0 ? (
-              filteredRequests.map(request => (
+              filteredRequests.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(request => (
                 <div key={request.id} className="request-mobile-wrapper">
                   <div
                     className={`request-mobile-card ${expandedRows.includes(request.id) ? 'expanded' : ''}`}
@@ -439,6 +435,7 @@ export default function MechanicINVRequest() {
                           {request.carDetails?.year} {request.carDetails?.make} {request.carDetails?.model}
                         </h4>
                         <p className="request-mobile-customer">{request.customerName || 'Unknown'}</p>
+                        <p className="request-mobile-mechanic" style={{ fontSize: '12px', color: '#6B7280' }}>Mechanic: {request.mechanicName || 'Unknown'}</p>
                       </div>
                       <span className={`status-badge ${getStatusClass(request.status)}`}>
                         {getStatusIcon(request.status)}
@@ -544,6 +541,134 @@ export default function MechanicINVRequest() {
               </div>
             )}
           </div>
+
+          {/* Pagination Controls */}
+          {filteredRequests.length > itemsPerPage && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              padding: '16px 24px',
+              borderTop: '1px solid #e5e7eb',
+              flexWrap: 'wrap',
+              gap: '12px',
+              background: '#fff',
+              borderRadius: '0 0 12px 12px'
+            }}>
+              <span style={{ 
+                color: '#6B7280',
+                fontSize: '14px'
+              }}>
+                {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredRequests.length)} of {filteredRequests.length} entries
+              </span>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    background: currentPage === 1 ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
+                    color: currentPage === 1 ? '#9ca3af' : '#000',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '12px',
+                    fontWeight: '600'
+                  }}
+                >
+                  &lt;&lt;
+                </button>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    background: currentPage === 1 ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
+                    color: currentPage === 1 ? '#9ca3af' : '#000',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '14px',
+                    fontWeight: '600'
+                  }}
+                >
+                  &lt;
+                </button>
+                <input
+                  type="number"
+                  min="1"
+                  max={Math.ceil(filteredRequests.length / itemsPerPage)}
+                  value={currentPage}
+                  onChange={(e) => {
+                    const page = parseInt(e.target.value);
+                    if (page >= 1 && page <= Math.ceil(filteredRequests.length / itemsPerPage)) {
+                      setCurrentPage(page);
+                    }
+                  }}
+                  style={{
+                    width: '50px',
+                    height: '32px',
+                    textAlign: 'center',
+                    background: '#fff',
+                    color: '#374151',
+                    border: '1px solid #FFC300',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: '600'
+                  }}
+                />
+                <span style={{ color: '#FFC300', fontSize: '14px', fontWeight: '600' }}>of {Math.ceil(filteredRequests.length / itemsPerPage)}</span>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(filteredRequests.length / itemsPerPage)))}
+                  disabled={currentPage >= Math.ceil(filteredRequests.length / itemsPerPage)}
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    background: currentPage >= Math.ceil(filteredRequests.length / itemsPerPage) ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
+                    color: currentPage >= Math.ceil(filteredRequests.length / itemsPerPage) ? '#9ca3af' : '#000',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: currentPage >= Math.ceil(filteredRequests.length / itemsPerPage) ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '14px',
+                    fontWeight: '600'
+                  }}
+                >
+                  &gt;
+                </button>
+                <button
+                  onClick={() => setCurrentPage(Math.ceil(filteredRequests.length / itemsPerPage))}
+                  disabled={currentPage >= Math.ceil(filteredRequests.length / itemsPerPage)}
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    background: currentPage >= Math.ceil(filteredRequests.length / itemsPerPage) ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
+                    color: currentPage >= Math.ceil(filteredRequests.length / itemsPerPage) ? '#9ca3af' : '#000',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: currentPage >= Math.ceil(filteredRequests.length / itemsPerPage) ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '12px',
+                    fontWeight: '600'
+                  }}
+                >
+                  &gt;&gt;
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Request Details Panel */}
           {selectedRequest && (

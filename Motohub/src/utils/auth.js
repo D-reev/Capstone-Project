@@ -208,6 +208,8 @@ export const createPartsRequest = async (requestData, userId) => {
     customerId: requestData.customer?.id || '',
     customer: { name: requestData.customer?.displayName || '' },
     mechanicId: userId,
+    mechanicName: requestData.mechanicName || '',
+    mechanicHeadName: requestData.mechanicHeadName || '',
     parts,
     status: 'pending',
     urgent: Boolean(requestData.urgent),

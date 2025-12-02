@@ -7,6 +7,7 @@ import { SearchOutlined, UserAddOutlined, EditOutlined, DeleteOutlined, FilterOu
 import { ChevronDown, Mail, Phone, MapPin } from 'lucide-react';
 import { Table, Tag, Input, Button, Space, Avatar, ConfigProvider, Select } from 'antd';
 import AdminSidebar from '../components/AdminSidebar';
+import SuperAdminSidebar from '../components/SuperAdminSidebar';
 import EditUserModal from '../components/modals/EditUserModal';
 import DeleteUserModal from '../components/modals/DeleteUserModal';
 import NavigationBar from '../components/NavigationBar';
@@ -197,8 +198,13 @@ export default function UserManagement() {
             <span className="user-expanded-value">{record.phoneNumber || record.number || 'Not provided'}</span>
           </div>
           <div className="user-expanded-item">
-            <span className="user-expanded-label">Region</span>
-            <span className="user-expanded-value">{record.region || 'Not specified'}</span>
+            <span className="user-expanded-label">Full Address</span>
+            <span className="user-expanded-value">
+              {record.address ? 
+                `${record.address}${record.city ? `, ${record.city}` : ''}${record.postalCode ? ` ${record.postalCode}` : ''}` 
+                : 'Not provided'
+              }
+            </span>
           </div>
           <div className="user-expanded-item">
             <span className="user-expanded-label">Last Updated</span>
@@ -347,7 +353,7 @@ export default function UserManagement() {
       }}
     >
       <div className="user-management-page">
-        <AdminSidebar />
+        {user?.role === 'superadmin' ? <SuperAdminSidebar /> : <AdminSidebar />}
 
         <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
           <NavigationBar

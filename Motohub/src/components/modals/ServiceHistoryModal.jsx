@@ -94,6 +94,7 @@ export default function ServiceHistoryModal({ vehicle, serviceHistory = [], onCl
       destroyOnHidden
       maskClosable
       centered
+      zIndex={1050}
     >
       <style>{`
         .ant-modal-header {

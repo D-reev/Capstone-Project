@@ -78,6 +78,7 @@ export default function EditCarModal({ vehicle, onSubmit, onClose }) {
       destroyOnHidden
       maskClosable={false}
       centered
+      zIndex={1050}
     >
       <style>{`
         .ant-modal-header {

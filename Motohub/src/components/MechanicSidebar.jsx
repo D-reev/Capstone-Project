@@ -1,4 +1,5 @@
 import React from 'react';
+import { App } from 'antd';
 import { useAuth } from '../context/AuthContext';
 import { useSidebar } from '../context/SidebarContext';
 import { useAuthNavigation } from '../hooks/useAuthNavigation';
@@ -6,10 +7,11 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Wrench,
   ClipboardList,
+  FileText,
   User,
-  LogOut,
-  ChevronRight
+  LogOut
 } from 'lucide-react';
+import TriangleArrow from './TriangleArrow';
 import logo from '../assets/images/logo.jpeg';
 import Dock from './Dock';
 import './Sidebar.css';
@@ -28,7 +30,7 @@ function NavItem({ icon: Icon, label, active = false, badge, color = "red", side
           <>
             <span className="nav-item-label">{label}</span>
             {badge && <span className={badgeClass}>{badge}</span>}
-            {active && <ChevronRight className="nav-item-indicator" size={16} />}
+            {active && <TriangleArrow className="nav-item-indicator" size={16} />}
           </>
         )}
       </div>
@@ -42,16 +44,29 @@ export default function MechanicSidebar() {
   const { logout } = useAuthNavigation();
   const navigate = useNavigate();
   const location = useLocation();
+  const { modal } = App.useApp();
 
-  const handleLogout = async () => {
-    try {
-      const success = await logout();
-      if (success) {
-        console.log('Logged out successfully');
+  const handleLogout = () => {
+    modal.confirm({
+      title: 'Confirm Logout',
+      content: 'Are you sure you want to logout?',
+      okText: 'Yes, Logout',
+      cancelText: 'Cancel',
+      centered: true,
+      okButtonProps: {
+        style: {
+          background: 'linear-gradient(135deg, #FFC300, #FFD54F)',
+          borderColor: '#FFC300',
+          color: '#000',
+          fontWeight: 600
+        }
+      },
+      onOk() {
+        logout().catch((error) => {
+          console.error('Error logging out:', error);
+        });
       }
-    } catch (error) {
-      console.error('Error logging out:', error);
-    }
+    });
   };
 
   const isPathActive = (path) => {
@@ -66,7 +81,7 @@ export default function MechanicSidebar() {
       <>
         <NavItem 
           icon={Wrench} 
-          label="Dashboard" 
+          label="Customer Management" 
           active={isPathActive('/mechanicdashboard')}
           sidebarOpen={sidebarOpen}
           onClick={() => navigate('/mechanicdashboard')}
@@ -77,6 +92,13 @@ export default function MechanicSidebar() {
           active={isPathActive('/mechanicdashboard/requests')}
           sidebarOpen={sidebarOpen}
           onClick={() => navigate('/mechanicdashboard/requests')}
+        />
+        <NavItem 
+          icon={FileText} 
+          label="Pending Reports" 
+          active={isPathActive('/mechanicdashboard/pendingreports')}
+          sidebarOpen={sidebarOpen}
+          onClick={() => navigate('/mechanicdashboard/pendingreports')}
         />
         <NavItem 
           icon={LogOut} 
@@ -91,7 +113,7 @@ export default function MechanicSidebar() {
   const dockItems = [
     {
       icon: <Wrench size={24} />,
-      label: 'Dashboard',
+      label: 'Customer Management',
       onClick: () => navigate('/mechanicdashboard'),
       className: isPathActive('/mechanicdashboard') ? 'active' : ''
     },

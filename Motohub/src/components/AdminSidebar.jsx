@@ -1,4 +1,5 @@
 import React from 'react';
+import { App } from 'antd';
 import { useAuth } from '../context/AuthContext';
 import { useSidebar } from '../context/SidebarContext';
 import { useAuthNavigation } from '../hooks/useAuthNavigation';
@@ -11,9 +12,9 @@ import {
   Package,
   ClipboardList,
   FileText,
-  ChevronRight,
   Tag
 } from 'lucide-react';
+import TriangleArrow from './TriangleArrow';
 import logo from '../assets/images/logo.jpeg';
 import Dock from './Dock';
 import './Sidebar.css';
@@ -32,7 +33,7 @@ function NavItem({ icon: Icon, label, active = false, badge, color = "red", side
           <>
             <span className="nav-item-label">{label}</span>
             {badge && <span className={badgeClass}>{badge}</span>}
-            {active && <ChevronRight className="nav-item-indicator" size={16} />}
+            {active && <TriangleArrow className="nav-item-indicator" size={16} />}
           </>
         )}
       </div>
@@ -46,66 +47,82 @@ export default function AdminSidebar() {
   const { logout } = useAuthNavigation();
   const navigate = useNavigate();
   const location = useLocation();
+  const { modal } = App.useApp();
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error('Error logging out:', error);
-    }
+  const handleLogout = () => {
+    modal.confirm({
+      title: 'Confirm Logout',
+      content: 'Are you sure you want to logout?',
+      okText: 'Yes, Logout',
+      cancelText: 'Cancel',
+      centered: true,
+      okButtonProps: {
+        style: {
+          background: 'linear-gradient(135deg, #FFC300, #FFD54F)',
+          borderColor: '#FFC300',
+          color: '#000',
+          fontWeight: 600
+        }
+      },
+      onOk() {
+        logout().catch((error) => {
+          console.error('Error logging out:', error);
+        });
+      }
+    });
   };
   
-  const isPathActive = (path) => {
-    if (path === '/admindashboard') {
-      return location.pathname === path;
+  const isPathActive = (path, isSuperAdmin = false) => {
+    const basePath = isSuperAdmin ? '/superadmin' : '/admindashboard';
+    const fullPath = basePath + (path === '/' ? '' : path);
+    
+    if (path === '/' || path === '') {
+      return location.pathname === fullPath || location.pathname === basePath;
     }
-    return location.pathname === path || location.pathname.startsWith(`${path}/`);
+    return location.pathname === fullPath || location.pathname.startsWith(`${fullPath}/`);
   };
 
+  const isSuperAdmin = location.pathname.startsWith('/superadmin');
+
   const renderNavItems = () => {
+    const basePath = isSuperAdmin ? '/superadmin' : '/admindashboard';
+    
     return (
       <>
         <NavItem 
           icon={LayoutDashboard} 
           label="Dashboard" 
-          active={isPathActive('/admindashboard')}
+          active={isPathActive('/', isSuperAdmin)}
           sidebarOpen={sidebarOpen}
-          onClick={() => navigate('/admindashboard')}
+          onClick={() => navigate(`${basePath}`)}
         />
         <NavItem 
           icon={Users} 
           label="User Management" 
-          active={isPathActive('/admindashboard/users')}
+          active={isPathActive('/users', isSuperAdmin)}
           sidebarOpen={sidebarOpen}
-          onClick={() => navigate('/admindashboard/users')}
+          onClick={() => navigate(`${basePath}/users`)}
         />
         <NavItem 
           icon={Package} 
           label="Inventory" 
-          active={isPathActive('/admindashboard/inventory')}
+          active={isPathActive('/inventory', isSuperAdmin)}
           sidebarOpen={sidebarOpen}
-          onClick={() => navigate('/admindashboard/inventory')}
+          onClick={() => navigate(`${basePath}/inventory`)}
         />
         <NavItem 
           icon={ClipboardList} 
           label="Parts Requests" 
-          active={isPathActive('/admindashboard/adminrequest')}
+          active={isPathActive('/adminrequest', isSuperAdmin)}
           sidebarOpen={sidebarOpen}
-          onClick={() => navigate('/admindashboard/adminrequest')}
+          onClick={() => navigate(`${basePath}/adminrequest`)}
         />  
-        <NavItem
-          icon={FileText}
-          label="Activity Logs"
-          active={isPathActive('/admindashboard/logs')}
-          sidebarOpen={sidebarOpen}
-          onClick={() => navigate('/admindashboard/logs')}
-        />
         <NavItem
           icon={Tag}
           label="Promotions"
-          active={isPathActive('/admindashboard/promotions')}
+          active={isPathActive('/promotions', isSuperAdmin)}
           sidebarOpen={sidebarOpen}
-          onClick={() => navigate('/admindashboard/promotions')}
+          onClick={() => navigate(`${basePath}/promotions`)}
         />
         <NavItem 
           icon={LogOut} 
@@ -117,42 +134,38 @@ export default function AdminSidebar() {
     );
   };
 
+  const basePath = isSuperAdmin ? '/superadmin' : '/admindashboard';
+
   const dockItems = [
     {
       icon: <LayoutDashboard size={24} />,
       label: 'Dashboard',
-      onClick: () => navigate('/admindashboard'),
-      className: isPathActive('/admindashboard') ? 'active' : ''
+      onClick: () => navigate(`${basePath}`),
+      className: isPathActive('/', isSuperAdmin) ? 'active' : ''
     },
     {
       icon: <Users size={24} />,
       label: 'Users',
-      onClick: () => navigate('/admindashboard/users'),
-      className: isPathActive('/admindashboard/users') ? 'active' : ''
+      onClick: () => navigate(`${basePath}/users`),
+      className: isPathActive('/users', isSuperAdmin) ? 'active' : ''
     },
     {
       icon: <Package size={24} />,
       label: 'Inventory',
-      onClick: () => navigate('/admindashboard/inventory'),
-      className: isPathActive('/admindashboard/inventory') ? 'active' : ''
+      onClick: () => navigate(`${basePath}/inventory`),
+      className: isPathActive('/inventory', isSuperAdmin) ? 'active' : ''
     },
     {
       icon: <ClipboardList size={24} />,
       label: 'Requests',
-      onClick: () => navigate('/admindashboard/adminrequest'),
-      className: isPathActive('/admindashboard/adminrequest') ? 'active' : ''
-    },
-    {
-      icon: <FileText size={24} />,
-      label: 'Logs',
-      onClick: () => navigate('/admindashboard/logs'),
-      className: isPathActive('/admindashboard/logs') ? 'active' : ''
+      onClick: () => navigate(`${basePath}/adminrequest`),
+      className: (isPathActive('/requests', isSuperAdmin) || isPathActive('/adminrequest', isSuperAdmin)) ? 'active' : ''
     },
     {
       icon: <Tag size={24} />,
       label: 'Promotions',
-      onClick: () => navigate('/admindashboard/promotions'),
-      className: isPathActive('/admindashboard/promotions') ? 'active' : ''
+      onClick: () => navigate(`${basePath}/promotions`),
+      className: isPathActive('/promotions', isSuperAdmin) ? 'active' : ''
     },
     {
       icon: <LogOut size={24} />,
@@ -183,7 +196,21 @@ export default function AdminSidebar() {
           <div className="user-profile">
             <div className="user-avatar">
               {user?.photoURL && user.photoURL.trim() !== '' ? (
-                <img src={user.photoURL} alt={user?.displayName || 'User'} className="user-avatar-img" />
+                <img 
+                  src={user.photoURL} 
+                  alt={user?.displayName || 'User'} 
+                  className="user-avatar-img"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    const parent = e.target.parentElement;
+                    if (parent && !parent.querySelector('.fallback-icon')) {
+                      const icon = document.createElement('div');
+                      icon.className = 'fallback-icon';
+                      icon.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+                      parent.appendChild(icon);
+                    }
+                  }}
+                />
               ) : (
                 <User size={24} />
               )}

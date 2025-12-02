@@ -217,6 +217,12 @@ export default function EditUserModal({ user, onSubmit, onClose, open }) {
         <Form.Item
           label="Middle Name (optional)"
           name="middleName"
+          rules={[
+            {
+              pattern: /^[a-zA-Z\s.\-]*$/,
+              message: 'Middle name can only contain letters, spaces, periods (.), and hyphens'
+            }
+          ]}
         >
           <Input placeholder="Enter middle name" size="large" />
         </Form.Item>

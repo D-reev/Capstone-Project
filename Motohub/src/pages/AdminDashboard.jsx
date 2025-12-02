@@ -6,6 +6,7 @@ import Loading from '../components/Loading';
 import { getFirestore, collection, getDocs, query, where } from 'firebase/firestore';
 import { TrendingUp, TrendingDown, Package, Wrench, Car, Users, ChevronDown, Clock, DollarSign, X } from 'lucide-react';
 import AdminSidebar from '../components/AdminSidebar';
+import SuperAdminSidebar from '../components/SuperAdminSidebar';
 import NavigationBar from '../components/NavigationBar';
 import ProfileModal from '../components/modals/ProfileModal';
 import '../css/AdminDashboard.css';
@@ -359,7 +360,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="dashboard-page">
-      <AdminSidebar />
+      {user?.role === 'superadmin' ? <SuperAdminSidebar /> : <AdminSidebar />}
       
       <div className={`dashboard-main ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
         <NavigationBar

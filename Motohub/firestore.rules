@@ -1,0 +1,220 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) ?
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data : null;
+    }
+
+    function getRole() {
+      return getUserData() != null
+        ? getUserData().role
+        : (request.auth.token.role != null ? request.auth.token.role : null);
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() && getRole() == 'superadmin';
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && getRole() == 'admin';
+    }
+
+    function isMechanic() {
+      return isAuthenticated() && getRole() == 'mechanic';
+    }
+
+    function isAuthorized() {
+      return isSuperAdmin() || isAdmin() || isMechanic();
+    }
+
+    // ===============================
+    // USERS COLLECTION
+    // ===============================
+    match /users/{userId} {
+      allow read: if isSuperAdmin() || (isAuthenticated() && (request.auth.uid == userId || isAuthorized()));
+      allow list: if isSuperAdmin() || isAuthorized();
+      allow create: if isSuperAdmin() || (request.auth != null && request.auth.uid == userId);
+      allow update: if isSuperAdmin() || (isAuthenticated() && (request.auth.uid == userId || isAdmin()));
+      allow delete: if isSuperAdmin() || isAdmin();
+
+      // ===============================
+      // NESTED NOTIFICATIONS COLLECTION
+      // ===============================
+      match /notifications/{notificationId} {
+        allow read, create, update, delete: if isSuperAdmin();
+        allow read: if isAuthenticated() && request.auth.uid == userId;
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated() && request.auth.uid == userId;
+        allow delete: if isAuthenticated() && request.auth.uid == userId;
+      }
+
+      // ===============================
+      // NESTED CARS COLLECTION
+      // ===============================
+      match /cars/{carId} {
+        allow read, list, create, update, delete: if isSuperAdmin();
+        allow read: if isAuthenticated() && (request.auth.uid == userId || isAuthorized());
+        allow list: if isAuthenticated() && (request.auth.uid == userId || isAuthorized());
+        allow create, update: if isAuthenticated() && (request.auth.uid == userId || isAuthorized());
+        allow delete: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+
+        // ===============================
+        // NESTED SERVICE HISTORY
+        // ===============================
+        match /serviceHistory/{historyId} {
+          allow read, create, update, delete: if isSuperAdmin();
+          allow read: if isAuthenticated() && (
+            request.auth.uid == userId || 
+            isAuthorized()
+          );
+          
+          allow create: if isMechanic() && 
+            request.resource.data.mechanicId == request.auth.uid &&
+            request.resource.data.keys().hasAll([
+              'diagnosis', 
+              'workPerformed',
+              'status',
+              'timestamp',
+              'mechanicId',
+              'customerId',
+              'carId'
+            ]);
+          
+          allow update: if isAuthenticated() && (
+            request.auth.uid == userId || 
+            (isMechanic() && resource.data.mechanicId == request.auth.uid) ||
+            (isMechanic() && resource.data.get('mechanicHeadName', '') == request.auth.token.name) ||
+            isAdmin()
+          );
+          allow delete: if isSuperAdmin() || isAdmin();
+        }
+      }
+    }
+
+    // ===============================
+    // SERVICES COLLECTION (for active work orders)
+    // ===============================
+    match /services/{serviceId} {
+      allow read, list, create, update, delete: if isSuperAdmin();
+      allow read, list: if isAuthorized();
+      allow create: if isAuthenticated();
+      allow update: if isAuthorized();
+      allow delete: if isAdmin();
+    }
+
+    // ===============================
+    // INVENTORY
+    // ===============================
+    match /inventory/{itemId} {
+      allow read, list, create, update, delete: if isSuperAdmin();
+      allow read, list: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ===============================
+    // PART REQUESTS
+    // ===============================
+    match /partRequests/{requestId} {
+      allow read, list, create, update, delete: if isSuperAdmin();
+      allow read, list: if isAuthorized() || (isAuthenticated() && request.auth.uid == resource.data.customerId);
+      allow create: if isMechanic() && request.resource.data.mechanicId == request.auth.uid;
+      allow update: if (isMechanic() && resource.data.mechanicId == request.auth.uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ===============================
+    // SERVICE REPORTS (Top-level collection - NEW OPTIMIZED STRUCTURE)
+    // ===============================
+    match /serviceReports/{reportId} {
+      // Super admin has full access
+      allow read, list, create, update, delete: if isSuperAdmin();
+      
+      // All authenticated users can read service reports
+      allow read: if isAuthenticated();
+      
+      // Mechanics can list and create reports
+      allow list: if isAuthorized();
+      allow create: if isMechanic() && 
+        request.resource.data.mechanicId == request.auth.uid &&
+        request.resource.data.keys().hasAll([
+          'diagnosis', 
+          'workPerformed',
+          'status',
+          'timestamp',
+          'mechanicId',
+          'customerId',
+          'carId'
+        ]);
+      
+      // Reports can be updated by:
+      // - The customer who owns it (for ratings/comments)
+      // - The mechanic who created it (check both mechanicId and mechanicHeadName)
+      // - Admins
+      allow update: if isAuthenticated() && (
+        resource.data.customerId == request.auth.uid ||
+        resource.data.mechanicId == request.auth.uid ||
+        (isMechanic() && resource.data.get('mechanicHeadName', '') == request.auth.token.name) ||
+        isAuthorized()
+      );
+      
+      // Only admins can delete reports
+      allow delete: if isAdmin();
+    }
+    
+    // ===============================
+    // Promotions collection
+    // ===============================
+    match /promotions/{promoId} {
+      allow read, write, update, delete: if isSuperAdmin();
+      allow read: if true; // Everyone can read promotions
+      allow write, update, delete: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ===============================
+    // MECHANIC RATINGS
+    // ===============================
+    match /mechanicRatings/{mechanicId} {
+      allow read, create, update, delete: if isSuperAdmin();
+      allow create, update: if isAuthenticated();
+      allow read: if isAdmin();
+      allow read: if isAuthenticated() && mechanicId == request.auth.uid;
+      allow list: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ===============================
+    // NOTIFICATIONS (Top-level collection - deprecated, use nested)
+    // ===============================
+    match /notifications/{notificationId} {
+      allow read, create, update, delete: if isSuperAdmin();
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAuthorized());
+      allow create: if isAuthorized();
+      allow update: if resource.data.userId == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    // ===============================
+    // LOGS
+    // ===============================
+    match /logs/{logId} {
+      allow read, create, update, delete: if isSuperAdmin();
+      allow create: if isAuthenticated();
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.userId || isAdmin());
+      allow list: if isAdmin();
+    }
+
+    // ===============================
+    // DEFAULT DENY
+    // ===============================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

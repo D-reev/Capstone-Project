@@ -526,12 +526,10 @@
 @media (max-width: 768px) {
   .dashboard-main {
     margin-left: 0;
-    padding-bottom: 100px;
   }
 
   .dashboard-content {
     padding: 16px;
-    padding-bottom: 100px;
   }
 
   .stats-grid {

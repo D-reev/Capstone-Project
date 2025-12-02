@@ -5,6 +5,7 @@ import { getFirestore, collection, getDocs, doc, updateDoc, getDoc, setDoc } fro
 import { Wrench, Calendar, Clock, Car, ChevronDown, ChevronUp, Star } from 'lucide-react';
 import { message, Rate, Input, Button } from 'antd';
 import UserSidebar from '../components/UserSidebar';
+import SuperAdminSidebar from '../components/SuperAdminSidebar';
 import NavigationBar from '../components/NavigationBar';
 import ProfileModal from '../components/modals/ProfileModal';
 import '../css/ServiceHistory.css';
@@ -83,13 +84,27 @@ function ServiceHistory() {
         return;
       }
 
-      // Update the service record with the rating
-      const serviceRef = doc(db, `users/${user.uid}/cars/${service.carId}/serviceHistory/${service.id}`);
-      await updateDoc(serviceRef, {
+      const ratingData = {
         rating: rating,
         comment: comment,
         ratedAt: new Date().toISOString()
-      });
+      };
+
+      // Update the nested service record with the rating
+      const serviceRef = doc(db, `users/${user.uid}/cars/${service.carId}/serviceHistory/${service.id}`);
+      await updateDoc(serviceRef, ratingData);
+
+      // Also update the top-level serviceReports collection if it exists
+      try {
+        const topLevelServiceRef = doc(db, `serviceReports/${service.id}`);
+        const topLevelDoc = await getDoc(topLevelServiceRef);
+        if (topLevelDoc.exists()) {
+          await updateDoc(topLevelServiceRef, ratingData);
+        }
+      } catch (error) {
+        console.error('Error updating top-level service report:', error);
+        // Continue even if top-level update fails
+      }
 
       // Update mechanic's rating profile
       const mechanicRatingRef = doc(db, `mechanicRatings/${service.mechanicId}`);
@@ -243,11 +258,15 @@ function ServiceHistory() {
 
   return (
     <div className="service-history-container">
-      <UserSidebar 
-        user={user}
-        className={`customer-sidebar${sidebarOpen ? '' : ' collapsed'}${sidebarMobileOpen ? ' open' : ''}`}
-        onCloseMobile={() => setSidebarMobileOpen(false)}
-      />
+      {user?.role === 'superadmin' ? (
+        <SuperAdminSidebar />
+      ) : (
+        <UserSidebar 
+          user={user}
+          className={`customer-sidebar${sidebarOpen ? '' : ' collapsed'}${sidebarMobileOpen ? ' open' : ''}`}
+          onCloseMobile={() => setSidebarMobileOpen(false)}
+        />
+      )}
 
       <div className={`service-history-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
         <NavigationBar
