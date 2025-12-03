@@ -481,7 +481,7 @@ export default function PendingReports() {
                 {
                   key: 'pending',
                   label: (
-                    <span style={{ fontSize: '1rem', fontWeight: 600, padding: '8px 0' }}>
+                    <span style={{ fontSize: '1rem', fontWeight: 600, padding: '8px 0', paddingLeft: '16px' }}>
                       Pending Reports ({reports.length})
                     </span>
                   ),
@@ -489,7 +489,7 @@ export default function PendingReports() {
                 {
                   key: 'completed',
                   label: (
-                    <span style={{ fontSize: '1rem', fontWeight: 600, padding: '8px 0' }}>
+                    <span style={{ fontSize: '1rem', fontWeight: 600, padding: '8px 0', paddingLeft: '16px' }}>
                       Completed Reports ({completedReports.length})
                     </span>
                   ),
