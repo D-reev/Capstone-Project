@@ -124,6 +124,12 @@ export default function MechanicSidebar() {
       className: isPathActive('/mechanicdashboard/requests') ? 'active' : ''
     },
     {
+      icon: <FileText size={24} />,
+      label: 'Pending Reports',
+      onClick: () => navigate('/mechanicdashboard/pendingreports'),
+      className: isPathActive('/mechanicdashboard/pendingreports') ? 'active' : ''
+    },
+    {
       icon: <LogOut size={24} />,
       label: 'Logout',
       onClick: handleLogout,
