@@ -25,7 +25,10 @@ jobs:
       
       - name: Create service account key file
         working-directory: ./Motohub
-        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > firebaseServiceAccountKey.json
+        run: |
+          cat << 'EOF' > firebaseServiceAccountKey.json
+          ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          EOF
         shell: bash
       
       - name: Run backup
