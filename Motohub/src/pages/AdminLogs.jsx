@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSidebar } from '../context/SidebarContext';
-import { collection, getDocs, getDoc, doc, getFirestore, query, orderBy, limit } from 'firebase/firestore';
-import { FileText, Filter, Download, RefreshCw, AlertCircle, Eye, Shield, User, Package, CheckCircle, XCircle, ChevronDown, Clock } from 'lucide-react';
+import { collection, getDocs, getFirestore, query, orderBy, limit } from 'firebase/firestore';
+import { FileText, Filter, Download, RefreshCw, Eye, Shield, User, Package, CheckCircle, XCircle, Clock, Edit, Trash2, Plus, ChevronDown } from 'lucide-react';
 import AdminSidebar from '../components/AdminSidebar';
 import SuperAdminSidebar from '../components/SuperAdminSidebar';
 import NavigationBar from '../components/NavigationBar';
 import ProfileModal from '../components/modals/ProfileModal';
+import LogDetailsModal from '../components/modals/LogDetailsModal';
 import Loading from '../components/Loading';
 import '../css/AdminLogs.css';
 
@@ -16,8 +17,11 @@ export default function AdminLogs() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('all');
+  const [filterResource, setFilterResource] = useState('all');
   const [expandedMobileCards, setExpandedMobileCards] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedLog, setSelectedLog] = useState(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const itemsPerPage = 10;
   const { user } = useAuth();
   const db = getFirestore();
@@ -30,97 +34,56 @@ export default function AdminLogs() {
     try {
       setLoading(true);
       const logsRef = collection(db, 'logs');
-      const q = query(logsRef, orderBy('timestamp', 'desc'), limit(100));
-      const snapshot = await getDocs(q);
+      
+      // Try with ordering first, fall back to unordered if index doesn't exist
+      let snapshot;
+      try {
+        const q = query(logsRef, orderBy('timestamp', 'desc'), limit(500));
+        snapshot = await getDocs(q);
+      } catch (orderErr) {
+        console.warn('Could not order by timestamp (index may not exist), fetching unordered:', orderErr);
+        // Fallback: fetch without ordering
+        snapshot = await getDocs(logsRef);
+      }
 
-      const logsList = await Promise.all(
-        snapshot.docs.map(async (logDoc) => {
-          const logData = logDoc.data();
-          let userName = 'System';
-          let userRole = 'system';
-          if (logData.userId) {
-            try {
-              const userDoc = await getDoc(doc(db, 'users', logData.userId));
-              if (userDoc.exists()) {
-                const userData = userDoc.data();
-                userName = userData.displayName || userData.email || 'Unknown User';
-                userRole = userData.role || 'user';
-              }
-            } catch (err) {
-              console.error('Error fetching user:', err);
-            }
-          } else if (logData.details?.mechanicId) {
-            try {
-              const userDoc = await getDoc(doc(db, 'users', logData.details.mechanicId));
-              if (userDoc.exists()) {
-                const userData = userDoc.data();
-                userName = userData.displayName || userData.email || 'Unknown User';
-                userRole = userData.role || 'mechanic';
-              }
-            } catch (err) {
-              console.error('Error fetching mechanic:', err);
-            }
+      const logsList = snapshot.docs.map((logDoc) => {
+        const data = logDoc.data();
+        
+        // Ensure we have userName and userRole (new logs have it, old logs might not)
+        let userName = data.userName;
+        let userRole = data.userRole || 'N/A';
+        
+        // For old logs without userName, try to infer or show System
+        if (!userName) {
+          if (data.userId) {
+            userName = 'System User';
+          } else {
+            userName = 'System';
+            userRole = 'system';
           }
+        }
+        
+        // Normalize timestamp - handle both numeric and ISO string timestamps
+        let timestamp = data.timestamp;
+        if (typeof timestamp === 'string') {
+          timestamp = new Date(timestamp).getTime();
+        } else if (!timestamp) {
+          timestamp = Date.now();
+        }
+        
+        return {
+          id: logDoc.id,
+          ...data,
+          userName,
+          userRole,
+          timestamp
+        };
+      });
 
-          let description = logData.description || '';
-          if (!description) {
-            switch (logData.type) {
-              case 'PAGE_VIEW':
-                description = `Viewed ${logData.page || logData.details?.page || 'a page'}`;
-                break;
-              case 'UNAUTHORIZED_ACCESS_ATTEMPT':
-                description = `Attempted to access ${logData.page || logData.details?.page || 'restricted area'} without authorization`;
-                break;
-              case 'PARTS_REQUEST_CREATED':
-                const partsCount = logData.details?.parts?.length || 0;
-                const totalAmount = logData.details?.totalAmount || 0;
-                description = `Created parts request with ${partsCount} item${partsCount !== 1 ? 's' : ''} (₱${totalAmount.toFixed(2)})`;
-                break;
-              case 'PARTS_REQUEST_APPROVED':
-                description = `Approved parts request for ${logData.details?.mechanic || 'mechanic'}`;
-                break;
-              case 'PARTS_REQUEST_REJECTED':
-                description = `Rejected parts request`;
-                break;
-              case 'USER_LOGIN':
-                description = 'Logged into the system';
-                break;
-              case 'USER_LOGOUT':
-                description = 'Logged out of the system';
-                break;
-              case 'USER_CREATED':
-                description = `Created new user account`;
-                break;
-              case 'USER_UPDATED':
-                description = `Updated user information`;
-                break;
-              case 'USER_DELETED':
-                description = `Deleted user account`;
-                break;
-              case 'INVENTORY_ADDED':
-                description = `Added new part to inventory`;
-                break;
-              case 'INVENTORY_UPDATED':
-                description = `Updated inventory part`;
-                break;
-              case 'INVENTORY_DELETED':
-                description = `Deleted part from inventory`;
-                break;
-              default:
-                description = logData.type?.replace(/_/g, ' ').toLowerCase() || 'System activity';
-            }
-          }
+      // Sort by timestamp in memory
+      logsList.sort((a, b) => b.timestamp - a.timestamp);
 
-          return {
-            id: logDoc.id,
-            ...logData,
-            userName,
-            userRole,
-            description
-          };
-        })
-      );
-
+      console.log('Fetched logs:', logsList.length);
       setLogs(logsList);
     } catch (err) {
       console.error('Error fetching logs:', err);
@@ -131,27 +94,32 @@ export default function AdminLogs() {
 
   const getLogIcon = (type) => {
     switch (type) {
-      case 'PAGE_VIEW':
-        return <Eye size={18} />;
-      case 'UNAUTHORIZED_ACCESS_ATTEMPT':
-        return <Shield size={18} />;
-      case 'PARTS_REQUEST_CREATED':
-        return <Package size={18} />;
-      case 'PARTS_REQUEST_APPROVED':
-        return <CheckCircle size={18} />;
-      case 'PARTS_REQUEST_REJECTED':
-        return <XCircle size={18} />;
+      case 'CREATE':
+        return <Plus size={18} />;
+      case 'UPDATE':
+        return <Edit size={18} />;
+      case 'DELETE':
+        return <Trash2 size={18} />;
+      case 'LOGIN':
+      case 'LOGOUT':
       case 'USER_LOGIN':
       case 'USER_LOGOUT':
         return <User size={18} />;
-      case 'USER_CREATED':
-      case 'USER_UPDATED':
-      case 'USER_DELETED':
-        return <User size={18} />;
+      case 'ACCESS_DENIED':
+      case 'UNAUTHORIZED_ACCESS_ATTEMPT':
+        return <Shield size={18} />;
+      case 'READ':
+      case 'PAGE_VIEW':
+        return <Eye size={18} />;
+      case 'PARTS_REQUEST_CREATED':
+      case 'PARTS_REQUEST_APPROVED':
+      case 'PARTS_REQUEST_REJECTED':
       case 'INVENTORY_ADDED':
       case 'INVENTORY_UPDATED':
       case 'INVENTORY_DELETED':
         return <Package size={18} />;
+      case 'NOTIFICATION_CREATED':
+        return <Clock size={18} />;
       default:
         return <FileText size={18} />;
     }
@@ -159,30 +127,65 @@ export default function AdminLogs() {
 
   const getLogTypeClass = (type) => {
     switch (type) {
-      case 'PAGE_VIEW':
-        return 'log-type-view';
-      case 'UNAUTHORIZED_ACCESS_ATTEMPT':
-        return 'log-type-warning';
-      case 'PARTS_REQUEST_APPROVED':
+      case 'CREATE':
       case 'USER_CREATED':
       case 'INVENTORY_ADDED':
+      case 'PARTS_REQUEST_APPROVED':
         return 'log-type-success';
-      case 'PARTS_REQUEST_REJECTED':
-      case 'USER_DELETED':
-      case 'INVENTORY_DELETED':
-        return 'log-type-error';
-      case 'PARTS_REQUEST_CREATED':
+      case 'UPDATE':
       case 'USER_UPDATED':
       case 'INVENTORY_UPDATED':
+      case 'PARTS_REQUEST_CREATED':
+      case 'NOTIFICATION_CREATED':
         return 'log-type-info';
+      case 'DELETE':
+      case 'USER_DELETED':
+      case 'INVENTORY_DELETED':
+      case 'PARTS_REQUEST_REJECTED':
+        return 'log-type-error';
+      case 'LOGIN':
+      case 'USER_LOGIN':
+        return 'log-type-success';
+      case 'LOGOUT':
+      case 'USER_LOGOUT':
+        return 'log-type-default';
+      case 'ACCESS_DENIED':
+      case 'UNAUTHORIZED_ACCESS_ATTEMPT':
+        return 'log-type-warning';
+      case 'READ':
+      case 'PAGE_VIEW':
+        return 'log-type-view';
       default:
         return 'log-type-default';
     }
   };
 
+  const getResourceDisplay = (log) => {
+    if (log.resource) return log.resource;
+    
+    // Infer resource from legacy log types
+    const type = log.type || '';
+    if (type.includes('USER')) return 'User';
+    if (type.includes('PARTS_REQUEST') || type.includes('INVENTORY')) return 'Parts/Inventory';
+    if (type.includes('VEHICLE')) return 'Vehicle';
+    if (type.includes('NOTIFICATION')) return 'Notification';
+    if (type === 'PAGE_VIEW') return 'Page View';
+    
+    return '—';
+  };
+
+  const handleViewDetails = (log) => {
+    setSelectedLog(log);
+    setDetailsModalOpen(true);
+  };
+
+  const logTypes = ['all', ...new Set(logs.map(log => log.type).filter(Boolean))];
+  const resourceTypes = ['all', ...new Set(logs.map(log => log.resource).filter(Boolean))];
+
   const filteredLogs = logs.filter(log => {
-    if (filterType === 'all') return true;
-    return log.type === filterType;
+    const typeMatch = filterType === 'all' || log.type === filterType;
+    const resourceMatch = filterResource === 'all' || log.resource === filterResource;
+    return typeMatch && resourceMatch;
   });
 
   const toggleMobileCard = (logId) => {
@@ -192,8 +195,6 @@ export default function AdminLogs() {
         : [...prev, logId]
     );
   };
-
-  const logTypes = ['all', ...new Set(logs.map(log => log.type))];
 
   if (loading) {
     return <Loading text="Loading activity logs" />;
@@ -242,6 +243,21 @@ export default function AdminLogs() {
                 ))}
               </div>
             </div>
+            <div className="filter-group">
+              <Filter size={18} />
+              <span>Filter by resource:</span>
+              <div className="filter-buttons">
+                {resourceTypes.map(resource => (
+                  <button
+                    key={resource}
+                    className={`filter-btn${filterResource === resource ? ' active' : ''}`}
+                    onClick={() => setFilterResource(resource)}
+                  >
+                    {resource === 'all' ? 'All' : resource}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           <div className="logs-container">
@@ -251,21 +267,33 @@ export default function AdminLogs() {
                 <span className="stat-value">{filteredLogs.length}</span>
               </div>
               <div className="stat-item">
-                <span className="stat-label">Page Views</span>
+                <span className="stat-label">Create Operations</span>
                 <span className="stat-value">
-                  {logs.filter(l => l.type === 'PAGE_VIEW').length}
+                  {logs.filter(l => l.type === 'CREATE' || l.type?.includes('_CREATED')).length}
+                </span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Update Operations</span>
+                <span className="stat-value">
+                  {logs.filter(l => l.type === 'UPDATE' || l.type?.includes('_UPDATED') || l.type?.includes('_APPROVED') || l.type?.includes('_REJECTED')).length}
+                </span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Delete Operations</span>
+                <span className="stat-value">
+                  {logs.filter(l => l.type === 'DELETE' || l.type?.includes('_DELETED')).length}
                 </span>
               </div>
               <div className="stat-item">
                 <span className="stat-label">Unauthorized Attempts</span>
                 <span className="stat-value warning">
-                  {logs.filter(l => l.type === 'UNAUTHORIZED_ACCESS_ATTEMPT').length}
+                  {logs.filter(l => l.type === 'ACCESS_DENIED' || l.type === 'UNAUTHORIZED_ACCESS_ATTEMPT').length}
                 </span>
               </div>
               <div className="stat-item">
-                <span className="stat-label">Parts Requests</span>
+                <span className="stat-label">User Activities</span>
                 <span className="stat-value">
-                  {logs.filter(l => l.type?.includes('PARTS_REQUEST')).length}
+                  {logs.filter(l => l.type === 'LOGIN' || l.type === 'LOGOUT' || l.type === 'USER_LOGIN' || l.type === 'USER_LOGOUT' || l.type === 'PAGE_VIEW').length}
                 </span>
               </div>
               <div className="stat-item">
@@ -281,10 +309,12 @@ export default function AdminLogs() {
                 <thead>
                   <tr>
                     <th>Type</th>
+                    <th>Resource</th>
                     <th>User</th>
-                    <th>Description</th>
-                    <th>IP Address</th>
+                    <th>Action</th>
+                    <th>Changes</th>
                     <th>Timestamp</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -294,8 +324,11 @@ export default function AdminLogs() {
                         <td>
                           <div className={`log-type-badge ${getLogTypeClass(log.type)}`}>
                             {getLogIcon(log.type)}
-                            <span>{log.type?.replace(/_/g, ' ') || 'Unknown'}</span>
+                            <span>{log.type || 'Unknown'}</span>
                           </div>
+                        </td>
+                        <td>
+                          <span className="log-resource">{getResourceDisplay(log)}</span>
                         </td>
                         <td>
                           <div className="user-info">
@@ -309,67 +342,14 @@ export default function AdminLogs() {
                           </div>
                         </td>
                         <td>
-                          <div className="log-description">{log.description}</div>
-                          {log.details && Object.keys(log.details).length > 0 && (
-                            <details className="log-details-expandable">
-                              <summary>View details</summary>
-                              <div className="log-details-content">
-                                {log.details.page && (
-                                  <div className="detail-row">
-                                    <span className="detail-label">Page:</span>
-                                    <span className="detail-value">{log.details.page}</span>
-                                  </div>
-                                )}
-                                {log.details.parts && Array.isArray(log.details.parts) && (
-                                  <div className="detail-row">
-                                    <span className="detail-label">Parts:</span>
-                                    <span className="detail-value">{log.details.parts.length} item(s)</span>
-                                  </div>
-                                )}
-                                {log.details.totalAmount !== undefined && (
-                                  <div className="detail-row">
-                                    <span className="detail-label">Amount:</span>
-                                    <span className="detail-value">₱{log.details.totalAmount.toFixed(2)}</span>
-                                  </div>
-                                )}
-                                {log.details.mechanic && (
-                                  <div className="detail-row">
-                                    <span className="detail-label">Mechanic:</span>
-                                    <span className="detail-value">{log.details.mechanic}</span>
-                                  </div>
-                                )}
-                                {log.details.mechanicId && (
-                                  <div className="detail-row">
-                                    <span className="detail-label">Mechanic ID:</span>
-                                    <span className="detail-value">{log.details.mechanicId}</span>
-                                  </div>
-                                )}
-                                {log.details.status && (
-                                  <div className="detail-row">
-                                    <span className="detail-label">Status:</span>
-                                    <span className="detail-value">{log.details.status}</span>
-                                  </div>
-                                )}
-                                {log.details.reason && (
-                                  <div className="detail-row">
-                                    <span className="detail-label">Reason:</span>
-                                    <span className="detail-value">{log.details.reason}</span>
-                                  </div>
-                                )}
-                                {log.details.userAgent && (
-                                  <div className="detail-row">
-                                    <span className="detail-label">Browser:</span>
-                                    <span className="detail-value">{log.details.userAgent.substring(0, 50)}...</span>
-                                  </div>
-                                )}
-                              </div>
-                            </details>
-                          )}
+                          <div className="log-description">{log.action || log.description || 'No description'}</div>
                         </td>
                         <td>
-                          <div className="log-ip">
-                            {log.ipAddress || log.details?.ipAddress || 'N/A'}
-                          </div>
+                          {log.changes && Object.keys(log.changes).length > 0 ? (
+                            <span className="changes-count">{Object.keys(log.changes).length} field(s)</span>
+                          ) : (
+                            <span className="no-changes">—</span>
+                          )}
                         </td>
                         <td>
                           <div className="log-timestamp">
@@ -388,6 +368,16 @@ export default function AdminLogs() {
                               })}
                             </div>
                           </div>
+                        </td>
+                        <td>
+                          <button 
+                            className="view-details-btn"
+                            onClick={() => handleViewDetails(log)}
+                            title="View detailed log information"
+                          >
+                            <Eye size={16} />
+                            Details
+                          </button>
                         </td>
                       </tr>
                     ))
@@ -427,7 +417,7 @@ export default function AdminLogs() {
                               {log.userName || 'Unknown User'}
                             </div>
                             <div className="logs-mobile-description">
-                              {log.description}
+                              {log.action || log.description || 'No description'}
                             </div>
                           </div>
                           <ChevronDown 
@@ -439,21 +429,34 @@ export default function AdminLogs() {
                         <div className="logs-mobile-meta">
                           <span className={`logs-mobile-badge ${getTypeClass()}`}>
                             {getLogIcon(log.type)}
-                            {log.type?.replace(/_/g, ' ') || 'Unknown'}
+                            {log.type || 'Unknown'}
                           </span>
                           <span className="logs-mobile-badge role">
                             {log.userRole || 'N/A'}
                           </span>
+                          {getResourceDisplay(log) !== '—' && (
+                            <span className="logs-mobile-badge resource">
+                              {getResourceDisplay(log)}
+                            </span>
+                          )}
                         </div>
 
                         {isExpanded && (
                           <div className="logs-mobile-expanded">
-                            <div className="logs-mobile-detail">
-                              <span className="logs-mobile-detail-label">IP Address</span>
-                              <span className="logs-mobile-detail-value">
-                                {log.ipAddress || log.details?.ipAddress || 'N/A'}
-                              </span>
-                            </div>
+                            {log.changes && Object.keys(log.changes).length > 0 && (
+                              <div className="logs-mobile-detail">
+                                <span className="logs-mobile-detail-label">Changes</span>
+                                <span className="logs-mobile-detail-value">
+                                  {Object.keys(log.changes).length} field(s) modified
+                                </span>
+                              </div>
+                            )}
+                            {log.resourceId && (
+                              <div className="logs-mobile-detail">
+                                <span className="logs-mobile-detail-label">Resource ID</span>
+                                <span className="logs-mobile-detail-value">{log.resourceId}</span>
+                              </div>
+                            )}
                             <div className="logs-mobile-detail">
                               <span className="logs-mobile-detail-label">Date</span>
                               <span className="logs-mobile-detail-value">
@@ -474,48 +477,16 @@ export default function AdminLogs() {
                                 })}
                               </span>
                             </div>
-                            
-                            {/* Additional Details */}
-                            {log.details && Object.keys(log.details).length > 0 && (
-                              <>
-                                {log.details.page && (
-                                  <div className="logs-mobile-detail">
-                                    <span className="logs-mobile-detail-label">Page</span>
-                                    <span className="logs-mobile-detail-value">{log.details.page}</span>
-                                  </div>
-                                )}
-                                {log.details.parts && Array.isArray(log.details.parts) && (
-                                  <div className="logs-mobile-detail">
-                                    <span className="logs-mobile-detail-label">Parts</span>
-                                    <span className="logs-mobile-detail-value">{log.details.parts.length} item(s)</span>
-                                  </div>
-                                )}
-                                {log.details.totalAmount !== undefined && (
-                                  <div className="logs-mobile-detail">
-                                    <span className="logs-mobile-detail-label">Amount</span>
-                                    <span className="logs-mobile-detail-value">₱{log.details.totalAmount.toFixed(2)}</span>
-                                  </div>
-                                )}
-                                {log.details.mechanic && (
-                                  <div className="logs-mobile-detail">
-                                    <span className="logs-mobile-detail-label">Mechanic</span>
-                                    <span className="logs-mobile-detail-value">{log.details.mechanic}</span>
-                                  </div>
-                                )}
-                                {log.details.status && (
-                                  <div className="logs-mobile-detail">
-                                    <span className="logs-mobile-detail-label">Status</span>
-                                    <span className="logs-mobile-detail-value">{log.details.status}</span>
-                                  </div>
-                                )}
-                                {log.details.reason && (
-                                  <div className="logs-mobile-detail">
-                                    <span className="logs-mobile-detail-label">Reason</span>
-                                    <span className="logs-mobile-detail-value">{log.details.reason}</span>
-                                  </div>
-                                )}
-                              </>
-                            )}
+                            <button 
+                              className="view-details-btn mobile"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewDetails(log);
+                              }}
+                            >
+                              <Eye size={16} />
+                              View Full Details
+                            </button>
                           </div>
                         )}
                       </div>
@@ -665,6 +636,14 @@ export default function AdminLogs() {
       </div>
 
       <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} user={user} />
+      <LogDetailsModal 
+        open={detailsModalOpen} 
+        onClose={() => {
+          setDetailsModalOpen(false);
+          setSelectedLog(null);
+        }} 
+        log={selectedLog} 
+      />
     </div>
   );
 }

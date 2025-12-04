@@ -27,6 +27,7 @@ import { useSidebar } from '../context/SidebarContext';
 import UserSidebar from '../components/UserSidebar';
 import SuperAdminSidebar from '../components/SuperAdminSidebar';
 import NavigationBar from '../components/NavigationBar';
+import Loading from '../components/Loading';
 import ScrollStack, { ScrollStackItem } from '../components/ScrollStack';
 import ServiceHistoryModal from '../components/modals/ServiceHistoryModal';
 
@@ -35,6 +36,7 @@ import '../css/UserDashboard.css';
 function MotohubCustomerDashboardContent() {
   const { sidebarOpen } = useSidebar();
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [vehicles, setVehicles] = useState([]);
   const [promotions, setPromotions] = useState([]);
   const [stats, setStats] = useState({
@@ -56,6 +58,7 @@ function MotohubCustomerDashboardContent() {
 
   const loadUserData = async () => {
     try {
+      setLoading(true);
       if (!user?.uid) return;
       
       // Load vehicles
@@ -90,6 +93,8 @@ function MotohubCustomerDashboardContent() {
     } catch (error) {
       console.error('Error loading user data:', error);
       messageApi.error('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -369,11 +374,19 @@ function MotohubCustomerDashboardContent() {
               const serviceType = service.serviceType ? String(service.serviceType) : 'N/A';
               const description = service.description || service.diagnosis || 'N/A';
               const descStr = String(description).substring(0, 80);
-              const mechanicName = service.mechanicName ? String(service.mechanicName) : 'N/A';
+              
+              // Use mechanic head name if available, otherwise use mechanic name
+              let mechanicDisplay = service.mechanicHeadName || service.mechanicName || 'N/A';
+              
+              // If there are other mechanics, add count
+              if (service.mechanicNames && service.mechanicNames.length > 0) {
+                mechanicDisplay += ` (+${service.mechanicNames.length})`;
+              }
+              
               const cost = service.cost ? `₱${Number(service.cost).toLocaleString()}` : 'N/A';
               const status = service.status ? String(service.status) : 'N/A';
 
-              return [dateStr, serviceType, descStr, mechanicName, cost, status];
+              return [dateStr, serviceType, descStr, mechanicDisplay, cost, status];
             } catch (rowError) {
               console.error('Error processing service record:', rowError, service);
               return ['Error', 'Error', 'Error processing record', 'N/A', 'N/A', 'N/A'];
@@ -721,6 +734,10 @@ function MotohubCustomerDashboardContent() {
     arrows: true,
   };
 
+  if (loading) {
+    return <Loading text="Loading dashboard..." />;
+  }
+
   return (
     <div className="customer-dashboard-container">
       {user?.role === 'superadmin' ? <SuperAdminSidebar /> : <UserSidebar />}
@@ -735,7 +752,47 @@ function MotohubCustomerDashboardContent() {
         />
 
         <div className="customer-content-area">
-          {/* Promos Carousel - Moved to Top */}
+          {/* Quick Actions - At the Top */}
+          <div className="quick-actions-section">
+            <div className="quick-actions">
+              <QuickActionCard
+                icon={MessageSquare}
+                title="Contact Support"
+                description="Get help from our team"
+                onClick={handleContactSupport}
+              />
+              <QuickActionCard
+                icon={FileText}
+                title="Service History"
+                description="Download your vehicle history"
+                onClick={handleServiceHistoryClick}
+              />
+            </div>
+          </div>
+
+          {/* Stats Overview */}
+          <div className="stats-grid">
+            <StatCard
+              icon={Car}
+              title="Total Vehicles"
+              value={stats.totalVehicles}
+              color="linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)"
+            />
+            <StatCard
+              icon={Wrench}
+              title="Pending Services"
+              value={stats.pendingServices}
+              color="linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%)"
+            />
+            <StatCard
+              icon={FileText}
+              title="Completed Services"
+              value={stats.completedServices}
+              color="linear-gradient(135deg, #10B981 0%, #34D399 100%)"
+            />
+          </div>
+
+          {/* Promos Carousel */}
           <div className="section-with-title promo-section-top">
             <h3 className="section-title">
               <Tag size={20} />
@@ -771,71 +828,6 @@ function MotohubCustomerDashboardContent() {
                   <p>No promotions available at the moment</p>
                 </div>
               )}
-            </div>
-          </div>
-
-          {/* Stats Overview */}
-          <div className="stats-grid">
-            <StatCard
-              icon={Car}
-              title="Total Vehicles"
-              value={stats.totalVehicles}
-              color="linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)"
-            />
-            <StatCard
-              icon={Wrench}
-              title="Pending Services"
-              value={stats.pendingServices}
-              color="linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%)"
-            />
-            <StatCard
-              icon={FileText}
-              title="Completed Services"
-              value={stats.completedServices}
-              color="linear-gradient(135deg, #10B981 0%, #34D399 100%)"
-            />
-          </div>
-
-          {/* My Vehicles and Quick Actions Grid */}
-          <div className="vehicles-actions-grid">
-            {/* My Vehicles Section */}
-            <div className="section-with-title">
-              <h3 className="section-title">
-                <Car size={20} />
-                My Vehicles
-              </h3>
-              {vehicles.length > 0 ? (
-                <div className="my-vehicles-grid">
-                  {vehicles.map(vehicle => (
-                    <VehicleCard key={vehicle.id} vehicle={vehicle} />
-                  ))}
-                </div>
-              ) : (
-                <div className="no-vehicles">
-                  <Car size={64} />
-                  <h3>No Vehicles Yet</h3>
-                  <p>Start by adding your first vehicle to track its service history</p>
-                </div>
-              )}
-            </div>
-
-            {/* Quick Actions */}
-            <div className="section-with-title">
-              <h3 className="section-title">Quick Actions</h3>
-              <div className="quick-actions">
-                <QuickActionCard
-                  icon={MessageSquare}
-                  title="Contact Support"
-                  description="Get help from our team"
-                  onClick={handleContactSupport}
-                />
-                <QuickActionCard
-                  icon={FileText}
-                  title="Service History"
-                  description="Download your vehicle history"
-                  onClick={handleServiceHistoryClick}
-                />
-              </div>
             </div>
           </div>
         </div>

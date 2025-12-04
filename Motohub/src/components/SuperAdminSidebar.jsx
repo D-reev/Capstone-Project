@@ -21,7 +21,6 @@ import {
   Wrench
 } from 'lucide-react';
 import logo from '../assets/images/logo.jpeg';
-import Dock from './Dock';
 import './Sidebar.css';
 import TriangleArrow from './TriangleArrow';
 
@@ -100,7 +99,7 @@ function ChildNavItem({ label, active = false, sidebarOpen, onClick }) {
 
 export default function SuperAdminSidebar() {
   const { user } = useAuth();
-  const { sidebarOpen } = useSidebar();
+  const { sidebarOpen, toggleSidebar } = useSidebar();
   const { logout } = useAuthNavigation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -140,6 +139,29 @@ export default function SuperAdminSidebar() {
   useEffect(() => {
     localStorage.setItem('superAdminExpandedSections', JSON.stringify(expandedSections));
   }, [expandedSections]);
+
+  // Handle click outside to close sidebar on mobile
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (window.innerWidth <= 768 && sidebarOpen) {
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar && !sidebar.contains(event.target)) {
+          const navToggle = event.target.closest('.nav-toggle-btn');
+          if (!navToggle) {
+            toggleSidebar();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [sidebarOpen]);
 
   const handleLogout = () => {
     modal.confirm({
@@ -206,6 +228,29 @@ export default function SuperAdminSidebar() {
           onClick={() => navigate('/admindashboard/logs')}
         />
 
+        {/* SuperAdmin Exclusive Pages */}
+        <NavItem 
+          icon={Car} 
+          label="Customer Vehicles" 
+          active={isPathActive('/superadmin/customercars')}
+          sidebarOpen={sidebarOpen}
+          onClick={() => navigate('/superadmin/customercars')}
+        />
+        <NavItem 
+          icon={Wrench} 
+          label="All Service Reports" 
+          active={isPathActive('/superadmin/servicereports')}
+          sidebarOpen={sidebarOpen}
+          onClick={() => navigate('/superadmin/servicereports')}
+        />
+        <NavItem 
+          icon={Package} 
+          label="All Parts Requests" 
+          active={isPathActive('/superadmin/partsrequests')}
+          sidebarOpen={sidebarOpen}
+          onClick={() => navigate('/superadmin/partsrequests')}
+        />
+
         {/* Admin Pages Section */}
         <CollapsibleSection
           icon={Settings}
@@ -238,6 +283,35 @@ export default function SuperAdminSidebar() {
             active={isPathActive('/admindashboard/promotions')}
             sidebarOpen={sidebarOpen}
             onClick={() => navigate('/admindashboard/promotions')}
+          />
+        </CollapsibleSection>
+
+        {/* Mechanic Pages Section */}
+        <CollapsibleSection
+          icon={Wrench}
+          label="Mechanic Pages"
+          sidebarOpen={sidebarOpen}
+          isOpen={expandedSections.mechanicPages}
+          onToggle={() => toggleSection('mechanicPages')}
+          color="orange"
+        >
+          <ChildNavItem
+            label="Dashboard"
+            active={isMechanicDashboardActive()}
+            sidebarOpen={sidebarOpen}
+            onClick={() => navigate('/mechanicdashboard')}
+          />
+          <ChildNavItem
+            label="My Requests"
+            active={isPathActive('/mechanicdashboard/requests')}
+            sidebarOpen={sidebarOpen}
+            onClick={() => navigate('/mechanicdashboard/requests')}
+          />
+          <ChildNavItem
+            label="Pending Reports"
+            active={isPathActive('/pendingreports')}
+            sidebarOpen={sidebarOpen}
+            onClick={() => navigate('/pendingreports')}
           />
         </CollapsibleSection>
 
@@ -276,29 +350,6 @@ export default function SuperAdminSidebar() {
           />
         </CollapsibleSection>
 
-        {/* Mechanic Pages Section */}
-        <CollapsibleSection
-          icon={Wrench}
-          label="Mechanic Pages"
-          sidebarOpen={sidebarOpen}
-          isOpen={expandedSections.mechanicPages}
-          onToggle={() => toggleSection('mechanicPages')}
-          color="orange"
-        >
-          <ChildNavItem
-            label="Dashboard"
-            active={isMechanicDashboardActive()}
-            sidebarOpen={sidebarOpen}
-            onClick={() => navigate('/mechanicdashboard')}
-          />
-          <ChildNavItem
-            label="My Requests"
-            active={isPathActive('/mechanicdashboard/requests')}
-            sidebarOpen={sidebarOpen}
-            onClick={() => navigate('/mechanicdashboard/requests')}
-          />
-        </CollapsibleSection>
-
         <NavItem 
           icon={LogOut} 
           label="Logout" 
@@ -309,24 +360,9 @@ export default function SuperAdminSidebar() {
     );
   };
 
-  const dockItems = [
-    {
-      icon: <LayoutDashboard size={24} />,
-      label: 'Dashboard',
-      onClick: () => navigate('/admindashboard'),
-      className: isDashboardActive() ? 'active' : ''
-    },
-    {
-      icon: <LogOut size={24} />,
-      label: 'Logout',
-      onClick: handleLogout,
-      className: ''
-    }
-  ];
-
   return (
     <>
-      <div className={`sidebar ${sidebarOpen ? '' : 'collapsed'}`}>
+      <div className={`sidebar ${sidebarOpen ? 'open' : 'collapsed'}`}>
         {/* Brand/Logo Section */}
         <div className="sidebar-brand">
           <div className="brand-logo">
@@ -398,9 +434,6 @@ export default function SuperAdminSidebar() {
           </div>
         )}
       </div>
-
-      {/* Mobile Dock */}
-      <Dock items={dockItems} />
     </>
   );
 }

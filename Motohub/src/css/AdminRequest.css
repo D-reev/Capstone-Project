@@ -566,11 +566,13 @@
 }
 
 @media (max-width: 768px) {
+  .requests-main,
   .main-content {
-    margin-left: 0;
-    width: 100%;
+    margin-left: 0 !important;
+    width: 100% !important;
   }
 
+  .requests-content,
   .requests-container {
     padding: 1rem;
   }

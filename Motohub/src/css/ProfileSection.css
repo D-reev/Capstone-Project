@@ -674,8 +674,8 @@
   }
 
   .profile-main-content {
-    margin-left: 0;
-    width: 100%;
+    margin-left: 0 !important;
+    width: 100% !important;
     padding-bottom: 0 !important;
   }
 

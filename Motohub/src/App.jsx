@@ -18,6 +18,9 @@ import MechanicINVRequest from "./pages/MechanicINVRequest";
 import MyCars from "./pages/MyCars";
 import AdminPromotions from "./pages/AdminPromotions";
 import PendingReports from "./pages/PendingReports";
+import AllCustomerCars from "./pages/AllCustomerCars";
+import AllServiceReports from "./pages/AllServiceReports";
+import AllPartsRequests from "./pages/AllPartsRequests";
 
 import "./App.css";
 
@@ -68,6 +71,23 @@ function App() {
             </ProtectedRoute>
           } />
 
+          {/* SuperAdmin Only Routes */}
+          <Route path="/superadmin/customercars" element={
+            <ProtectedRoute allowedRoles={['superadmin']}>
+              <AllCustomerCars />
+            </ProtectedRoute>
+          } />
+          <Route path="/superadmin/servicereports" element={
+            <ProtectedRoute allowedRoles={['superadmin']}>
+              <AllServiceReports />
+            </ProtectedRoute>
+          } />
+          <Route path="/superadmin/partsrequests" element={
+            <ProtectedRoute allowedRoles={['superadmin']}>
+              <AllPartsRequests />
+            </ProtectedRoute>
+          } />
+
           {/* Mechanic Routes */}
           <Route path="/mechanicdashboard" element={
             <ProtectedRoute allowedRoles={['mechanic', 'admin', 'superadmin']}>
@@ -85,6 +105,11 @@ function App() {
             </ProtectedRoute>
           } />
           <Route path="/mechanicdashboard/pendingreports" element={
+            <ProtectedRoute allowedRoles={['mechanic', 'admin', 'superadmin']}>
+              <PendingReports />
+            </ProtectedRoute>
+          } />
+          <Route path="/pendingreports" element={
             <ProtectedRoute allowedRoles={['mechanic', 'admin', 'superadmin']}>
               <PendingReports />
             </ProtectedRoute>

@@ -10,7 +10,7 @@
   color: white;
   display: flex;
   flex-direction: column;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 900;
   overflow: hidden;
   box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
@@ -675,7 +675,15 @@
 @media (max-width: 768px) {
   .sidebar,
   .customer-sidebar {
-    display: none;
+    transform: translateX(-100%);
+    z-index: 1100;
+    width: 280px;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
   }
 
   .sidebar.open,
@@ -685,7 +693,15 @@
 
   .sidebar.collapsed,
   .customer-sidebar.collapsed {
-    display: none;
+    transform: translateX(-100%);
+  }
+
+  /* Ensure main content takes full width on mobile */
+  .main-content,
+  .dashboard-main,
+  .admin-promotions-main {
+    margin-left: 0 !important;
+    width: 100% !important;
   }
 
   /* Add bottom padding to main content areas for dock */
@@ -697,6 +713,28 @@
   .mechanic-main-content,
   .inventory-main-content {
     padding-bottom: 100px !important;
+  }
+
+  /* Mobile Overlay */
+  .sidebar::before,
+  .customer-sidebar::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: -1;
+  }
+
+  .sidebar.open::before,
+  .customer-sidebar.open::before {
+    opacity: 1;
+    pointer-events: auto;
   }
 }
 

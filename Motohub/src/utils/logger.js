@@ -1,31 +1,47 @@
 import { collection, addDoc, getFirestore } from 'firebase/firestore';
 
 /**
- * Creates a log entry in the database
- * @param {string} type - The type of log (e.g., 'PAGE_VIEW', 'USER_CREATED', etc.)
+ * Creates a log entry in the database with detailed information
+ * @param {string} type - The type of log (e.g., 'CREATE', 'UPDATE', 'DELETE')
  * @param {string} userId - The ID of the user performing the action
- * @param {string} description - Optional description of the action
- * @param {Object} details - Optional additional details about the action
+ * @param {string} userName - The name of the user performing the action
+ * @param {string} userRole - The role of the user performing the action
+ * @param {string} action - Action performed (e.g., 'Created user', 'Updated part')
+ * @param {string} resource - The resource being acted upon (e.g., 'User', 'Part', 'Vehicle')
+ * @param {string} resourceId - The ID of the resource
+ * @param {Object} oldData - The previous state of the resource (for updates)
+ * @param {Object} newData - The new state of the resource
+ * @param {Object} metadata - Additional metadata (IP, device, etc.)
  */
-export const createLog = async (type, userId = null, description = null, details = null) => {
+export const createLog = async ({
+  type,
+  userId = null,
+  userName = 'System',
+  userRole = 'system',
+  action,
+  resource,
+  resourceId = null,
+  oldData = null,
+  newData = null,
+  metadata = {}
+}) => {
   try {
     const db = getFirestore();
     const logData = {
       type,
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(), // Use numeric timestamp for proper ordering
+      timestampDate: new Date().toISOString(), // Keep ISO string for display
+      userId,
+      userName,
+      userRole,
+      action,
+      resource,
+      resourceId,
+      oldData,
+      newData,
+      metadata,
+      changes: oldData && newData ? getChanges(oldData, newData) : null
     };
-
-    if (userId) {
-      logData.userId = userId;
-    }
-
-    if (description) {
-      logData.description = description;
-    }
-
-    if (details) {
-      logData.details = details;
-    }
 
     await addDoc(collection(db, 'logs'), logData);
   } catch (error) {
@@ -35,93 +51,356 @@ export const createLog = async (type, userId = null, description = null, details
 };
 
 /**
+ * Helper function to get differences between old and new data
+ */
+const getChanges = (oldData, newData) => {
+  const changes = {};
+  const allKeys = new Set([...Object.keys(oldData), ...Object.keys(newData)]);
+  
+  allKeys.forEach(key => {
+    const oldValue = oldData[key];
+    const newValue = newData[key];
+    
+    // Skip undefined values and only track actual changes
+    if (oldValue === undefined && newValue === undefined) return;
+    if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+      changes[key] = {
+        from: oldValue !== undefined ? oldValue : null,
+        to: newValue !== undefined ? newValue : null
+      };
+    }
+  });
+  
+  return Object.keys(changes).length > 0 ? changes : null;
+};
+
+/**
  * Log types available in the system
  */
 export const LOG_TYPES = {
-  // Page navigation
-  PAGE_VIEW: 'PAGE_VIEW',
+  // CRUD Operations
+  CREATE: 'CREATE',
+  UPDATE: 'UPDATE',
+  DELETE: 'DELETE',
+  READ: 'READ',
   
-  // Security
-  UNAUTHORIZED_ACCESS_ATTEMPT: 'UNAUTHORIZED_ACCESS_ATTEMPT',
+  // Authentication
+  LOGIN: 'LOGIN',
+  LOGOUT: 'LOGOUT',
+  LOGIN_FAILED: 'LOGIN_FAILED',
   
-  // User management
-  USER_LOGIN: 'USER_LOGIN',
-  USER_LOGOUT: 'USER_LOGOUT',
-  USER_CREATED: 'USER_CREATED',
-  USER_UPDATED: 'USER_UPDATED',
-  USER_DELETED: 'USER_DELETED',
+  // Authorization
+  ACCESS_GRANTED: 'ACCESS_GRANTED',
+  ACCESS_DENIED: 'ACCESS_DENIED',
   
-  // Parts requests
-  PARTS_REQUEST_CREATED: 'PARTS_REQUEST_CREATED',
-  PARTS_REQUEST_APPROVED: 'PARTS_REQUEST_APPROVED',
-  PARTS_REQUEST_REJECTED: 'PARTS_REQUEST_REJECTED',
-  
-  // Inventory
-  INVENTORY_ADDED: 'INVENTORY_ADDED',
-  INVENTORY_UPDATED: 'INVENTORY_UPDATED',
-  INVENTORY_DELETED: 'INVENTORY_DELETED',
+  // System
+  SYSTEM_ERROR: 'SYSTEM_ERROR',
+  SYSTEM_WARNING: 'SYSTEM_WARNING',
+};
+
+/**
+ * Resource types in the system
+ */
+export const RESOURCES = {
+  USER: 'User',
+  VEHICLE: 'Vehicle',
+  PART: 'Part',
+  PARTS_REQUEST: 'Parts Request',
+  SERVICE_REPORT: 'Service Report',
+  PROMOTION: 'Promotion',
+  INVENTORY: 'Inventory',
+  TRANSACTION: 'Transaction',
+  NOTIFICATION: 'Notification',
 };
 
 /**
  * Helper functions for common log operations
  */
 export const logHelpers = {
-  // User actions
-  userLogin: (userId) => createLog(LOG_TYPES.USER_LOGIN, userId, 'User logged in'),
-  userLogout: (userId) => createLog(LOG_TYPES.USER_LOGOUT, userId, 'User logged out'),
-  userCreated: (adminId, newUserName, newUserRole) => 
-    createLog(LOG_TYPES.USER_CREATED, adminId, `Created new ${newUserRole} account: ${newUserName}`),
-  userUpdated: (adminId, userName) => 
-    createLog(LOG_TYPES.USER_UPDATED, adminId, `Updated user: ${userName}`),
-  userDeleted: (adminId, userName) => 
-    createLog(LOG_TYPES.USER_DELETED, adminId, `Deleted user: ${userName}`),
-  
-  // Parts request actions
-  partsRequestCreated: (userId, requestId, partsCount, totalAmount) => 
-    createLog(
-      LOG_TYPES.PARTS_REQUEST_CREATED, 
-      userId, 
-      `Created parts request with ${partsCount} item${partsCount !== 1 ? 's' : ''} (₱${totalAmount.toFixed(2)})`,
-      { requestId, partsCount, totalAmount }
-    ),
-  partsRequestApproved: (adminId, mechanicName, requestId, details) => 
-    createLog(
-      LOG_TYPES.PARTS_REQUEST_APPROVED, 
-      adminId, 
-      `Approved parts request for ${mechanicName}`,
-      { requestId, ...details }
-    ),
-  partsRequestRejected: (adminId, requestId, details) => 
-    createLog(
-      LOG_TYPES.PARTS_REQUEST_REJECTED, 
-      adminId, 
-      `Rejected parts request`,
-      { requestId, ...details }
-    ),
-  
-  // Inventory actions
-  inventoryAdded: (adminId, partName, quantity) => 
-    createLog(
-      LOG_TYPES.INVENTORY_ADDED, 
-      adminId, 
-      `Added ${partName} to inventory (Qty: ${quantity})`,
-      { partName, quantity }
-    ),
-  inventoryUpdated: (adminId, partName) => 
-    createLog(LOG_TYPES.INVENTORY_UPDATED, adminId, `Updated inventory: ${partName}`),
-  inventoryDeleted: (adminId, partName) => 
-    createLog(LOG_TYPES.INVENTORY_DELETED, adminId, `Deleted from inventory: ${partName}`),
-  
-  // Page views
-  pageView: (userId, pageName) => 
-    createLog(LOG_TYPES.PAGE_VIEW, userId, `Viewed ${pageName}`, { page: pageName }),
-  
-  // Security
-  unauthorizedAccess: (userId, page) => 
-    createLog(
-      LOG_TYPES.UNAUTHORIZED_ACCESS_ATTEMPT, 
-      userId, 
-      `Attempted to access ${page} without authorization`,
-      { page }
-    ),
+  // Authentication
+  login: (userId, userName, userRole) => 
+    createLog({
+      type: LOG_TYPES.LOGIN,
+      userId,
+      userName,
+      userRole,
+      action: 'Logged in',
+      resource: RESOURCES.USER,
+      resourceId: userId
+    }),
+    
+  logout: (userId, userName, userRole) => 
+    createLog({
+      type: LOG_TYPES.LOGOUT,
+      userId,
+      userName,
+      userRole,
+      action: 'Logged out',
+      resource: RESOURCES.USER,
+      resourceId: userId
+    }),
+    
+  loginFailed: (email) => 
+    createLog({
+      type: LOG_TYPES.LOGIN_FAILED,
+      action: 'Failed login attempt',
+      resource: RESOURCES.USER,
+      metadata: { email }
+    }),
+
+  // User Management
+  createUser: (adminId, adminName, adminRole, newUserData) => 
+    createLog({
+      type: LOG_TYPES.CREATE,
+      userId: adminId,
+      userName: adminName,
+      userRole: adminRole,
+      action: `Created ${newUserData.role} user: ${newUserData.displayName}`,
+      resource: RESOURCES.USER,
+      resourceId: newUserData.id,
+      newData: newUserData
+    }),
+    
+  updateUser: (adminId, adminName, adminRole, userId, oldData, newData) => 
+    createLog({
+      type: LOG_TYPES.UPDATE,
+      userId: adminId,
+      userName: adminName,
+      userRole: adminRole,
+      action: `Updated user: ${newData.displayName || oldData.displayName}`,
+      resource: RESOURCES.USER,
+      resourceId: userId,
+      oldData,
+      newData
+    }),
+    
+  deleteUser: (adminId, adminName, adminRole, deletedUserData) => 
+    createLog({
+      type: LOG_TYPES.DELETE,
+      userId: adminId,
+      userName: adminName,
+      userRole: adminRole,
+      action: `Deleted user: ${deletedUserData.displayName}`,
+      resource: RESOURCES.USER,
+      resourceId: deletedUserData.id,
+      oldData: deletedUserData
+    }),
+
+  // Vehicle Management
+  createVehicle: (userId, userName, userRole, vehicleData) => 
+    createLog({
+      type: LOG_TYPES.CREATE,
+      userId,
+      userName,
+      userRole,
+      action: `Added vehicle: ${vehicleData.make} ${vehicleData.model} (${vehicleData.plateNumber})`,
+      resource: RESOURCES.VEHICLE,
+      resourceId: vehicleData.id,
+      newData: vehicleData
+    }),
+    
+  updateVehicle: (userId, userName, userRole, vehicleId, oldData, newData) => 
+    createLog({
+      type: LOG_TYPES.UPDATE,
+      userId,
+      userName,
+      userRole,
+      action: `Updated vehicle: ${newData.plateNumber || oldData.plateNumber}`,
+      resource: RESOURCES.VEHICLE,
+      resourceId: vehicleId,
+      oldData,
+      newData
+    }),
+    
+  deleteVehicle: (userId, userName, userRole, vehicleData) => 
+    createLog({
+      type: LOG_TYPES.DELETE,
+      userId,
+      userName,
+      userRole,
+      action: `Deleted vehicle: ${vehicleData.make} ${vehicleData.model} (${vehicleData.plateNumber})`,
+      resource: RESOURCES.VEHICLE,
+      resourceId: vehicleData.id,
+      oldData: vehicleData
+    }),
+
+  // Parts/Inventory Management
+  createPart: (adminId, adminName, adminRole, partData) => 
+    createLog({
+      type: LOG_TYPES.CREATE,
+      userId: adminId,
+      userName: adminName,
+      userRole: adminRole,
+      action: `Added part: ${partData.name} (Qty: ${partData.quantity || partData.stock || 0})`,
+      resource: RESOURCES.PART,
+      resourceId: partData.id,
+      newData: partData
+    }),
+    
+  updatePart: (adminId, adminName, adminRole, partId, oldData, newData) => 
+    createLog({
+      type: LOG_TYPES.UPDATE,
+      userId: adminId,
+      userName: adminName,
+      userRole: adminRole,
+      action: `Updated part: ${newData.name || oldData.name}`,
+      resource: RESOURCES.PART,
+      resourceId: partId,
+      oldData,
+      newData
+    }),
+    
+  deletePart: (adminId, adminName, adminRole, partData) => 
+    createLog({
+      type: LOG_TYPES.DELETE,
+      userId: adminId,
+      userName: adminName,
+      userRole: adminRole,
+      action: `Deleted part: ${partData.name}`,
+      resource: RESOURCES.PART,
+      resourceId: partData.id,
+      oldData: partData
+    }),
+    
+  restockPart: (adminId, adminName, adminRole, partName, oldStock, newStock, addedQty) => 
+    createLog({
+      type: LOG_TYPES.UPDATE,
+      userId: adminId,
+      userName: adminName,
+      userRole: adminRole,
+      action: `Restocked part: ${partName} (+${addedQty})`,
+      resource: RESOURCES.INVENTORY,
+      oldData: { stock: oldStock },
+      newData: { stock: newStock },
+      metadata: { addedQuantity: addedQty }
+    }),
+
+  // Parts Request Management
+  createPartsRequest: (mechanicId, mechanicName, requestData) => 
+    createLog({
+      type: LOG_TYPES.CREATE,
+      userId: mechanicId,
+      userName: mechanicName,
+      userRole: 'mechanic',
+      action: `Created parts request with ${requestData.parts?.length || 0} items`,
+      resource: RESOURCES.PARTS_REQUEST,
+      resourceId: requestData.id,
+      newData: requestData
+    }),
+    
+  approvePartsRequest: (adminId, adminName, adminRole, requestId, requestData) => 
+    createLog({
+      type: LOG_TYPES.UPDATE,
+      userId: adminId,
+      userName: adminName,
+      userRole: adminRole,
+      action: `Approved parts request for ${requestData.mechanicName}`,
+      resource: RESOURCES.PARTS_REQUEST,
+      resourceId: requestId,
+      oldData: { status: 'pending' },
+      newData: { status: 'approved', ...requestData }
+    }),
+    
+  rejectPartsRequest: (adminId, adminName, adminRole, requestId, requestData, reason) => 
+    createLog({
+      type: LOG_TYPES.UPDATE,
+      userId: adminId,
+      userName: adminName,
+      userRole: adminRole,
+      action: `Rejected parts request for ${requestData.mechanicName}`,
+      resource: RESOURCES.PARTS_REQUEST,
+      resourceId: requestId,
+      oldData: { status: 'pending' },
+      newData: { status: 'rejected', reason },
+      metadata: { rejectionReason: reason }
+    }),
+
+  // Service Report Management
+  createServiceReport: (mechanicId, mechanicName, reportData) => 
+    createLog({
+      type: LOG_TYPES.CREATE,
+      userId: mechanicId,
+      userName: mechanicName,
+      userRole: 'mechanic',
+      action: `Created service report for ${reportData.vehicleInfo?.plateNumber || 'vehicle'}`,
+      resource: RESOURCES.SERVICE_REPORT,
+      resourceId: reportData.id,
+      newData: reportData
+    }),
+    
+  updateServiceReport: (mechanicId, mechanicName, reportId, oldData, newData) => 
+    createLog({
+      type: LOG_TYPES.UPDATE,
+      userId: mechanicId,
+      userName: mechanicName,
+      userRole: 'mechanic',
+      action: `Updated service report`,
+      resource: RESOURCES.SERVICE_REPORT,
+      resourceId: reportId,
+      oldData,
+      newData
+    }),
+    
+  completeServiceReport: (mechanicId, mechanicName, reportId, reportData) => 
+    createLog({
+      type: LOG_TYPES.UPDATE,
+      userId: mechanicId,
+      userName: mechanicName,
+      userRole: 'mechanic',
+      action: `Completed service report`,
+      resource: RESOURCES.SERVICE_REPORT,
+      resourceId: reportId,
+      oldData: { status: 'pending' },
+      newData: { status: 'completed', ...reportData }
+    }),
+
+  // Promotion Management
+  createPromotion: (adminId, adminName, adminRole, promotionData) => 
+    createLog({
+      type: LOG_TYPES.CREATE,
+      userId: adminId,
+      userName: adminName,
+      userRole: adminRole,
+      action: `Created promotion: ${promotionData.title}`,
+      resource: RESOURCES.PROMOTION,
+      resourceId: promotionData.id,
+      newData: promotionData
+    }),
+    
+  updatePromotion: (adminId, adminName, adminRole, promotionId, oldData, newData) => 
+    createLog({
+      type: LOG_TYPES.UPDATE,
+      userId: adminId,
+      userName: adminName,
+      userRole: adminRole,
+      action: `Updated promotion: ${newData.title || oldData.title}`,
+      resource: RESOURCES.PROMOTION,
+      resourceId: promotionId,
+      oldData,
+      newData
+    }),
+    
+  deletePromotion: (adminId, adminName, adminRole, promotionData) => 
+    createLog({
+      type: LOG_TYPES.DELETE,
+      userId: adminId,
+      userName: adminName,
+      userRole: adminRole,
+      action: `Deleted promotion: ${promotionData.title}`,
+      resource: RESOURCES.PROMOTION,
+      resourceId: promotionData.id,
+      oldData: promotionData
+    }),
+
+  // Access Control
+  accessDenied: (userId, userName, userRole, resource) => 
+    createLog({
+      type: LOG_TYPES.ACCESS_DENIED,
+      userId,
+      userName,
+      userRole,
+      action: `Attempted unauthorized access`,
+      resource,
+      metadata: { reason: 'Insufficient permissions' }
+    }),
 };

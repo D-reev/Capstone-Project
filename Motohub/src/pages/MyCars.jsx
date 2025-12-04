@@ -5,9 +5,11 @@ import { Car, History, Plus, Edit, Trash2 } from 'lucide-react';
 
 import { useAuth } from '../context/AuthContext';
 import { useSidebar } from '../context/SidebarContext';
+import { logHelpers } from '../utils/logger';
 import UserSidebar from '../components/UserSidebar';
 import SuperAdminSidebar from '../components/SuperAdminSidebar';
 import NavigationBar from '../components/NavigationBar';
+import Loading from '../components/Loading';
 import ServiceHistoryModal from '../components/modals/ServiceHistoryModal';
 import AddCarModal from '../components/modals/AddCarModal';
 import EditCarModal from '../components/modals/EditCarModal';
@@ -16,6 +18,7 @@ import '../css/MyCars.css';
 
 function MyCarsContent() {
   const [vehicles, setVehicles] = useState([]);
+  const [loading, setLoading] = useState(true);
   const { sidebarOpen } = useSidebar();
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
   const [isAddingCar, setIsAddingCar] = useState(false);
@@ -30,6 +33,7 @@ function MyCarsContent() {
 
   const loadUserCars = async () => {
     try {
+      setLoading(true);
       if (!user?.uid) return;
       const carsRef = collection(db, `users/${user.uid}/cars`);
       const snap = await getDocs(carsRef);
@@ -50,6 +54,8 @@ function MyCarsContent() {
     } catch (error) {
       console.error('Error loading vehicles:', error);
       messageApi.error('Failed to load vehicles');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -99,10 +105,19 @@ function MyCarsContent() {
         return;
       }
       const carsRef = collection(db, `users/${user.uid}/cars`);
-      await addDoc(carsRef, {
+      const docRef = await addDoc(carsRef, {
         ...formData,
         createdAt: new Date().toISOString(),
       });
+      
+      // Log the vehicle creation
+      await logHelpers.createVehicle(
+        user.uid,
+        user.displayName || user.email,
+        user.role,
+        { id: docRef.id, ...formData }
+      );
+      
       setIsAddingCar(false);
       await loadUserCars();
       messageApi.success('Vehicle added successfully!');
@@ -123,6 +138,17 @@ function MyCarsContent() {
         ...formData,
         updatedAt: new Date().toISOString(),
       });
+      
+      // Log the vehicle update
+      await logHelpers.updateVehicle(
+        user.uid,
+        user.displayName || user.email,
+        user.role,
+        editingVehicle.id,
+        editingVehicle,
+        { ...editingVehicle, ...formData }
+      );
+      
       setEditingVehicle(null);
       await loadUserCars();
       messageApi.success('Vehicle updated successfully!');
@@ -145,6 +171,15 @@ function MyCarsContent() {
           if (!user?.uid) return;
           const carRef = doc(db, `users/${user.uid}/cars/${vehicle.id}`);
           await deleteDoc(carRef);
+          
+          // Log the vehicle deletion
+          await logHelpers.deleteVehicle(
+            user.uid,
+            user.displayName || user.email,
+            user.role,
+            vehicle
+          );
+          
           await loadUserCars();
           messageApi.success('Vehicle deleted successfully!');
         } catch (error) {
@@ -282,6 +317,10 @@ function MyCarsContent() {
       </>
     );
   };
+
+  if (loading) {
+    return <Loading text="Loading vehicles..." />;
+  }
 
   return (
     <div className="my-cars-container">

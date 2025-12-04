@@ -4,16 +4,18 @@ import { useSidebar } from '../context/SidebarContext';
 import Loading from '../components/Loading';
 import { getFirestore, collection, getDocs, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { SearchOutlined, UserAddOutlined, EditOutlined, DeleteOutlined, FilterOutlined } from '@ant-design/icons';
-import { ChevronDown, Mail, Phone, MapPin } from 'lucide-react';
-import { Table, Tag, Input, Button, Space, Avatar, ConfigProvider, Select } from 'antd';
+import { ChevronDown, Mail, Phone, MapPin, Car } from 'lucide-react';
+import { Table, Tag, Input, Button, Space, Avatar, ConfigProvider, Select, message } from 'antd';
 import AdminSidebar from '../components/AdminSidebar';
 import SuperAdminSidebar from '../components/SuperAdminSidebar';
 import EditUserModal from '../components/modals/EditUserModal';
 import DeleteUserModal from '../components/modals/DeleteUserModal';
+import AddCarModal from '../components/modals/AddCarModal';
 import NavigationBar from '../components/NavigationBar';
 import ProfileModal from '../components/modals/ProfileModal';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../config/firebase';
+import { logHelpers } from '../utils/logger';
 import '../css/UserManagement.css';
 
 const { Option } = Select;
@@ -32,6 +34,8 @@ export default function UserManagement() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAddCarModalOpen, setIsAddCarModalOpen] = useState(false);
+  const [selectedUserForCar, setSelectedUserForCar] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -67,11 +71,26 @@ export default function UserManagement() {
   const handleEditUser = async (updates) => {
     setIsSubmitting(true);
     try {
+      const oldUserData = users.find(u => u.id === selectedUser.id);
+      
       const userRef = doc(db, 'users', selectedUser.id);
       await updateDoc(userRef, {
         ...updates,
         updatedAt: new Date().toISOString()
       });
+      
+      // Log the user update
+      if (oldUserData) {
+        await logHelpers.updateUser(
+          user.uid,
+          user.displayName || user.email,
+          user.role,
+          selectedUser.id,
+          oldUserData,
+          { ...oldUserData, ...updates }
+        );
+      }
+      
       await fetchUsers();
       setIsEditModalOpen(false);
       setSelectedUser(null);
@@ -86,15 +105,30 @@ export default function UserManagement() {
   const handleDeleteUser = async () => {
     setIsSubmitting(true);
     try {
+      const userToDeleteData = users.find(u => u.id === userToDelete.id);
+      
       await deleteDoc(doc(db, 'users', userToDelete.id));
+      
+      // Log the user deletion
+      if (userToDeleteData) {
+        await logHelpers.deleteUser(
+          user.uid,
+          user.displayName || user.email,
+          user.role,
+          userToDeleteData
+        );
+      }
+      
       await fetchUsers();
       if (expandedRowKeys.includes(userToDelete.id)) {
         setExpandedRowKeys([]);
       }
+      message.success('User deleted successfully');
       setIsDeleteModalOpen(false);
       setUserToDelete(null);
     } catch (error) {
       console.error('Error deleting user:', error);
+      message.error('Failed to delete user. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -103,23 +137,66 @@ export default function UserManagement() {
   const handleAddUser = async (userData) => {
     setIsSubmitting(true);
     try {
-      let uid;
       if (!selectedUser) {
-        // Create new user with the password provided in the form
-        const userCredential = await createUserWithEmailAndPassword(
-          auth,
-          userData.email,
-          userData.password || 'tempPassword123' // Use form password or fallback
+        // Create new user document directly in Firestore without authentication
+        // This prevents the admin from being logged out
+        const username = userData.username.toLowerCase().trim();
+        const emailForAuth = `${username}@motohub.com`;
+        
+        // Generate a unique ID for the new user
+        const newUserRef = doc(collection(db, 'users'));
+        
+        await setDoc(newUserRef, {
+          displayName: userData.displayName,
+          firstName: userData.firstName,
+          middleName: userData.middleName || '',
+          lastName: userData.lastName,
+          username: username,
+          email: userData.email || '',
+          googleEmail: userData.email || '',
+          authEmail: emailForAuth, // Store the auth email for reference
+          role: userData.role,
+          status: 'pending', // Set to pending until admin creates auth account
+          address: userData.address || '',
+          city: userData.city || '',
+          postalCode: userData.postalCode || '',
+          phoneNumber: userData.phoneNumber || '',
+          mobileNumber: userData.phoneNumber || '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          authCreated: false // Flag to indicate auth account not yet created
+        });
+        
+        // Log the user creation
+        await logHelpers.createUser(
+          user.uid,
+          user.displayName || user.email,
+          user.role,
+          {
+            id: newUserRef.id,
+            ...userData,
+            displayName: userData.displayName,
+            status: 'pending'
+          }
         );
-        uid = userCredential.user.uid;
+
+        await fetchUsers();
+        setIsEditModalOpen(false);
+        setSelectedUser(null);
+        message.success('User profile created. Authentication setup required.');
+        return;
       }
 
-      const userRef = doc(db, 'users', selectedUser?.id || uid);
+      // For editing existing users
+      const userRef = doc(db, 'users', selectedUser?.id);
       await setDoc(userRef, {
         displayName: userData.displayName,
         firstName: userData.firstName,
         middleName: userData.middleName || '',
         lastName: userData.lastName,
+        username: userData.username?.toLowerCase().trim() || '',
+        email: userData.email || '',
+        googleEmail: userData.email || '',
         role: userData.role,
         status: userData.status || 'active',
         address: userData.address || '',
@@ -129,8 +206,7 @@ export default function UserManagement() {
         mobileNumber: userData.phoneNumber || '',
         updatedAt: new Date().toISOString(),
         ...((!selectedUser) && {
-          createdAt: new Date().toISOString(),
-          email: userData.email
+          createdAt: new Date().toISOString()
         })
       }, { merge: true });
 
@@ -139,8 +215,38 @@ export default function UserManagement() {
       setSelectedUser(null);
     } catch (error) {
       console.error('Error adding user:', error);
+      message.error('Failed to add user. Please try again.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleAddCarForUser = async (formData) => {
+    try {
+      if (!selectedUserForCar?.id) {
+        message.error('Invalid user selected');
+        return;
+      }
+      const carsRef = collection(db, `users/${selectedUserForCar.id}/cars`);
+      const docRef = await addDoc(carsRef, {
+        ...formData,
+        createdAt: new Date().toISOString(),
+      });
+      
+      // Log the vehicle creation
+      await logHelpers.createVehicle(
+        user.uid,
+        user.displayName || user.email,
+        user.role,
+        { id: docRef.id, ...formData, userId: selectedUserForCar.id, userName: selectedUserForCar.displayName }
+      );
+      
+      setIsAddCarModalOpen(false);
+      setSelectedUserForCar(null);
+      message.success(`Vehicle added successfully for ${selectedUserForCar.displayName}!`);
+    } catch (error) {
+      console.error('Error adding car for user:', error);
+      message.error('Failed to add vehicle');
     }
   };
 
@@ -228,6 +334,23 @@ export default function UserManagement() {
           >
             Edit User
           </Button>
+          {user?.role === 'superadmin' && record.role === 'user' && (
+            <Button
+              icon={<Car size={16} />}
+              onClick={() => {
+                setSelectedUserForCar(record);
+                setIsAddCarModalOpen(true);
+              }}
+              style={{
+                background: '#10B981',
+                borderColor: '#10B981',
+                color: '#FFFFFF',
+                fontWeight: 600,
+              }}
+            >
+              Add Car
+            </Button>
+          )}
           <Button
             danger
             icon={<DeleteOutlined />}
@@ -521,6 +644,19 @@ export default function UserManagement() {
                                   <EditOutlined />
                                   Edit
                                 </button>
+                                {user?.role === 'superadmin' && userItem.role === 'user' && (
+                                  <button
+                                    className="user-mobile-addcar"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedUserForCar(userItem);
+                                      setIsAddCarModalOpen(true);
+                                    }}
+                                  >
+                                    <Car size={16} />
+                                    Add Car
+                                  </button>
+                                )}
                                 <button
                                   className="user-mobile-delete"
                                   onClick={(e) => {
@@ -695,6 +831,17 @@ export default function UserManagement() {
           user={userToDelete}
           processing={isSubmitting}
         />
+
+        {isAddCarModalOpen && (
+          <AddCarModal
+            onSubmit={handleAddCarForUser}
+            onClose={() => {
+              setIsAddCarModalOpen(false);
+              setSelectedUserForCar(null);
+            }}
+            userId={selectedUserForCar?.id}
+          />
+        )}
 
         <ProfileModal 
           open={profileOpen} 

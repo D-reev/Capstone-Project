@@ -13,6 +13,7 @@ import RestockModal from '../components/modals/RestockModal';
 import NavigationBar from '../components/NavigationBar';
 import ProfileModal from '../components/modals/ProfileModal';
 import Loading from '../components/Loading';
+import { logHelpers } from '../utils/logger';
 import '../css/Inventory.css';
 
 const { Option } = Select;
@@ -69,11 +70,20 @@ function InventoryPage() {
   const handleAddPart = async (partData) => {
     try {
       const partsRef = collection(db, 'inventory');
-      await addDoc(partsRef, {
+      const docRef = await addDoc(partsRef, {
         ...partData,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
+      
+      // Log the creation
+      await logHelpers.createPart(
+        user.uid,
+        user.displayName || user.email,
+        user.role,
+        { id: docRef.id, ...partData }
+      );
+      
       fetchParts();
       setIsAddModalOpen(false);
     } catch (error) {
@@ -83,11 +93,27 @@ function InventoryPage() {
 
   const handleUpdatePart = async (id, updates) => {
     try {
+      // Get old data for logging
+      const oldPart = parts.find(p => p.id === id);
+      
       const partRef = doc(db, 'inventory', id);
       await updateDoc(partRef, {
         ...updates,
         updatedAt: new Date().toISOString()
       });
+      
+      // Log the update
+      if (oldPart) {
+        await logHelpers.updatePart(
+          user.uid,
+          user.displayName || user.email,
+          user.role,
+          id,
+          oldPart,
+          { ...oldPart, ...updates }
+        );
+      }
+      
       fetchParts();
       setEditPart(null);
       setIsEditModalOpen(false);
@@ -106,7 +132,26 @@ function InventoryPage() {
     if (!partToDelete) return;
     
     try {
+      // Get part data before deletion for logging
+      const partToDeleteData = parts.find(p => p.id === partToDelete);
+      
       await deleteDoc(doc(db, 'inventory', partToDelete));
+      
+      // Log the deletion
+      if (partToDeleteData) {
+        try {
+          console.log('Attempting to log part deletion:', partToDeleteData);
+          await logHelpers.deletePart(
+            user.uid,
+            user.displayName || user.email,
+            user.role,
+            partToDeleteData
+          );
+          console.log('Part deletion logged successfully');
+        } catch (logError) {
+          console.error('Error logging part deletion:', logError);
+        }
+      }
       
       // Update local state
       setParts(prevParts => prevParts.filter(part => part.id !== partToDelete));
@@ -146,6 +191,12 @@ function InventoryPage() {
 
   const handleRestockUpdate = async (id, updates) => {
     try {
+      // Get old part data for logging
+      const oldPart = parts.find(p => p.id === id);
+      const oldStock = oldPart?.quantity || oldPart?.stock || 0;
+      const newStock = updates.quantity || updates.stock || 0;
+      const addedQty = newStock - oldStock;
+      
       const partRef = doc(db, 'inventory', id);
       
       // Filter out undefined values to prevent Firebase errors
@@ -162,6 +213,19 @@ function InventoryPage() {
       };
       
       await updateDoc(partRef, updateData);
+      
+      // Log the restock
+      if (oldPart && addedQty > 0) {
+        await logHelpers.restockPart(
+          user.uid,
+          user.displayName || user.email,
+          user.role,
+          oldPart.name,
+          oldStock,
+          newStock,
+          addedQty
+        );
+      }
       
       // Update local state with the same data
       setParts(prevParts => 
@@ -443,21 +507,23 @@ function InventoryPage() {
 
   return (
     <div className="inventory-page">
-      {user?.role === 'superadmin' ? <SuperAdminSidebar /> : <AdminSidebar />}        <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
-          <NavigationBar
-            title="Inventory Management"
-            onProfileClick={() => setProfileOpen(true)}
-            userRole="admin"
-            userName={user?.displayName || 'Admin'}
-            userEmail={user?.email || ''}
-          />
+      {user?.role === 'superadmin' ? <SuperAdminSidebar /> : <AdminSidebar />}
 
-          <div className="inventory-container">
-            <div className="inventory-table-card">
-              <div className="inventory-table-header">
-                <div className="inventory-table-header-left">
-                  <h1 className="inventory-table-title">Parts Inventory</h1>
-                  <span className="inventory-table-subtitle">
+      <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
+        <NavigationBar
+          title="Inventory Management"
+          onProfileClick={() => setProfileOpen(true)}
+          userRole="admin"
+          userName={user?.displayName || 'Admin'}
+          userEmail={user?.email || ''}
+        />
+
+        <div className="inventory-container">
+          <div className="inventory-table-card">
+            <div className="inventory-table-header">
+              <div className="inventory-table-header-left">
+                <h1 className="inventory-table-title">Parts Inventory</h1>
+                <span className="inventory-table-subtitle">
                     Showing {filteredParts.length} of {parts.length} parts
                   </span>
                 </div>

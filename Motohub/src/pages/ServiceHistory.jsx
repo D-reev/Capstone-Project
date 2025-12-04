@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSidebar } from '../context/SidebarContext';
 import { getFirestore, collection, getDocs, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
-import { Wrench, Calendar, Clock, Car, ChevronDown, ChevronUp, Star } from 'lucide-react';
+import { Wrench, Calendar, Clock, Car, ChevronDown, ChevronUp, Star, Filter, Search } from 'lucide-react';
 import { message, Rate, Input, Button } from 'antd';
 import UserSidebar from '../components/UserSidebar';
 import SuperAdminSidebar from '../components/SuperAdminSidebar';
 import NavigationBar from '../components/NavigationBar';
+import Loading from '../components/Loading';
 import ProfileModal from '../components/modals/ProfileModal';
 import '../css/ServiceHistory.css';
 
@@ -23,6 +24,8 @@ function ServiceHistory() {
   const [submitting, setSubmitting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedMobileCards, setExpandedMobileCards] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
   const itemsPerPage = 10;
   const { sidebarOpen } = useSidebar();
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
@@ -157,6 +160,45 @@ function ServiceHistory() {
 
   const isRowExpanded = (serviceId) => expandedRows.includes(serviceId);
 
+  // Filter and search logic
+  const filteredHistory = serviceHistory.filter(service => {
+    // Filter by status
+    if (filterStatus !== 'all' && service.status !== filterStatus) {
+      return false;
+    }
+
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      return (
+        service.vehicle?.toLowerCase().includes(query) ||
+        service.plateNumber?.toLowerCase().includes(query) ||
+        service.mechanicName?.toLowerCase().includes(query) ||
+        service.mechanicHeadName?.toLowerCase().includes(query) ||
+        service.diagnosis?.toLowerCase().includes(query) ||
+        service.workPerformed?.toLowerCase().includes(query) ||
+        service.partsUsed?.toLowerCase().includes(query)
+      );
+    }
+
+    return true;
+  });
+
+  // Get unique statuses for filter
+  const statusOptions = ['all', ...new Set(serviceHistory.map(s => s.status).filter(Boolean))];
+
+  // Pagination
+  const totalPages = Math.ceil(filteredHistory.length / itemsPerPage);
+  const paginatedHistory = filteredHistory.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterStatus]);
+
   const ServiceHistoryCard = ({ service }) => (
     <div className="service-history-card">
       <div className="service-card-header">
@@ -256,6 +298,10 @@ function ServiceHistory() {
     </div>
   );
 
+  if (loading) {
+    return <Loading text="Loading service history..." />;
+  }
+
   return (
     <div className="service-history-container">
       {user?.role === 'superadmin' ? (
@@ -282,6 +328,42 @@ function ServiceHistory() {
             <p>View all your past vehicle service records</p>
           </div>
 
+          {/* Filter and Search Section */}
+          <div className="service-filters-card">
+            <div className="filters-row">
+              <div className="search-box">
+                <Search size={18} />
+                <input
+                  type="text"
+                  placeholder="Search by vehicle, plate, mechanic, or service details..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="search-input"
+                />
+              </div>
+              
+              <div className="filter-group">
+                <Filter size={18} />
+                <span className="filter-label">Status:</span>
+                <div className="filter-buttons">
+                  {statusOptions.map(status => (
+                    <button
+                      key={status}
+                      className={`filter-btn${filterStatus === status ? ' active' : ''}`}
+                      onClick={() => setFilterStatus(status)}
+                    >
+                      {status === 'all' ? 'All' : status}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="results-info">
+              <span>Showing {paginatedHistory.length} of {filteredHistory.length} services</span>
+            </div>
+          </div>
+
           {loading ? (
             <div className="loading-state">
               <Wrench size={48} />
@@ -304,8 +386,7 @@ function ServiceHistory() {
                       </tr>
                     </thead>
                     <tbody>
-                      {serviceHistory
-                        .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                      {paginatedHistory
                         .map(service => (
                         <React.Fragment key={service.id}>
                           <tr 
@@ -334,7 +415,16 @@ function ServiceHistory() {
                             <td>
                               <div className="table-cell-content">
                                 <Wrench size={16} />
-                                {service.mechanicName || 'Unknown'}
+                                <div>
+                                  <div className="mechanic-name">{service.mechanicHeadName || service.mechanicName || 'Unknown'}</div>
+                                  {service.mechanicNames && service.mechanicNames.length > 0 && (
+                                    <div className="other-mechanics">
+                                      {service.mechanicNames.map((name, idx) => (
+                                        <span key={idx} className="mechanic-tag">{name}</span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </td>
                             <td>
@@ -380,18 +470,18 @@ function ServiceHistory() {
                                   <div className="expanded-grid">
                                     <div className="expanded-section">
                                       <h5>Diagnosis</h5>
-                                      <p>{service.diagnosis}</p>
+                                      <div className="service-content" dangerouslySetInnerHTML={{ __html: service.diagnosis?.replace(/•/g, '<br/>•') || '' }} />
                                     </div>
 
                                     <div className="expanded-section">
                                       <h5>Work Performed</h5>
-                                      <p>{service.workPerformed}</p>
+                                      <div className="service-content" dangerouslySetInnerHTML={{ __html: service.workPerformed?.replace(/•/g, '<br/>•') || '' }} />
                                     </div>
 
                                     {service.partsUsed && (
                                       <div className="expanded-section">
                                         <h5>Parts Used</h5>
-                                        <p>{service.partsUsed}</p>
+                                        <div className="service-content" dangerouslySetInnerHTML={{ __html: service.partsUsed?.replace(/•/g, '<br/>•') || '' }} />
                                       </div>
                                     )}
 
@@ -433,8 +523,7 @@ function ServiceHistory() {
 
                   {/* Mobile List View */}
                   <div className="service-history-mobile-list">
-                    {serviceHistory
-                      .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                    {paginatedHistory
                       .map(service => {
                       const isExpanded = isRowExpanded(service.id);
                       
@@ -471,24 +560,35 @@ function ServiceHistory() {
                           {isExpanded && (
                             <div className="service-mobile-expanded">
                               <div className="service-mobile-detail">
-                                <span className="service-mobile-label">Mechanic</span>
-                                <span className="service-mobile-value">{service.mechanicName || 'Unknown'}</span>
+                                <span className="service-mobile-label">Mechanic Head</span>
+                                <span className="service-mobile-value">{service.mechanicHeadName || service.mechanicName || 'Unknown'}</span>
                               </div>
+
+                              {service.mechanicNames && service.mechanicNames.length > 0 && (
+                                <div className="service-mobile-detail">
+                                  <span className="service-mobile-label">Other Mechanics</span>
+                                  <div className="service-mobile-mechanics">
+                                    {service.mechanicNames.map((name, idx) => (
+                                      <span key={idx} className="mechanic-tag-mobile">{name}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
 
                               <div className="service-mobile-section">
                                 <h5>Diagnosis</h5>
-                                <p>{service.diagnosis}</p>
+                                <div className="service-content" dangerouslySetInnerHTML={{ __html: service.diagnosis?.replace(/•/g, '<br/>•') || '' }} />
                               </div>
 
                               <div className="service-mobile-section">
                                 <h5>Work Performed</h5>
-                                <p>{service.workPerformed}</p>
+                                <div className="service-content" dangerouslySetInnerHTML={{ __html: service.workPerformed?.replace(/•/g, '<br/>•') || '' }} />
                               </div>
 
                               {service.partsUsed && (
                                 <div className="service-mobile-section">
                                   <h5>Parts Used</h5>
-                                  <p>{service.partsUsed}</p>
+                                  <div className="service-content" dangerouslySetInnerHTML={{ __html: service.partsUsed?.replace(/•/g, '<br/>•') || '' }} />
                                 </div>
                               )}
 
@@ -565,7 +665,7 @@ function ServiceHistory() {
                         color: '#6B7280',
                         fontSize: '14px'
                       }}>
-                        {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, serviceHistory.length)} of {serviceHistory.length} entries
+                        {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredHistory.length)} of {filteredHistory.length} entries
                       </span>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <button
@@ -611,11 +711,11 @@ function ServiceHistory() {
                         <input
                           type="number"
                           min="1"
-                          max={Math.ceil(serviceHistory.length / itemsPerPage)}
+                          max={Math.ceil(filteredHistory.length / itemsPerPage)}
                           value={currentPage}
                           onChange={(e) => {
                             const page = parseInt(e.target.value);
-                            if (page >= 1 && page <= Math.ceil(serviceHistory.length / itemsPerPage)) {
+                            if (page >= 1 && page <= Math.ceil(filteredHistory.length / itemsPerPage)) {
                               setCurrentPage(page);
                             }
                           }}
@@ -631,18 +731,18 @@ function ServiceHistory() {
                             fontWeight: '600'
                           }}
                         />
-                        <span style={{ color: '#FFC300', fontSize: '14px', fontWeight: '600' }}>of {Math.ceil(serviceHistory.length / itemsPerPage)}</span>
+                        <span style={{ color: '#FFC300', fontSize: '14px', fontWeight: '600' }}>of {Math.ceil(filteredHistory.length / itemsPerPage)}</span>
                         <button
-                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(serviceHistory.length / itemsPerPage)))}
-                          disabled={currentPage >= Math.ceil(serviceHistory.length / itemsPerPage)}
+                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(filteredHistory.length / itemsPerPage)))}
+                          disabled={currentPage >= Math.ceil(filteredHistory.length / itemsPerPage)}
                           style={{
                             width: '32px',
                             height: '32px',
-                            background: currentPage >= Math.ceil(serviceHistory.length / itemsPerPage) ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
-                            color: currentPage >= Math.ceil(serviceHistory.length / itemsPerPage) ? '#9ca3af' : '#000',
+                            background: currentPage >= Math.ceil(filteredHistory.length / itemsPerPage) ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
+                            color: currentPage >= Math.ceil(filteredHistory.length / itemsPerPage) ? '#9ca3af' : '#000',
                             border: 'none',
                             borderRadius: '6px',
-                            cursor: currentPage >= Math.ceil(serviceHistory.length / itemsPerPage) ? 'not-allowed' : 'pointer',
+                            cursor: currentPage >= Math.ceil(filteredHistory.length / itemsPerPage) ? 'not-allowed' : 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -653,16 +753,16 @@ function ServiceHistory() {
                           &gt;
                         </button>
                         <button
-                          onClick={() => setCurrentPage(Math.ceil(serviceHistory.length / itemsPerPage))}
-                          disabled={currentPage >= Math.ceil(serviceHistory.length / itemsPerPage)}
+                          onClick={() => setCurrentPage(Math.ceil(filteredHistory.length / itemsPerPage))}
+                          disabled={currentPage >= Math.ceil(filteredHistory.length / itemsPerPage)}
                           style={{
                             width: '32px',
                             height: '32px',
-                            background: currentPage >= Math.ceil(serviceHistory.length / itemsPerPage) ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
-                            color: currentPage >= Math.ceil(serviceHistory.length / itemsPerPage) ? '#9ca3af' : '#000',
+                            background: currentPage >= Math.ceil(filteredHistory.length / itemsPerPage) ? '#f3f4f6' : 'linear-gradient(135deg, #FFC300 0%, #FFD54F 100%)',
+                            color: currentPage >= Math.ceil(filteredHistory.length / itemsPerPage) ? '#9ca3af' : '#000',
                             border: 'none',
                             borderRadius: '6px',
-                            cursor: currentPage >= Math.ceil(serviceHistory.length / itemsPerPage) ? 'not-allowed' : 'pointer',
+                            cursor: currentPage >= Math.ceil(filteredHistory.length / itemsPerPage) ? 'not-allowed' : 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',

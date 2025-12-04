@@ -403,6 +403,15 @@
     background: #BFDBFE;
   }
 
+  .user-mobile-addcar {
+    background: #D1FAE5;
+    color: #047857;
+  }
+
+  .user-mobile-addcar:active {
+    background: #A7F3D0;
+  }
+
   .user-mobile-delete {
     background: #FEE2E2;
     color: #991B1B;

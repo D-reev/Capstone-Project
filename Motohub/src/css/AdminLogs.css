@@ -815,3 +815,59 @@
 .logs-mobile-list {
   display: none;
 }
+
+/* View Details Button */
+.view-details-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #FFC300 0%, #FFD54F 100%);
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-details-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 195, 0, 0.3);
+}
+
+.view-details-btn:active {
+  transform: translateY(0);
+}
+
+.view-details-btn.mobile {
+  width: 100%;
+  justify-content: center;
+  margin-top: 12px;
+  padding: 10px 16px;
+}
+
+/* Log Resource Badge */
+.log-resource {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.changes-count {
+  font-size: 0.875rem;
+  color: var(--yellow-dark);
+  font-weight: 500;
+}
+
+.no-changes {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+/* Mobile Resource Badge */
+.logs-mobile-badge.resource {
+  background: #E0E7FF;
+  color: #4338CA;
+}

@@ -112,6 +112,19 @@ function AdminRequestsContent() {
         approvedAt: new Date().toISOString()
       });
       
+      // Log the approval
+      await logHelpers.approvePartsRequest(
+        user.uid,
+        user.displayName || user.email,
+        user.role,
+        requestId,
+        {
+          ...requestData,
+          mechanicName: requestData.mechanicName || 'Unknown',
+          status: 'approved'
+        }
+      );
+      
       // Send notification to mechanic
       if (requestData?.mechanicId) {
         await notifyRequestStatusChange(requestId, requestData.mechanicId, 'approved');
@@ -151,6 +164,20 @@ function AdminRequestsContent() {
         rejectedBy: user?.displayName || user?.email,
         rejectedAt: new Date().toISOString()
       });
+      
+      // Log the rejection
+      await logHelpers.rejectPartsRequest(
+        user.uid,
+        user.displayName || user.email,
+        user.role,
+        requestId,
+        {
+          ...requestData,
+          mechanicName: requestData.mechanicName || 'Unknown',
+          status: 'rejected'
+        },
+        requestData.adminNotes || 'No reason provided'
+      );
       
       // Send notification to mechanic
       if (requestData?.mechanicId) {

@@ -5,7 +5,7 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 80px;
+  height: 64px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -316,7 +316,7 @@
   }
 
   .nav-toggle-btn {
-    display: none;
+    display: flex;
   }
 
   .nav-icon-btn {

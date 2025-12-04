@@ -7,6 +7,7 @@ import { Modal, Form, Input, Select, Button, App } from 'antd';
 import AdminSidebar from '../components/AdminSidebar';
 import SuperAdminSidebar from '../components/SuperAdminSidebar';
 import NavigationBar from '../components/NavigationBar';
+import { logHelpers } from '../utils/logger';
 import SuccessModal from '../components/modals/SuccessModal';
 import DeletePromotionModal from '../components/modals/DeletePromotionModal';
 import Loading from '../components/Loading';
@@ -110,12 +111,32 @@ export default function AdminPromotions() {
 
       if (editingPromo) {
         await updateDoc(doc(db, 'promotions', editingPromo.id), promoData);
+        
+        // Log the promotion update
+        await logHelpers.updatePromotion(
+          user.uid,
+          user.displayName || user.email,
+          user.role,
+          editingPromo.id,
+          editingPromo,
+          { ...editingPromo, ...promoData }
+        );
+        
         setSuccessMessage('Promotion updated successfully');
       } else {
-        await addDoc(collection(db, 'promotions'), {
+        const docRef = await addDoc(collection(db, 'promotions'), {
           ...promoData,
           createdAt: new Date().toISOString()
         });
+        
+        // Log the promotion creation
+        await logHelpers.createPromotion(
+          user.uid,
+          user.displayName || user.email,
+          user.role,
+          { id: docRef.id, ...promoData }
+        );
+        
         setSuccessMessage('Promotion created successfully');
       }
 
@@ -155,6 +176,15 @@ export default function AdminPromotions() {
     setLoading(true);
     try {
       await deleteDoc(doc(db, 'promotions', promotionToDelete.id));
+      
+      // Log the promotion deletion
+      await logHelpers.deletePromotion(
+        user.uid,
+        user.displayName || user.email,
+        user.role,
+        promotionToDelete
+      );
+      
       message.success('Promotion deleted successfully');
       setShowDeleteModal(false);
       setPromotionToDelete(null);

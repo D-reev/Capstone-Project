@@ -6,6 +6,7 @@ import { SearchOutlined, FilterOutlined, InfoCircleOutlined, EditOutlined, Check
 import { Input, Button, Modal, ConfigProvider, Badge, Empty, Tabs, message, App, Tooltip } from 'antd';
 import { ChevronDown, Calendar, User, Car, FileText, RefreshCw } from 'lucide-react';
 import MechanicSidebar from '../components/MechanicSidebar';
+import SuperAdminSidebar from '../components/SuperAdminSidebar';
 import NavigationBar from '../components/NavigationBar';
 import ProfileModal from '../components/modals/ProfileModal';
 import EditReportModal from '../components/modals/EditReportModal';
@@ -416,13 +417,13 @@ export default function PendingReports() {
         }}
       >
         <div className="pending-reports-page">
-        <MechanicSidebar />
+        {user?.role === 'superadmin' ? <SuperAdminSidebar /> : <MechanicSidebar />}
 
         <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
           <NavigationBar
             title="Pending Reports"
             onProfileClick={() => setProfileOpen(true)}
-            userRole="mechanic"
+            userRole={user?.role || 'mechanic'}
             userName={user?.displayName || 'Mechanic'}
             userEmail={user?.email || ''}
           />

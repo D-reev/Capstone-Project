@@ -80,11 +80,15 @@ body {
 }
 
 /* Quick Actions */
+.quick-actions-section {
+  margin-bottom: 2rem;
+}
+
 .quick-actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 1.5rem;
-  margin-bottom: 3rem;
+  margin-bottom: 0;
 }
 
 .quick-action-card {
@@ -695,8 +699,8 @@ body {
 
 @media (max-width: 768px) {
   .customer-main-content {
-    margin-left: 0;
-    width: 100%;
+    margin-left: 0 !important;
+    width: 100% !important;
     padding-bottom: 0 !important;
   }
   .customer-content-area {

@@ -6,11 +6,14 @@ import "./Modal.css";
 
 const { Option } = Select;
 
-export default function EditUserModal({ user, onSubmit, onClose, open }) {
+export default function EditUserModal({ user, onSubmit, onSave, onClose, open }) {
   const [form] = Form.useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const db = getFirestore();
   const { message: messageApi, modal } = App.useApp();
+  
+  // Use onSave if provided, otherwise fallback to onSubmit for backwards compatibility
+  const handleSaveCallback = onSave || onSubmit;
 
   useEffect(() => {
     if (user && open) {
@@ -19,6 +22,7 @@ export default function EditUserModal({ user, onSubmit, onClose, open }) {
         middleName: user.middleName || "",
         lastName: user.lastName || "",
         email: user.email || "",
+        username: user.username || "",
         role: user.role || "user",
         status: user.status || "active",
         address: user.address || "",
@@ -69,7 +73,7 @@ export default function EditUserModal({ user, onSubmit, onClose, open }) {
             });
             
             messageApi.success('User updated successfully!');
-            onSubmit({
+            handleSaveCallback({
               ...values,
               id: user.id,
               displayName: displayName
@@ -77,7 +81,7 @@ export default function EditUserModal({ user, onSubmit, onClose, open }) {
           } else {
             // Add mode - pass data to parent to create new user
             messageApi.success('User created successfully!');
-            onSubmit({
+            handleSaveCallback({
               ...values,
               displayName: displayName,
               middleName: values.middleName || "",
@@ -86,6 +90,8 @@ export default function EditUserModal({ user, onSubmit, onClose, open }) {
               postalCode: values.postalCode || "",
               phoneNumber: values.phoneNumber || "",
               mobileNumber: values.phoneNumber || "",
+              email: values.email || "",
+              username: values.username || "",
             });
           }
           onClose(); // Close modal after successful submission
@@ -295,16 +301,31 @@ export default function EditUserModal({ user, onSubmit, onClose, open }) {
         {!user && (
           <>
             <Form.Item
-              label="Email"
+              label="Username"
+              name="username"
+              rules={[
+                { required: true, message: 'Please enter a username' },
+                { min: 4, message: 'Must be at least 4 characters' },
+                { pattern: /^[a-z0-9._-]+$/, message: 'Use lowercase letters, numbers, . _ or -' }
+              ]}
+            >
+              <Input 
+                prefix={<UserOutlined />} 
+                placeholder="Enter username" 
+                size="large"
+              />
+            </Form.Item>
+
+            <Form.Item
+              label="Gmail (optional)"
               name="email"
               rules={[
-                { required: true, message: 'Please enter email' },
                 { type: 'email', message: 'Please enter a valid email' }
               ]}
             >
               <Input 
                 prefix={<MailOutlined />}
-                placeholder="Enter email"
+                placeholder="Enter Gmail address"
                 size="large"
               />
             </Form.Item>

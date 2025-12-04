@@ -3,6 +3,7 @@ import { Modal, Form, Input, DatePicker, Button, message, AutoComplete, Tooltip,
 import { PlusOutlined, MinusCircleOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { getFirestore, collection, addDoc, getDocs } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
+import { logHelpers } from '../../utils/logger';
 import PartsRequestModal from './PartsRequestModal';
 import dayjs from 'dayjs';
 
@@ -279,7 +280,31 @@ export default function ServiceReportModal({ car, customer, onSubmit, onClose, o
       };
 
       const requestsRef = collection(db, 'partRequests');
-      await addDoc(requestsRef, requestPayload);
+      const docRef = await addDoc(requestsRef, requestPayload);
+      
+      // Log the parts request creation
+      try {
+        console.log('Attempting to log parts request creation:', {
+          userId: user.uid,
+          userName: user.displayName || user.email,
+          requestId: docRef.id,
+          partsCount: requestedPartsData.length
+        });
+        
+        await logHelpers.createPartsRequest(
+          user.uid,
+          user.displayName || user.email,
+          {
+            id: docRef.id,
+            ...requestPayload,
+            parts: requestedPartsData
+          }
+        );
+        
+        console.log('Parts request logged successfully');
+      } catch (logError) {
+        console.error('Error logging parts request:', logError);
+      }
 
       const partsCount = requestedPartsData.length;
       setIsRequestSent(true);
