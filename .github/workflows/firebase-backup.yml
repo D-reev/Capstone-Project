@@ -1,0 +1,53 @@
+name: Daily Firebase Backup
+
+on:
+  schedule:
+    # Runs at 12:00 PM UTC (8:00 PM Philippine Time UTC+8)
+    - cron: '0 12 * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        working-directory: ./Motohub
+        run: npm install firebase-admin
+      
+      - name: Create service account key file
+        working-directory: ./Motohub
+        run: |
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > firebaseServiceAccountKey.json
+      
+      - name: Run backup
+        working-directory: ./Motohub
+        run: node backup-script.cjs
+      
+      - name: Get timestamp
+        id: timestamp
+        run: echo "timestamp=$(date +'%Y-%m-%d_%H-%M-%S')" >> $GITHUB_OUTPUT
+      
+      - name: Upload backup to GitHub Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: firestore-backup-${{ steps.timestamp.outputs.timestamp }}
+          path: Motohub/backups/
+          retention-days: 30
+      
+      - name: Commit backup to repository (optional)
+        if: false  # Set to true if you want backups committed to repo
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add Motohub/backups/
+          git commit -m "Daily backup: ${{ steps.timestamp.outputs.timestamp }}" || echo "No changes"
+          git push
