@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { App, Modal } from 'antd';
 import { useAuth } from '../context/AuthContext';
 import { useSidebar } from '../context/SidebarContext';
-import { getUserProfile, updateUserProfile } from '../utils/auth';
+import { getUserProfile, updateUserProfile, markProfileCompleted } from '../utils/auth';
 import { User, Save, RotateCcw, Edit2, Lock, Edit, X, Eye, EyeOff } from 'lucide-react';
 import UserSidebar from '../components/UserSidebar';
 import SuperAdminSidebar from '../components/SuperAdminSidebar';
@@ -11,11 +11,13 @@ import ForgotPasswordModal from '../components/modals/ForgotPasswordModal';
 import '../css/ProfileSection.css';
 import Loading from '../components/Loading';
 import { getAuth, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
+import { useNavigate } from 'react-router-dom';
 
 export default function ProfileSection() {
   const { message: messageApi } = App.useApp();
   const { user } = useAuth();
   const { sidebarOpen } = useSidebar();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -122,12 +124,16 @@ export default function ProfileSection() {
 
           if (user?.uid) {
             await updateUserProfile(user.uid, { photoURL: base64String });
-            messageApi.success('Profile photo updated successfully!');
+            messageApi.success('Profile photo updated successfully! Refreshing...', 1.5);
+            
+            // Reload page to refresh AuthContext with new photo
+            setTimeout(() => {
+              window.location.reload();
+            }, 1500);
           }
         } catch (err) {
           console.error('Error processing photo upload:', err);
           messageApi.error('Failed to upload photo');
-        } finally {
           setUploadingPhoto(false);
         }
       };
@@ -147,7 +153,7 @@ export default function ProfileSection() {
   };
 
   const isIncomplete = () => {
-    return !profile.address?.trim() || !profile.phoneNumber?.trim() || !profile.googleEmail?.trim();
+    return !profile.address?.trim() || !profile.phoneNumber?.trim();
   };
 
   const hasChanges = () => {
@@ -262,6 +268,22 @@ export default function ProfileSection() {
         updatedAt: new Date().toISOString()
       };
       await updateUserProfile(user.uid, updates);
+      
+      // Mark profile as completed if all required fields are filled
+      const wasIncomplete = !user.profileCompleted;
+      if (profile.address?.trim() && profile.phoneNumber?.trim()) {
+        await markProfileCompleted(user.uid);
+        
+        // If profile was just completed, reload the page to update the auth context
+        if (wasIncomplete) {
+          messageApi.success('Profile completed successfully! Reloading...', 1.5);
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+          return;
+        }
+      }
+      
       messageApi.success('Profile saved successfully!');
       
       setOriginalProfile({ ...profile });
@@ -329,14 +351,34 @@ export default function ProfileSection() {
           </div>
 
           {/* Alert Messages */}
-          {isIncomplete() && (
+          {!user.profileCompleted && (
+            <div className="alert alert-warning" style={{ 
+              backgroundColor: '#FEF3C7', 
+              border: '2px solid #FCD34D',
+              borderRadius: '8px',
+              padding: '1rem',
+              marginBottom: '1.5rem'
+            }}>
+              <div className="alert-content">
+                <User size={20} className="alert-icon" style={{ color: '#92400E' }} />
+                <div>
+                  <strong className="alert-title" style={{ color: '#92400E' }}>Profile Completion Required</strong>
+                  <div className="alert-message" style={{ color: '#78350F' }}>
+                    Welcome! Please complete your profile with your address and phone number to access all features. You won't be able to use other features until your profile is complete.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {isIncomplete() && user.profileCompleted && (
             <div className="alert alert-warning">
               <div className="alert-content">
                 <User size={20} className="alert-icon" />
                 <div>
                   <strong className="alert-title">Complete your profile</strong>
                   <div className="alert-message">
-                    Please complete your address and mobile number and connect a verified Gmail account so we can send notifications and enable password recovery.
+                    Please complete your address and mobile number. You can also connect a Gmail account for notifications and password recovery.
                   </div>
                 </div>
               </div>

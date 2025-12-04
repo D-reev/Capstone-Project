@@ -16,14 +16,15 @@ import logo from '../assets/images/logo.jpeg';
 import Dock from './Dock';
 import './Sidebar.css';
 
-function NavItem({ icon: Icon, label, active = false, badge, color = "red", sidebarOpen, onClick }) {
+function NavItem({ icon: Icon, label, active = false, badge, color = "red", sidebarOpen, onClick, disabled = false }) {
   const badgeClass = `nav-item-badge ${color}`;
   
   return (
     <div 
-      className={`nav-item ${active ? 'active' : ''}`} 
-      onClick={onClick}
-      style={{ cursor: 'pointer' }}
+      className={`nav-item ${active ? 'active' : ''} ${disabled ? 'disabled' : ''}`} 
+      onClick={disabled ? undefined : onClick}
+      style={{ cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1 }}
+      title={disabled ? 'Complete your profile to access this feature' : ''}
     >
       <div className="nav-item-content">
         <Icon className="nav-item-icon" size={20} />
@@ -77,57 +78,67 @@ export default function UserSidebar() {
     return location.pathname.startsWith(path);
   };
 
-  const renderNavItems = () => (
-    <>
-      <NavItem 
-        icon={LayoutDashboard} 
-        label="Dashboard" 
-        active={isPathActive('/userdashboard')}
-        sidebarOpen={sidebarOpen}
-        onClick={() => navigate('/userdashboard')}
-      />
-      <NavItem 
-        icon={Car} 
-        label="My Vehicles" 
-        active={isPathActive('/mycars')}
-        sidebarOpen={sidebarOpen}
-        onClick={() => navigate('/mycars')}
-      />
-      <NavItem 
-        icon={FileText} 
-        label="Service History" 
-        active={isPathActive('/servicehistory')}
-        sidebarOpen={sidebarOpen}
-        onClick={() => navigate('/servicehistory')}
-      />
-      <NavItem
-        icon={User}
-        label="Profile"
-        active={isPathActive('/profile')}
-        sidebarOpen={sidebarOpen}
-        onClick={() => navigate('/profile')}
-      />
-    </>
-  );
+  const renderNavItems = () => {
+    const isProfileIncomplete = user?.profileCompleted === false;
+    
+    return (
+      <>
+        <NavItem 
+          icon={LayoutDashboard} 
+          label="Dashboard" 
+          active={isPathActive('/userdashboard')}
+          sidebarOpen={sidebarOpen}
+          onClick={() => navigate('/userdashboard')}
+          disabled={isProfileIncomplete}
+        />
+        <NavItem 
+          icon={Car} 
+          label="My Vehicles" 
+          active={isPathActive('/mycars')}
+          sidebarOpen={sidebarOpen}
+          onClick={() => navigate('/mycars')}
+          disabled={isProfileIncomplete}
+        />
+        <NavItem 
+          icon={FileText} 
+          label="Service History" 
+          active={isPathActive('/servicehistory')}
+          sidebarOpen={sidebarOpen}
+          onClick={() => navigate('/servicehistory')}
+          disabled={isProfileIncomplete}
+        />
+        <NavItem
+          icon={User}
+          label="Profile"
+          active={isPathActive('/profile')}
+          sidebarOpen={sidebarOpen}
+          onClick={() => navigate('/profile')}
+        />
+      </>
+    );
+  };
 
   const dockItems = [
     {
       icon: <LayoutDashboard size={24} />,
       label: 'Dashboard',
-      onClick: () => navigate('/userdashboard'),
-      className: isPathActive('/userdashboard') ? 'active' : ''
+      onClick: user?.profileCompleted === false ? undefined : () => navigate('/userdashboard'),
+      className: isPathActive('/userdashboard') ? 'active' : '',
+      disabled: user?.profileCompleted === false
     },
     {
       icon: <Car size={24} />,
       label: 'Vehicles',
-      onClick: () => navigate('/mycars'),
-      className: isPathActive('/mycars') ? 'active' : ''
+      onClick: user?.profileCompleted === false ? undefined : () => navigate('/mycars'),
+      className: isPathActive('/mycars') ? 'active' : '',
+      disabled: user?.profileCompleted === false
     },
     {
       icon: <FileText size={24} />,
       label: 'History',
-      onClick: () => navigate('/servicehistory'),
-      className: isPathActive('/servicehistory') ? 'active' : ''
+      onClick: user?.profileCompleted === false ? undefined : () => navigate('/servicehistory'),
+      className: isPathActive('/servicehistory') ? 'active' : '',
+      disabled: user?.profileCompleted === false
     },
     {
       icon: <User size={24} />,

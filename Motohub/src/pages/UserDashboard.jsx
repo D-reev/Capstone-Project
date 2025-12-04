@@ -660,7 +660,7 @@ function MotohubCustomerDashboardContent() {
   const StatCard = ({ icon: Icon, title, value, color }) => (
     <div className="stat-card">
       <div className="stat-icon" style={{ background: color }}>
-        <Icon size={24} />
+        <Icon size={24} style={{ color: '#000000' }} />
       </div>
       <div className="stat-content">
         <div className="stat-value">{value}</div>

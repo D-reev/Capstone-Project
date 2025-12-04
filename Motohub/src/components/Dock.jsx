@@ -8,6 +8,7 @@ import './Dock.css';
 function DockItem({ children, className = '', onClick, mouseX, spring, distance, magnification, baseItemSize }) {
   const ref = useRef(null);
   const isHovered = useMotionValue(0);
+  const isDisabled = !onClick;
 
   const mouseDistance = useTransform(mouseX, val => {
     const rect = ref.current?.getBoundingClientRect() ?? {
@@ -25,17 +26,21 @@ function DockItem({ children, className = '', onClick, mouseX, spring, distance,
       ref={ref}
       style={{
         width: size,
-        height: size
+        height: size,
+        opacity: isDisabled ? 0.5 : 1,
+        cursor: isDisabled ? 'not-allowed' : 'pointer'
       }}
-      onHoverStart={() => isHovered.set(1)}
-      onHoverEnd={() => isHovered.set(0)}
-      onFocus={() => isHovered.set(1)}
-      onBlur={() => isHovered.set(0)}
+      onHoverStart={() => !isDisabled && isHovered.set(1)}
+      onHoverEnd={() => !isDisabled && isHovered.set(0)}
+      onFocus={() => !isDisabled && isHovered.set(1)}
+      onBlur={() => !isDisabled && isHovered.set(0)}
       onClick={onClick}
-      className={`dock-item ${className}`}
-      tabIndex={0}
+      className={`dock-item ${className} ${isDisabled ? 'disabled' : ''}`}
+      tabIndex={isDisabled ? -1 : 0}
       role="button"
       aria-haspopup="true"
+      aria-disabled={isDisabled}
+      title={isDisabled ? 'Complete your profile to access this feature' : ''}
     >
       {Children.map(children, child => cloneElement(child, { isHovered }))}
     </motion.div>

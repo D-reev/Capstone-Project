@@ -3,34 +3,64 @@ import { Modal, Form, Input, Button, message, Alert } from 'antd';
 import { UserOutlined, LockOutlined, ExclamationCircleOutlined, PhoneOutlined, HomeOutlined, MailOutlined } from '@ant-design/icons';
 import './Modal.css';
 import { registerWithUsername } from '../../utils/auth';
+import TermsOfServiceModal from './TermsOfServiceModal';
 
 export default function RegisterModal({ open, onClose, onSuccess, onSwitchToLogin, onError }) {
   const [form] = Form.useForm();
   const [isLoading, setIsLoading] = useState(false);
+  const [showTOS, setShowTOS] = useState(false);
+  const [pendingRegistration, setPendingRegistration] = useState(null);
 
-  const handleRegister = async (values) => {
+  const handleFormSubmit = async (values) => {
+    // Store the registration data and show TOS modal
+    const registrationData = {
+      firstName: values.firstName.trim(),
+      middleName: values.middleName?.trim() || '',
+      lastName: values.lastName.trim(),
+      username: values.username.trim().toLowerCase(),
+      password: values.password,
+      role: 'user',
+      address: values.address?.trim() || '',
+      city: values.city?.trim() || '',
+      postalCode: values.postalCode?.trim() || '',
+      phoneNumber: values.phoneNumber?.trim() || '',
+      googleEmail: values.googleEmail?.trim() || ''
+    };
+    console.log('Registration data prepared:', registrationData);
+    setPendingRegistration(registrationData);
+    setShowTOS(true);
+  };
+
+  const handleTOSAccept = async () => {
+    if (!pendingRegistration) {
+      console.error('No pending registration data');
+      return;
+    }
+    
+    console.log('TOS accepted, starting registration...');
     setIsLoading(true);
     try {
-      const user = await registerWithUsername({
-        firstName: values.firstName.trim(),
-        middleName: values.middleName?.trim() || '',
-        lastName: values.lastName.trim(),
-        username: values.username.trim().toLowerCase(),
-        password: values.password,
-        role: 'user',
-        address: values.address?.trim() || '',
-        city: values.city?.trim() || '',
-        postalCode: values.postalCode?.trim() || '',
-        phoneNumber: values.phoneNumber?.trim() || '',
-        googleEmail: values.googleEmail?.trim() || ''
-      });
+      const user = await registerWithUsername(pendingRegistration);
+      console.log('Registration successful:', user);
 
-      message.success('Registration successful!');
-      if (typeof onSuccess === 'function') onSuccess(user);
+      // Close modals and reset state
       form.resetFields();
+      setPendingRegistration(null);
+      setShowTOS(false);
+      
+      message.success('Registration successful! Redirecting...', 1.5);
+      
+      // Call onSuccess callback
+      if (typeof onSuccess === 'function') onSuccess(user);
+      
+      // Close the modal
       onClose();
+      
+      // The Login page's useEffect will handle the redirect once auth state updates
     } catch (err) {
       console.error('Registration error:', err);
+      setShowTOS(false);
+      
       if (typeof onError === 'function') onError(err);
       
       let errorMessage = 'Registration failed';
@@ -97,8 +127,21 @@ export default function RegisterModal({ open, onClose, onSuccess, onSwitchToLogi
     }
   };
 
+  const handleTOSDecline = () => {
+    setShowTOS(false);
+    setPendingRegistration(null);
+    message.info('Registration cancelled. You must accept the Terms of Service to create an account.');
+  };
+
+  const handleRegister = (values) => {
+    // Show TOS modal after form validation passes
+    handleFormSubmit(values);
+  };
+
   const handleCancel = () => {
     form.resetFields();
+    setPendingRegistration(null);
+    setShowTOS(false);
     onClose();
   };
 
@@ -374,6 +417,14 @@ export default function RegisterModal({ open, onClose, onSuccess, onSwitchToLogi
           </span>
         </div>
       </Form>
+
+      {/* Terms of Service Modal */}
+      <TermsOfServiceModal
+        open={showTOS}
+        onAccept={handleTOSAccept}
+        onDecline={handleTOSDecline}
+        isLoading={isLoading}
+      />
     </Modal>
   );
 }

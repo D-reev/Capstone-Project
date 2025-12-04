@@ -28,16 +28,18 @@ export const createUserProfile = async (user, role = 'user') => {
     const docSnap = await getDoc(userRef);
     
     if (!docSnap.exists()) {
-      // Create new user document in Firestore
+      // Create new user document in Firestore for first-time users
       await setDoc(userRef, {
         email: user.email,
         role: role,
         createdAt: new Date().toISOString(),
         displayName: user.displayName || '',
         photoURL: user.photoURL || '',
-        lastLogin: new Date().toISOString()
+        lastLogin: new Date().toISOString(),
+        profileCompleted: false, // Flag for profile completion
+        isNewUser: true // Flag for first-time Google users
       });
-      return role;
+      return { role, isNewUser: true, profileCompleted: false };
     }
     
     // Update last login time and photoURL for existing users (Google photoURL can change)
@@ -47,10 +49,15 @@ export const createUserProfile = async (user, role = 'user') => {
       displayName: user.displayName || docSnap.data().displayName || ''
     }, { merge: true });
     
-    return docSnap.data().role;
+    const userData = docSnap.data();
+    return { 
+      role: userData.role, 
+      isNewUser: false, 
+      profileCompleted: userData.profileCompleted !== false // Default to true for existing users
+    };
   } catch (error) {
     console.error("Error creating/updating user profile:", error);
-    return role;
+    return { role, isNewUser: false, profileCompleted: true };
   }
 };
 
@@ -273,6 +280,10 @@ export const registerWithUsername = async ({ firstName, middleName = '', lastNam
       console.warn('updateProfile failed:', err);
     }
 
+    // Determine if profile is complete based on required fields
+    // Only address and phoneNumber are truly required (googleEmail is optional)
+    const hasRequiredFields = !!(address && phoneNumber);
+    
     const userDoc = {
       uid: cred.user.uid,
       displayName,
@@ -287,12 +298,14 @@ export const registerWithUsername = async ({ firstName, middleName = '', lastNam
       postalCode: postalCode || null,
       phoneNumber: phoneNumber || null,
       role,
+      profileCompleted: hasRequiredFields,
+      isNewUser: !hasRequiredFields,
       createdAt: new Date().toISOString()
     };
 
     await setDoc(doc(db, 'users', cred.user.uid), userDoc);
 
-    return { uid: cred.user.uid, displayName, username };
+    return { uid: cred.user.uid, displayName, username, profileCompleted: hasRequiredFields };
   } catch (error) {
     console.error('Registration (username) error:', error);
     throw error;
@@ -466,5 +479,21 @@ export const notifyRequestStatusChange = async (requestId, mechanicId, status, a
   } catch (error) {
     console.error('Error notifying request status change:', error);
     throw error;
+  }
+};
+
+// Mark user profile as completed
+export const markProfileCompleted = async (userId) => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      profileCompleted: true,
+      isNewUser: false,
+      profileCompletedAt: new Date().toISOString()
+    });
+    return true;
+  } catch (error) {
+    console.error('Error marking profile as completed:', error);
+    return false;
   }
 };

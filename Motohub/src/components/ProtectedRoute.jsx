@@ -1,10 +1,11 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Loading from './Loading';
 
 export default function ProtectedRoute({ children, allowedRoles = [] }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   // Show loading while checking authentication
   if (loading) {
@@ -15,6 +16,13 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
   if (!user) {
     console.log('ProtectedRoute: No user found, redirecting to login');
     return <Navigate to="/login" replace />;
+  }
+
+  // Check if profile completion is required (skip for profile page itself)
+  // Only check for users with role='user' and ensure profileCompleted exists
+  if (user.role === 'user' && user.profileCompleted === false && location.pathname !== '/profile') {
+    console.log('ProtectedRoute: Profile not completed, redirecting to profile');
+    return <Navigate to="/profile" replace />;
   }
 
   // Check role access

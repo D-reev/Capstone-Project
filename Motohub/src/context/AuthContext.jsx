@@ -28,7 +28,14 @@ export const AuthProvider = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
         if (firebaseUser) {
-          const userProfile = await getUserProfile(firebaseUser.uid);
+          let userProfile = await getUserProfile(firebaseUser.uid);
+          
+          // Retry fetching profile if displayName is missing (race condition during registration)
+          if (!userProfile?.displayName && firebaseUser.metadata.creationTime === firebaseUser.metadata.lastSignInTime) {
+            console.log('Retrying profile fetch for new user...');
+            await new Promise(resolve => setTimeout(resolve, 500));
+            userProfile = await getUserProfile(firebaseUser.uid);
+          }
           
           // Prioritize Firestore photoURL, then Firebase Auth photoURL, trim and validate
           const finalPhotoURL = (userProfile?.photoURL?.trim?.() || firebaseUser.photoURL?.trim?.() || '').trim();
@@ -39,6 +46,8 @@ export const AuthProvider = ({ children }) => {
             photoURL: finalPhotoURL,
             displayName: userProfile?.displayName || firebaseUser.displayName || '',
             role: userProfile?.role || 'user',
+            profileCompleted: userProfile?.profileCompleted !== false, // Default to true for existing users
+            isNewUser: userProfile?.isNewUser || false,
             ...userProfile
           });
         } else {

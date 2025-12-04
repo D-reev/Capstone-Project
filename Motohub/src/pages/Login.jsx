@@ -1,4 +1,4 @@
-import React, { useState, lazy, Suspense } from "react";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from "../config/firebase.js";
@@ -10,6 +10,7 @@ import RegisterModal from '../components/modals/RegisterModal';
 import LoginModal from '../components/modals/LoginModal';
 import SuccessModal from '../components/modals/SuccessModal';
 import ForgotPasswordModal from '../components/modals/ForgotPasswordModal';
+import { useAuth } from '../context/AuthContext';
 
 const Threads = lazy(() => import('../components/Threads'));
 
@@ -26,8 +27,25 @@ function Login() {
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const navigate = useNavigate();
   const [messageApi, contextHolder] = message.useMessage();
+  const { user, loading } = useAuth();
  
   const googleProvider = new GoogleAuthProvider();
+
+  // Redirect if user is already authenticated
+  useEffect(() => {
+    if (!loading && user) {
+      console.log('User already authenticated, redirecting to dashboard...');
+      
+      // Redirect based on role
+      if (user.role === 'admin' || user.role === 'superadmin') {
+        navigate('/admindashboard', { replace: true });
+      } else if (user.role === 'mechanic') {
+        navigate('/mechanicdashboard', { replace: true });
+      } else {
+        navigate('/userdashboard', { replace: true });
+      }
+    }
+  }, [user, loading, navigate]);
 
   const handleEmailLogin = async (e) => {
     e.preventDefault();
@@ -65,11 +83,15 @@ function Login() {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       
-      // Create user profile if it doesn't exist
-      await createUserProfile(result.user);
+      // Create user profile if it doesn't exist and check if profile is completed
+      const { role, isNewUser, profileCompleted } = await createUserProfile(result.user);
       
-      // Get user role
-      const role = await getUserRole(result.user.uid);
+      // If it's a new Google user or profile not completed, redirect to profile completion
+      if (isNewUser || !profileCompleted) {
+        messageApi.info('Please complete your profile to continue');
+        navigate('/profile');
+        return;
+      }
      
       messageApi.success('Login successful!');
       
@@ -214,9 +236,9 @@ function Login() {
           open={registerOpen}
           onClose={() => setRegisterOpen(false)}
           onSuccess={(createdUser) => {
+            // Registration successful - user will be auto-logged in by AuthContext
             setRegisterOpen(false);
-            setSuccessMessage('Registration successful! You can now login with your username and password. If you provided a Gmail address, you can use "Forgot Password" for account recovery.');
-            setSuccessOpen(true);
+            // No need to show success modal, user will be redirected to dashboard automatically
           }}
           onError={(err) => setRegistrationError(err)}
           onSwitchToLogin={() => {
