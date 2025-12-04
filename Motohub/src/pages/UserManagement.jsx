@@ -419,8 +419,8 @@ export default function UserManagement() {
       render: (role) => {
         const roleConfig = {
           admin: { color: '#DC2626', bg: '#FEE2E2', label: 'Admin' },
-          mechanic: { color: '#2563EB', bg: '#DBEAFE', label: 'Mechanic' },
-          user: { color: '#059669', bg: '#D1FAE5', label: 'User' },
+          mechanic: { color: '#2563EB', bg: '#DBEAFE', label: 'Mechanic Head' },
+          user: { color: '#059669', bg: '#D1FAE5', label: 'Customer' },
         };
         const config = roleConfig[role] || roleConfig.user;
         return (
@@ -511,8 +511,8 @@ export default function UserManagement() {
                   >
                     <Option value="all">All Roles</Option>
                     <Option value="admin">Admin</Option>
-                    <Option value="mechanic">Mechanic</Option>
-                    <Option value="user">User</Option>
+                    <Option value="mechanic">Mechanic Head</Option>
+                    <Option value="user">Customer</Option>
                   </Select>
                   <Input
                     placeholder="Search users..."
@@ -601,7 +601,9 @@ export default function UserManagement() {
 
                           <div className="user-mobile-meta">
                             <span className="user-mobile-badge role">
-                              {userItem.role ? userItem.role.charAt(0).toUpperCase() + userItem.role.slice(1) : 'N/A'}
+                              {userItem.role === 'mechanic' ? 'Mechanic Head' : 
+                               userItem.role === 'user' ? 'Customer' : 
+                               userItem.role ? userItem.role.charAt(0).toUpperCase() + userItem.role.slice(1) : 'N/A'}
                             </span>
                             <span className={`user-mobile-badge status-${userItem.status === 'active' ? 'active' : 'inactive'}`}>
                               {userItem.status ? userItem.status.charAt(0).toUpperCase() + userItem.status.slice(1) : 'Active'}

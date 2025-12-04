@@ -296,7 +296,7 @@ export default function SuperAdminSidebar() {
           color="orange"
         >
           <ChildNavItem
-            label="Dashboard"
+            label="Customer Management"
             active={isMechanicDashboardActive()}
             sidebarOpen={sidebarOpen}
             onClick={() => navigate('/mechanicdashboard')}
@@ -318,7 +318,7 @@ export default function SuperAdminSidebar() {
         {/* User Pages Section */}
         <CollapsibleSection
           icon={Users}
-          label="User Pages"
+          label="Customer Pages"
           sidebarOpen={sidebarOpen}
           isOpen={expandedSections.userPages}
           onToggle={() => toggleSection('userPages')}
