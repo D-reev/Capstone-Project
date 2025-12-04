@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSidebar } from '../context/SidebarContext';
 import { getFirestore, collection, getDocs, query } from 'firebase/firestore';
-import { ConfigProvider, Input, Select, Tag, Avatar, Empty, Modal, Descriptions } from 'antd';
+import { ConfigProvider, Input, Select, Tag, Avatar, Empty, Modal, Descriptions, Divider, Timeline } from 'antd';
 import { SearchOutlined, FilterOutlined, EyeOutlined } from '@ant-design/icons';
-import { Car, User, Calendar, Gauge, Fuel, Settings as SettingsIcon, Phone, Mail } from 'lucide-react';
+import { Car, User, Calendar, Gauge, Fuel, Settings as SettingsIcon, Phone, Mail, Wrench, CheckCircle, Clock } from 'lucide-react';
 import SuperAdminSidebar from '../components/SuperAdminSidebar';
 import NavigationBar from '../components/NavigationBar';
 import Loading from '../components/Loading';
@@ -21,7 +21,10 @@ export default function AllCustomerCars() {
   const [allCars, setAllCars] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMake, setFilterMake] = useState('all');
+  const [filterCustomer, setFilterCustomer] = useState('all');
   const [selectedCar, setSelectedCar] = useState(null);
+  const [serviceHistory, setServiceHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -87,11 +90,40 @@ export default function AllCustomerCars() {
   const handleViewDetails = (car) => {
     setSelectedCar(car);
     setDetailsModalOpen(true);
+    fetchServiceHistory(car.userId, car.id);
+  };
+
+  const fetchServiceHistory = async (userId, carId) => {
+    try {
+      setLoadingHistory(true);
+      const serviceHistoryRef = collection(db, `users/${userId}/cars/${carId}/serviceHistory`);
+      const historySnapshot = await getDocs(serviceHistoryRef);
+      
+      const historyData = historySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      // Sort by timestamp, newest first
+      historyData.sort((a, b) => {
+        const dateA = new Date(a.timestamp || 0);
+        const dateB = new Date(b.timestamp || 0);
+        return dateB - dateA;
+      });
+      
+      setServiceHistory(historyData);
+    } catch (error) {
+      console.error('Error fetching service history:', error);
+      setServiceHistory([]);
+    } finally {
+      setLoadingHistory(false);
+    }
   };
 
   const handleCloseModal = () => {
     setDetailsModalOpen(false);
     setSelectedCar(null);
+    setServiceHistory([]);
   };
 
   const filteredCars = allCars.filter(car => {
@@ -103,11 +135,20 @@ export default function AllCustomerCars() {
       car.userEmail?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesMake = filterMake === 'all' || car.make === filterMake;
+    const matchesCustomer = filterCustomer === 'all' || car.userId === filterCustomer;
     
-    return matchesSearch && matchesMake;
+    return matchesSearch && matchesMake && matchesCustomer;
   });
 
   const uniqueMakes = [...new Set(allCars.map(car => car.make).filter(Boolean))].sort();
+  
+  const uniqueCustomers = [...new Set(allCars.map(car => ({
+    id: car.userId,
+    name: car.userName,
+    email: car.userEmail
+  })).map(c => JSON.stringify(c)))]
+    .map(c => JSON.parse(c))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -163,6 +204,21 @@ export default function AllCustomerCars() {
                   </span>
                 </div>
                 <div className="all-cars-actions">
+                  <Select
+                    value={filterCustomer}
+                    onChange={(value) => setFilterCustomer(value)}
+                    style={{ width: 200 }}
+                    size="large"
+                    suffixIcon={<FilterOutlined />}
+                    placeholder="Filter by customer"
+                  >
+                    <Option value="all">All Customers</Option>
+                    {uniqueCustomers.map(customer => (
+                      <Option key={customer.id} value={customer.id}>
+                        {customer.name}
+                      </Option>
+                    ))}
+                  </Select>
                   <Select
                     value={filterMake}
                     onChange={(value) => setFilterMake(value)}
@@ -328,7 +384,7 @@ export default function AllCustomerCars() {
           open={detailsModalOpen}
           onCancel={handleCloseModal}
           footer={null}
-          width={700}
+          width={900}
         >
           {selectedCar && (
             <div style={{ padding: '1rem 0' }}>
@@ -405,6 +461,116 @@ export default function AllCustomerCars() {
                     </div>
                   </Descriptions.Item>
                 </Descriptions>
+              </div>
+
+              {/* Service History Section */}
+              <div style={{ marginTop: '1.5rem' }}>
+                <Divider orientation="left">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Wrench size={18} />
+                    Service History
+                  </div>
+                </Divider>
+                
+                {loadingHistory ? (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: '#6B7280' }}>
+                    <Clock size={24} style={{ marginBottom: '0.5rem' }} />
+                    <p>Loading service history...</p>
+                  </div>
+                ) : serviceHistory.length > 0 ? (
+                  <Timeline
+                    style={{ marginTop: '1rem' }}
+                    items={serviceHistory.map((service, index) => ({
+                      color: service.status === 'completed' ? 'green' : 'orange',
+                      dot: service.status === 'completed' ? <CheckCircle size={16} /> : <Clock size={16} />,
+                      children: (
+                        <div style={{ marginBottom: '1rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
+                            <strong style={{ color: '#374151' }}>
+                              {formatDate(service.timestamp)}
+                            </strong>
+                            <Tag color={service.status === 'completed' ? 'success' : 'warning'}>
+                              {service.status?.toUpperCase() || 'PENDING'}
+                            </Tag>
+                          </div>
+                          
+                          {service.mechanicHeadName && (
+                            <div style={{ fontSize: '0.875rem', color: '#6B7280', marginBottom: '0.25rem' }}>
+                              <strong>Mechanic Head:</strong> {service.mechanicHeadName}
+                            </div>
+                          )}
+                          
+                          {service.mechanicName && (
+                            <div style={{ fontSize: '0.875rem', color: '#6B7280', marginBottom: '0.25rem' }}>
+                              <strong>Mechanics:</strong> {service.mechanicName}
+                            </div>
+                          )}
+                          
+                          {service.diagnosis && (
+                            <div style={{ 
+                              marginTop: '0.5rem', 
+                              padding: '0.75rem', 
+                              background: '#F9FAFB', 
+                              borderRadius: '6px',
+                              fontSize: '0.875rem'
+                            }}>
+                              <strong style={{ color: '#374151' }}>Diagnosis:</strong>
+                              <p style={{ margin: '0.25rem 0 0 0', color: '#6B7280', whiteSpace: 'pre-line' }}>
+                                {service.diagnosis}
+                              </p>
+                            </div>
+                          )}
+                          
+                          {service.workPerformed && (
+                            <div style={{ 
+                              marginTop: '0.5rem', 
+                              padding: '0.75rem', 
+                              background: '#F9FAFB', 
+                              borderRadius: '6px',
+                              fontSize: '0.875rem'
+                            }}>
+                              <strong style={{ color: '#374151' }}>Work Performed:</strong>
+                              <p style={{ margin: '0.25rem 0 0 0', color: '#6B7280', whiteSpace: 'pre-line' }}>
+                                {service.workPerformed}
+                              </p>
+                            </div>
+                          )}
+                          
+                          {service.partsUsed && (
+                            <div style={{ 
+                              marginTop: '0.5rem', 
+                              padding: '0.75rem', 
+                              background: '#FEF3C7', 
+                              borderRadius: '6px',
+                              fontSize: '0.875rem'
+                            }}>
+                              <strong style={{ color: '#92400E' }}>Parts Used:</strong>
+                              <p style={{ margin: '0.25rem 0 0 0', color: '#92400E', whiteSpace: 'pre-line' }}>
+                                {service.partsUsed}
+                              </p>
+                            </div>
+                          )}
+                          
+                          {service.totalCost && (
+                            <div style={{ 
+                              marginTop: '0.5rem',
+                              fontSize: '0.875rem',
+                              color: '#059669',
+                              fontWeight: 600
+                            }}>
+                              Total Cost: ₱{service.totalCost.toLocaleString()}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    }))}
+                  />
+                ) : (
+                  <Empty 
+                    description="No service history available for this vehicle"
+                    style={{ padding: '2rem 0' }}
+                  />
+                )}
               </div>
             </div>
           )}

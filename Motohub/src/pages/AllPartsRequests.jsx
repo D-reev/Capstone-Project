@@ -365,7 +365,7 @@ export default function AllPartsRequests() {
                           <div className="request-section">
                             <div className="section-label">
                               <Wrench size={16} />
-                              Mechanic
+                              Mechanic Head
                             </div>
                             <div className="section-value">{request.mechanicName}</div>
                           </div>
@@ -493,7 +493,7 @@ export default function AllPartsRequests() {
 
               {/* Main Information */}
               <Descriptions bordered column={1} size="small" style={{ marginBottom: '1.5rem' }}>
-                <Descriptions.Item label="Mechanic">
+                <Descriptions.Item label="Mechanic Head">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Wrench size={16} />
                     {selectedRequest.mechanicName}

@@ -369,7 +369,7 @@ export default function AllServiceReports() {
                           <div className="report-section">
                             <div className="section-label">
                               <Wrench size={16} />
-                              Mechanic
+                              Mechanic Head
                             </div>
                             <div className="section-value">{report.mechanicHeadName || 'N/A'}</div>
                           </div>
@@ -493,12 +493,19 @@ export default function AllServiceReports() {
                     ) : 'N/A'}
                   </div>
                 </Descriptions.Item>
-                <Descriptions.Item label="Mechanic">
+                <Descriptions.Item label="Mechanic Head">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Wrench size={16} />
                     {selectedReport.mechanicHeadName || 'N/A'}
                   </div>
                 </Descriptions.Item>
+                {selectedReport.mechanicName && (
+                  <Descriptions.Item label="Mechanics Assigned">
+                    <div style={{ color: '#6B7280' }}>
+                      {selectedReport.mechanicName}
+                    </div>
+                  </Descriptions.Item>
+                )}
                 {selectedReport.serviceType && (
                   <Descriptions.Item label="Service Type">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -510,21 +517,29 @@ export default function AllServiceReports() {
               </Descriptions>
 
               {/* Diagnosis, Findings, Recommendations */}
-              {(selectedReport.diagnosis || selectedReport.findings || selectedReport.recommendations) && (
+              {(selectedReport.diagnosis || selectedReport.findings || selectedReport.recommendations || selectedReport.workPerformed) && (
                 <>
                   <Divider orientation="left">Service Details</Divider>
                   {selectedReport.diagnosis && (
                     <div style={{ marginBottom: '1rem' }}>
                       <strong style={{ color: '#374151', display: 'block', marginBottom: '0.5rem' }}>Diagnosis:</strong>
-                      <p style={{ margin: 0, color: '#6B7280', lineHeight: 1.6, padding: '0.75rem', background: '#F9FAFB', borderRadius: '6px' }}>
+                      <p style={{ margin: 0, color: '#6B7280', lineHeight: 1.6, padding: '0.75rem', background: '#F9FAFB', borderRadius: '6px', whiteSpace: 'pre-line' }}>
                         {selectedReport.diagnosis}
+                      </p>
+                    </div>
+                  )}
+                  {selectedReport.workPerformed && (
+                    <div style={{ marginBottom: '1rem' }}>
+                      <strong style={{ color: '#374151', display: 'block', marginBottom: '0.5rem' }}>Work Performed:</strong>
+                      <p style={{ margin: 0, color: '#6B7280', lineHeight: 1.6, padding: '0.75rem', background: '#F9FAFB', borderRadius: '6px', whiteSpace: 'pre-line' }}>
+                        {selectedReport.workPerformed}
                       </p>
                     </div>
                   )}
                   {selectedReport.findings && (
                     <div style={{ marginBottom: '1rem' }}>
                       <strong style={{ color: '#374151', display: 'block', marginBottom: '0.5rem' }}>Findings:</strong>
-                      <p style={{ margin: 0, color: '#6B7280', lineHeight: 1.6, padding: '0.75rem', background: '#F9FAFB', borderRadius: '6px' }}>
+                      <p style={{ margin: 0, color: '#6B7280', lineHeight: 1.6, padding: '0.75rem', background: '#F9FAFB', borderRadius: '6px', whiteSpace: 'pre-line' }}>
                         {selectedReport.findings}
                       </p>
                     </div>
@@ -532,7 +547,7 @@ export default function AllServiceReports() {
                   {selectedReport.recommendations && (
                     <div style={{ marginBottom: '1rem' }}>
                       <strong style={{ color: '#374151', display: 'block', marginBottom: '0.5rem' }}>Recommendations:</strong>
-                      <p style={{ margin: 0, color: '#6B7280', lineHeight: 1.6, padding: '0.75rem', background: '#F9FAFB', borderRadius: '6px' }}>
+                      <p style={{ margin: 0, color: '#6B7280', lineHeight: 1.6, padding: '0.75rem', background: '#F9FAFB', borderRadius: '6px', whiteSpace: 'pre-line' }}>
                         {selectedReport.recommendations}
                       </p>
                     </div>
@@ -541,26 +556,32 @@ export default function AllServiceReports() {
               )}
 
               {/* Parts Used */}
-              {selectedReport.partsUsed && Array.isArray(selectedReport.partsUsed) && selectedReport.partsUsed.length > 0 && (
+              {selectedReport.partsUsed && (
                 <>
                   <Divider orientation="left">Parts Used</Divider>
                   <div style={{ marginBottom: '1.5rem' }}>
-                    {selectedReport.partsUsed.map((part, index) => (
-                      <div 
-                        key={index} 
-                        style={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between', 
-                          padding: '0.75rem', 
-                          background: '#F9FAFB', 
-                          borderRadius: '6px',
-                          marginBottom: '0.5rem'
-                        }}
-                      >
-                        <span style={{ fontWeight: 500 }}>{part.name}</span>
-                        <span style={{ color: '#6B7280' }}>Qty: {part.quantity}</span>
-                      </div>
-                    ))}
+                    {typeof selectedReport.partsUsed === 'string' ? (
+                      <p style={{ margin: 0, color: '#6B7280', lineHeight: 1.6, padding: '0.75rem', background: '#F9FAFB', borderRadius: '6px', whiteSpace: 'pre-line' }}>
+                        {selectedReport.partsUsed}
+                      </p>
+                    ) : Array.isArray(selectedReport.partsUsed) && selectedReport.partsUsed.length > 0 ? (
+                      selectedReport.partsUsed.map((part, index) => (
+                        <div 
+                          key={index} 
+                          style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            padding: '0.75rem', 
+                            background: '#F9FAFB', 
+                            borderRadius: '6px',
+                            marginBottom: '0.5rem'
+                          }}
+                        >
+                          <span style={{ fontWeight: 500 }}>{part.name}</span>
+                          <span style={{ color: '#6B7280' }}>Qty: {part.quantity}</span>
+                        </div>
+                      ))
+                    ) : null}
                   </div>
                 </>
               )}

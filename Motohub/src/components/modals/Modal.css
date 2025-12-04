@@ -19,10 +19,35 @@
   border-radius: 0.5rem;
   max-width: 900px; 
   width: 100%;
-  max-height: 100%;
+  max-height: calc(100vh - 2rem);
   overflow-y: auto;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   animation: modalSlideIn 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure modal body is scrollable */
+.modal-content .modal-body {
+  overflow-y: auto;
+  max-height: calc(100vh - 250px);
+}
+
+/* Ant Design Modal scrolling */
+.ant-modal {
+  max-height: calc(100vh - 2rem);
+}
+
+.ant-modal-content {
+  max-height: calc(100vh - 2rem);
+  display: flex;
+  flex-direction: column;
+}
+
+.ant-modal-body {
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
+  -webkit-overflow-scrolling: touch;
 }
 
 @keyframes modalSlideIn {
