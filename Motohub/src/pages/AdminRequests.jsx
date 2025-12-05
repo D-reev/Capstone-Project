@@ -106,10 +106,51 @@ function AdminRequestsContent() {
       const requestSnap = await getDoc(requestRef);
       const requestData = requestSnap.data();
       
-      await updateDoc(requestRef, {
-        status: 'approved',
-        approvedBy: user?.displayName || user?.email,
-        approvedAt: new Date().toISOString()
+      // Use transaction to ensure inventory updates are atomic
+      await runTransaction(db, async (transaction) => {
+        // Update request status
+        transaction.update(requestRef, {
+          status: 'approved',
+          approvedBy: user?.displayName || user?.email,
+          approvedAt: new Date().toISOString()
+        });
+
+        // Deduct quantities from inventory
+        if (requestData.parts && requestData.parts.length > 0) {
+          const inventoryRef = collection(db, 'inventory');
+          const inventorySnapshot = await getDocs(inventoryRef);
+          
+          // Create a map of inventory parts by name for faster lookup
+          const inventoryMap = new Map();
+          inventorySnapshot.docs.forEach(doc => {
+            const data = doc.data();
+            inventoryMap.set(data.name.toLowerCase(), { id: doc.id, ...data });
+          });
+
+          // Update inventory for each requested part
+          for (const part of requestData.parts) {
+            const partName = (part.name || '').toLowerCase();
+            const requestedQty = part.quantity || 0;
+            
+            const inventoryPart = inventoryMap.get(partName);
+            
+            if (inventoryPart) {
+              const newQuantity = (inventoryPart.quantity || 0) - requestedQty;
+              
+              if (newQuantity < 0) {
+                throw new Error(`Insufficient inventory for ${part.name}. Available: ${inventoryPart.quantity}, Requested: ${requestedQty}`);
+              }
+              
+              const partRef = doc(db, 'inventory', inventoryPart.id);
+              transaction.update(partRef, {
+                quantity: newQuantity,
+                updatedAt: new Date().toISOString()
+              });
+            } else {
+              console.warn(`Part "${part.name}" not found in inventory - skipping inventory update`);
+            }
+          }
+        }
       });
       
       // Log the approval
@@ -144,12 +185,16 @@ function AdminRequestsContent() {
         )
       );
       
-      messageApi.success('Request approved successfully!');
+      messageApi.success('Request approved successfully! Inventory has been updated.');
       setDetailsModalOpen(false);
       setSelectedRequest(null);
     } catch (error) {
       console.error('Error approving request:', error);
-      messageApi.error('Failed to approve request');
+      if (error.message.includes('Insufficient inventory')) {
+        messageApi.error(error.message);
+      } else {
+        messageApi.error('Failed to approve request');
+      }
     }
   };
 

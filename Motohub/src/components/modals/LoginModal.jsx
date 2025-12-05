@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Form, Input, Button, Checkbox, App, Tooltip } from 'antd';
+import { Modal, Form, Input, Button, Checkbox, message, Tooltip, App } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined, ExclamationCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '../../config/firebase';
@@ -14,12 +14,67 @@ export default function LoginModal({ open, onClose, onSwitchToRegister }) {
   const [loading, setLoading] = useState(false);
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const navigate = useNavigate();
-  const { message: messageApi } = App.useApp();
+  const { modal } = App.useApp();
 
   const handleLogin = async (values) => {
     setLoading(true);
     try {
       const identifier = (values.emailOrUsername || "").trim();
+      
+      // Validate identifier format
+      if (!identifier) {
+        modal.error({
+          title: 'Invalid Input',
+          icon: <ExclamationCircleOutlined />,
+          content: 'Please enter a valid username or email address.',
+          okText: 'Got it',
+          centered: true,
+          okButtonProps: {
+            style: {
+              background: 'linear-gradient(135deg, #FFC300, #FFD54F)',
+              borderColor: '#FFC300',
+              color: '#000',
+              fontWeight: 600
+            }
+          }
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Check for invalid characters in username
+      if (!identifier.includes('@') && !/^[a-zA-Z0-9_.-]+$/.test(identifier)) {
+        modal.error({
+          title: 'Invalid Username',
+          icon: <ExclamationCircleOutlined />,
+          content: (
+            <div>
+              <p>Username contains invalid characters.</p>
+              <div style={{ marginTop: '12px', padding: '12px', background: '#fff7e6', borderRadius: '8px' }}>
+                <strong>Valid username format:</strong>
+                <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
+                  <li>Letters (a-z, A-Z)</li>
+                  <li>Numbers (0-9)</li>
+                  <li>Underscore (_), dash (-), or period (.)</li>
+                </ul>
+              </div>
+            </div>
+          ),
+          okText: 'Got it',
+          centered: true,
+          okButtonProps: {
+            style: {
+              background: 'linear-gradient(135deg, #FFC300, #FFD54F)',
+              borderColor: '#FFC300',
+              color: '#000',
+              fontWeight: 600
+            }
+          }
+        });
+        setLoading(false);
+        return;
+      }
+
       let loginEmail = identifier;
 
       // If it's not an email format, assume it's a username and convert to synthetic email
@@ -32,7 +87,7 @@ export default function LoginModal({ open, onClose, onSwitchToRegister }) {
       const userCredential = await signInWithEmailAndPassword(auth, loginEmail, values.password);
       const role = await getUserRole(userCredential.user.uid);
       
-      messageApi.success('Login successful!');
+      message.success('Login successful!');
       form.resetFields();
       onClose();
 
@@ -52,20 +107,21 @@ export default function LoginModal({ open, onClose, onSwitchToRegister }) {
       const errorMessage = getErrorMessage(error.code, values.emailOrUsername);
       
       // Show error in a modal
-      Modal.error({
+      modal.error({
         title: 'Login Failed',
         icon: <ExclamationCircleOutlined />,
         content: (
           <div>
-            <p>{errorMessage}</p>
-            {error.code === 'auth/invalid-credential' && (
+            <p style={{ fontSize: '15px', marginBottom: '16px' }}>{errorMessage}</p>
+            {(error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') && (
               <div style={{ marginTop: '12px', padding: '12px', background: '#fff7e6', borderRadius: '8px' }}>
-                <strong>Tips:</strong>
-                <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
-                  <li>Double-check your username/email and password</li>
-                  <li>Remember: usernames are case-sensitive</li>
-                  <li>If you forgot your password, use "Forgot password?"</li>
-                  <li>Don't have an account? Click "Register here"</li>
+                <strong style={{ fontSize: '14px' }}>Troubleshooting Tips:</strong>
+                <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', fontSize: '13px' }}>
+                  <li>Make sure you're using the correct username or email</li>
+                  <li>Check that your password is correct (case-sensitive)</li>
+                  <li>Verify there are no extra spaces before or after your input</li>
+                  <li>If you forgot your password, click "Forgot password?"</li>
+                  <li>Don't have an account? Click "Register here" below</li>
                 </ul>
               </div>
             )}
@@ -97,11 +153,11 @@ export default function LoginModal({ open, onClose, onSwitchToRegister }) {
       case 'auth/wrong-password':
         return 'Incorrect password. Click "Forgot password?" to reset it.';
       case 'auth/invalid-email':
-        return 'Invalid format. Enter a valid email or username.';
+        return 'Invalid email format. Please enter a valid email address or use your username instead.';
       case 'auth/too-many-requests':
         return 'Too many failed login attempts. Please try again later or reset your password.';
       case 'auth/invalid-credential':
-        return `Invalid ${accountType} or password. Please check your credentials. If you don't have an account, click "Register here" below.`;
+        return `The ${accountType} or password you entered is incorrect. Please double-check your credentials and try again.`;
       default:
         return 'Login failed. Please verify your credentials and try again.';
     }

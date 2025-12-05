@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from "../config/firebase.js";
 import { createUserProfile, getUserRole } from '../utils/auth';
-import { message, Alert } from 'antd';
+import { message, Alert, App } from 'antd';
 import '../css/Login.css';
 import { FcGoogle } from 'react-icons/fc';
 import RegisterModal from '../components/modals/RegisterModal';
@@ -171,33 +171,34 @@ function Login() {
   return (
     <>
       {contextHolder}
-      <div className="login-container">
-        {/* Animated Background - Lazy loaded */}
-        <Suspense fallback={null}>
-          <Threads 
-            color={[1.0, 0.764, 0.0]} // Yellow color (#FFC300 in RGB normalized)
-            amplitude={1.5}
-            distance={0.4}
-            enableMouseInteraction={false} // Disable mouse interaction for better performance
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              zIndex: 0,
-              opacity: 0.3,
-              willChange: 'transform' // GPU acceleration hint
-            }}
-          />
-        </Suspense>
-        
-        <div className="hero-content">
-          <div className="new-background-badge">
-            <span>⚡Experience CJKB</span>
-          </div>
+      <App>
+        <div className="login-container">
+          {/* Animated Background - Lazy loaded */}
+          <Suspense fallback={null}>
+            <Threads 
+              color={[1.0, 0.764, 0.0]} // Yellow color (#FFC300 in RGB normalized)
+              amplitude={1.5}
+              distance={0.4}
+              enableMouseInteraction={false} // Disable mouse interaction for better performance
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                zIndex: 0,
+                opacity: 0.3,
+                willChange: 'transform' // GPU acceleration hint
+              }}
+            />
+          </Suspense>
           
-          <h1 className="hero-title">Welcome to CJKB Motohub</h1>
+          <div className="hero-content">
+            <div className="new-background-badge">
+              <span>⚡Experience CJKB</span>
+            </div>
+            
+            <h1 className="hero-title">Welcome to CJKB Motohub</h1>
           <p className="hero-tagline">
             Your one-stop automotive solution. We have all the parts you need in stock and ready to install, so you never have to go anywhere else.
           </p>
@@ -280,7 +281,8 @@ function Login() {
           open={forgotPasswordOpen}
           onClose={() => setForgotPasswordOpen(false)}
         />
-      </div>
+        </div>
+      </App>
     </>
   );
 }
